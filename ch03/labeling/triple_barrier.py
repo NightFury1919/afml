@@ -1,5 +1,11 @@
 import numpy as np
 import pandas as pd
+import sys
+import os
+
+# Add project root to path so we can import utils
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from utils.multiprocess import mp_pandas_obj
 
 # Triple Barrier Labeling — AFML Chapter 3, Sections 3.3-3.5, pages 44-50
 #
@@ -14,10 +20,12 @@ import pandas as pd
 # accounts for the PATH the price took, not just where it ended up.
 #
 # --- Pipeline ---
-# 1. getDailyVol   → compute volatility to set barrier widths
-# 2. getEvents     → for each CUSUM event, set up the three barriers
-# 3. applyPtSlOnT1 → find which barrier was hit first (and when)
-# 4. getBins       → assign final labels based on which barrier was hit
+# 1. get_daily_vol      → compute volatility to set barrier widths
+# 2. add_vertical_barrier → find the timestamp num_days after each event
+# 3. get_events         → set up all three barriers, find first touch
+#                         (uses mpPandasObj to call apply_pt_sl_on_t1 in parallel)
+# 4. apply_pt_sl_on_t1  → checks each bar for barrier crosses (worker function)
+# 5. get_bins           → assign final +1/-1/0 labels
 
 
 def get_daily_vol(close, span0=100):
@@ -46,23 +54,37 @@ def get_daily_vol(close, span0=100):
     return df0
 
 
-def apply_pt_sl_on_t1(close, events, pt_sl):
-    # Apply Profit-Taking and Stop-Loss Barriers — AFML Chapter 3, Snippet 3.2
+def apply_pt_sl_on_t1(molecule, close, events, pt_sl):
+    # Apply Profit-Taking and Stop-Loss Barriers — AFML Chapter 3, Snippet 3.2, page 45
     #
-    # For each event, walks forward through price bars between entry and the
-    # vertical barrier, checking whether the upper or lower barrier was crossed.
-    # Returns the timestamp of the first touch for each barrier type.
+    # Worker function called by mpPandasObj in get_events().
+    # Processes only the subset of events in 'molecule' (its assigned chunk).
+    # For each event in molecule, walks forward through price bars between
+    # entry and the vertical barrier, checking whether the upper or lower
+    # barrier was crossed first.
+    #
+    # --- Why 'molecule'? ---
+    # The book uses the term 'molecule' for the chunk of the index assigned
+    # to one parallel worker. Each worker gets a different slice of events.index
+    # and processes only those rows independently. mpPandasObj then stitches
+    # all results back together.
     #
     # --- Inputs ---
-    # close   : pd.Series — closing prices indexed by datetime
-    # events  : pd.DataFrame — columns: t1, trgt, side
-    # pt_sl   : list [pt_multiplier, sl_multiplier]
+    # molecule : pd.DatetimeIndex — the subset of events.index this worker handles
+    # close    : pd.Series — closing prices indexed by datetime
+    # events   : pd.DataFrame — columns: t1, trgt, side (full DataFrame, not just molecule)
+    # pt_sl    : list [pt_multiplier, sl_multiplier]
     #
     # --- Output ---
-    # pd.DataFrame with columns: sl, pt (timestamps of first touch or NaT)
+    # pd.DataFrame with columns: t1, sl, pt (timestamps of first touch or NaT)
+    #   Indexed by the dates in molecule only.
 
-    out = events[['t1']].copy(deep=True)
+    # Work only on the rows assigned to this worker (molecule)
+    out = events.loc[molecule, ['t1']].copy(deep=True)
 
+    # Compute barrier widths
+    # pt (profit target): how far price must rise to trigger upper barrier
+    # sl (stop loss):     how far price must fall to trigger lower barrier
     if pt_sl[0] > 0:
         pt = pt_sl[0] * events['trgt']
     else:
@@ -73,13 +95,16 @@ def apply_pt_sl_on_t1(close, events, pt_sl):
     else:
         sl = pd.Series(index=events.index, dtype=float)
 
-    for loc, t1 in events['t1'].fillna(close.index[-1]).items():
+    # Loop over only the events assigned to this molecule
+    for loc, t1 in events.loc[molecule, 't1'].fillna(close.index[-1]).items():
 
-        # Get path prices from entry to vertical barrier
-        # Use .loc slicing — handles irregular timestamps gracefully
+        # Get path prices from entry (loc) to vertical barrier (t1)
+        # .loc[loc:t1] gives all bars in that time window
         df0 = close.loc[loc:t1]
 
         # Compute returns relative to entry price, scaled by trade side
+        # side=+1 (long): profit when price rises, loss when falls
+        # side=-1 (short): profit when price falls, loss when rises
         df0 = (df0 / close[loc] - 1) * events.at[loc, 'side']
 
         # Find earliest stop loss touch (return drops below sl threshold)
@@ -93,34 +118,47 @@ def apply_pt_sl_on_t1(close, events, pt_sl):
     return out
 
 
-def get_events(close, t_events, pt_sl, trgt, min_ret, t1=False):
-    # Get Time of First Touch — AFML Chapter 3, Snippet 3.3
+def get_events(close, t_events, pt_sl, trgt, min_ret, num_threads=1, t1=False):
+    # Get Time of First Touch — AFML Chapter 3, Snippet 3.3, page 46
     #
     # Main orchestrator. Sets up the three barriers for each event and
-    # finds which one is touched first.
+    # finds which one is touched first, using mpPandasObj to parallelize
+    # the barrier-checking across CPU cores.
     #
     # --- Inputs ---
-    # close    : pd.Series — closing prices indexed by datetime
-    # t_events : pd.DatetimeIndex — entry dates (from CUSUM filter)
-    # pt_sl    : list [pt_multiplier, sl_multiplier]
-    # trgt     : pd.Series — barrier width per event (daily volatility)
-    # min_ret  : float — minimum target return to include an event
-    # t1       : pd.Series or False — vertical barrier timestamps
+    # close       : pd.Series — closing prices indexed by datetime
+    # t_events    : pd.DatetimeIndex — entry dates (from CUSUM filter)
+    # pt_sl       : list [pt_multiplier, sl_multiplier]
+    # trgt        : pd.Series — barrier width per event (daily volatility)
+    # min_ret     : float — minimum target return to include an event
+    # num_threads : int — number of parallel workers (default 1)
+    #               Set higher to speed up large datasets
+    # t1          : pd.Series or False — vertical barrier timestamps
+    #               Pass the output of add_vertical_barrier() here.
+    #               If False, no vertical barrier (trade runs until a
+    #               horizontal barrier is hit, which may never happen).
     #
     # --- Output ---
-    # pd.DataFrame with columns: t1 (first touch timestamp), trgt
+    # pd.DataFrame with columns:
+    #   t1   : timestamp of first barrier touch
+    #   trgt : barrier width used for this event
 
-    # Filter trgt to event dates only
+    # Step 1: Filter trgt to event dates only (bfill = use next available vol)
     trgt = trgt.reindex(t_events, method='bfill')
 
-    # Apply minimum return filter
+    # Step 2: Apply minimum return filter — skip events where vol is too low
+    # This removes events during very quiet markets where barriers would be
+    # too tight to be meaningful
     trgt = trgt[trgt > min_ret]
 
-    # Set up vertical barriers
+    # Step 3: Set up vertical barriers
+    # If no t1 provided, set NaT for all events (no time limit)
     if t1 is False:
         t1 = pd.Series(pd.NaT, index=t_events)
 
-    # Build events DataFrame — side is always +1 for now
+    # Step 4: Build events DataFrame
+    # side is always +1 here — we assume long for barrier setup.
+    # (Meta-labeling handles direction separately in get_events_meta)
     side_ = pd.Series(1., index=trgt.index)
 
     events = pd.concat(
@@ -128,14 +166,27 @@ def get_events(close, t_events, pt_sl, trgt, min_ret, t1=False):
         axis=1
     ).dropna(subset=['trgt'])
 
-    # Find first barrier touch (single-threaded version)
-    df0 = apply_pt_sl_on_t1(
+    # Step 5: Find first barrier touch using mpPandasObj
+    # This is the key parallelization point from Snippet 3.3.
+    # mpPandasObj splits events.index into num_threads chunks and calls
+    # apply_pt_sl_on_t1 on each chunk in a separate process.
+    # Each worker returns a DataFrame; mpPandasObj concatenates them.
+    #
+    # pdObj = ('molecule', events.index) tells mpPandasObj that the
+    # first argument of apply_pt_sl_on_t1 is called 'molecule' and
+    # should receive the chunk of events.index assigned to that worker.
+    df0 = mp_pandas_obj(
+        func=apply_pt_sl_on_t1,
+        pd_obj=('molecule', events.index),
+        num_threads=num_threads,
         close=close,
         events=events,
         pt_sl=pt_sl
     )
 
-    # Take the earliest touch across all three barriers
+    # Step 6: Take the earliest touch across all three barriers
+    # min(axis=1) returns the smallest (earliest) timestamp in each row,
+    # ignoring NaT values (pd.min ignores NaN/NaT by default)
     events['t1'] = df0.dropna(how='all').min(axis=1)
     events = events.drop('side', axis=1)
 
@@ -143,10 +194,11 @@ def get_events(close, t_events, pt_sl, trgt, min_ret, t1=False):
 
 
 def add_vertical_barrier(close, t_events, num_days):
-    # Add Vertical Barrier — AFML Chapter 3, Snippet 3.4
+    # Add Vertical Barrier — AFML Chapter 3, Snippet 3.4, page 47
     #
     # For each event date, finds the timestamp of the bar that falls
-    # approximately num_days later.
+    # approximately num_days later. This becomes the vertical barrier —
+    # the maximum holding period for the trade.
     #
     # --- Inputs ---
     # close    : pd.Series — closing prices indexed by datetime
@@ -166,7 +218,7 @@ def add_vertical_barrier(close, t_events, num_days):
 
 
 def get_bins(events, close):
-    # Labeling for Side and Size — AFML Chapter 3, Snippet 3.5
+    # Labeling for Side and Size — AFML Chapter 3, Snippet 3.5, page 48
     #
     # Assigns final labels (+1, -1, 0) based on which barrier was hit first
     # and computes the actual return achieved.
@@ -176,7 +228,12 @@ def get_bins(events, close):
     # close  : pd.Series — closing prices indexed by datetime
     #
     # --- Output ---
-    # pd.DataFrame with columns: ret (actual return), bin (label in {-1, 0, 1})
+    # pd.DataFrame with columns:
+    #   ret : actual return from entry to first barrier touch
+    #   bin : label in {-1, 0, 1}
+    #         +1 = upper barrier hit first (profit target reached)
+    #         -1 = lower barrier hit first (stop loss triggered)
+    #          0 = vertical barrier hit first (time expired, neutral)
 
     events_ = events.dropna(subset=['t1'])
 
@@ -191,7 +248,6 @@ def get_bins(events, close):
     # Get exit prices — use nearest available bar if exact timestamp not in index
     exit_prices = []
     for t1 in events_['t1'].values:
-        # Find nearest bar at or after t1
         idx = close.index.searchsorted(t1)
         idx = min(idx, len(close) - 1)
         exit_prices.append(close.iloc[idx])

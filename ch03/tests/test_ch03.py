@@ -1,4 +1,4 @@
-r"""
+"""
 test_ch03.py — TDD tests for AFML Chapter 3 implementations
 Run with: pytest ch03/tests/test_ch03.py -v
 
@@ -401,3 +401,102 @@ class TestDropLabels:
         df = pd.DataFrame({'bin': [1]*10 + [-1]*10})
         result = drop_labels(df, min_pct=0.05)
         assert len(result) == len(df)
+
+
+# ===========================================================================
+# Multithreading — mpPandasObj
+# ===========================================================================
+# These tests verify that num_threads > 1 produces identical results to
+# num_threads=1. Skipped automatically on Windows because Python's
+# multiprocessing requires a __main__ guard that pytest does not provide.
+#
+# To run manually on Windows outside pytest:
+#   python -c "
+#   import sys; sys.path.insert(0, '.')
+#   from ch03.tests.test_ch03 import run_threading_tests
+#   run_threading_tests()
+#   "
+
+import platform
+
+@pytest.mark.skipif(
+    platform.system() == 'Windows',
+    reason=(
+        "Skipped on Windows: Python multiprocessing requires a __main__ guard "
+        "that pytest does not provide. Run manually via run_threading_tests() "
+        "to verify. Single-threaded correctness is covered by all other tests."
+    )
+)
+class TestMultithreading:
+
+    @pytest.fixture
+    def setup(self):
+        close = pd.Series(
+            [100.0, 102.0, 104.0, 103.0, 106.0, 108.0, 107.0, 110.0,
+             112.0, 111.0, 114.0, 116.0, 115.0, 118.0, 120.0],
+            index=pd.date_range('2020-01-01', periods=15, freq='D')
+        )
+        vol  = get_daily_vol(close, span0=3)
+        t_ev = pd.DatetimeIndex([
+            '2020-01-03', '2020-01-05', '2020-01-07',
+            '2020-01-09', '2020-01-11'
+        ])
+        t1 = add_vertical_barrier(close, t_ev, num_days=3)
+        return close, vol, t_ev, t1
+
+    def test_get_events_multithreaded_matches_single(self, setup):
+        # num_threads=2 must produce the same t1 values as num_threads=1
+        close, vol, t_ev, t1 = setup
+        e1 = get_events(close, t_ev, pt_sl=[1,1], trgt=vol, min_ret=0.0, num_threads=1, t1=t1)
+        e2 = get_events(close, t_ev, pt_sl=[1,1], trgt=vol, min_ret=0.0, num_threads=2, t1=t1)
+        assert list(e1.index) == list(e2.index)
+        pd.testing.assert_series_equal(e1['t1'].sort_index(), e2['t1'].sort_index())
+
+    def test_get_events_meta_multithreaded_matches_single(self, setup):
+        close, vol, t_ev, t1 = setup
+        side = pd.Series([1.0, -1.0, 1.0, -1.0, 1.0], index=t_ev)
+        e1 = get_events_meta(close, t_ev, pt_sl=[1,1], trgt=vol, min_ret=0.0, num_threads=1, t1=t1, side=side)
+        e2 = get_events_meta(close, t_ev, pt_sl=[1,1], trgt=vol, min_ret=0.0, num_threads=2, t1=t1, side=side)
+        assert list(e1.index) == list(e2.index)
+        pd.testing.assert_series_equal(e1['t1'].sort_index(), e2['t1'].sort_index())
+
+    def test_multithreaded_bins_match_single(self, setup):
+        close, vol, t_ev, t1 = setup
+        e1 = get_events(close, t_ev, pt_sl=[1,1], trgt=vol, min_ret=0.0, num_threads=1, t1=t1)
+        e2 = get_events(close, t_ev, pt_sl=[1,1], trgt=vol, min_ret=0.0, num_threads=2, t1=t1)
+        pd.testing.assert_frame_equal(get_bins(e1, close), get_bins(e2, close))
+
+
+def run_threading_tests():
+    """
+    Run multithreading verification manually on Windows.
+
+    From C:\\ws\\AFML in a terminal:
+        python -c "
+        import sys; sys.path.insert(0, '.')
+        from ch03.tests.test_ch03 import run_threading_tests
+        run_threading_tests()
+        "
+    """
+    close = pd.Series(
+        [100.0, 102.0, 104.0, 103.0, 106.0, 108.0, 107.0, 110.0,
+         112.0, 111.0, 114.0, 116.0, 115.0, 118.0, 120.0],
+        index=pd.date_range('2020-01-01', periods=15, freq='D')
+    )
+    vol  = get_daily_vol(close, span0=3)
+    t_ev = pd.DatetimeIndex([
+        '2020-01-03', '2020-01-05', '2020-01-07',
+        '2020-01-09', '2020-01-11'
+    ])
+    t1 = add_vertical_barrier(close, t_ev, num_days=3)
+
+    e1 = get_events(close, t_ev, [1,1], vol, 0.0, num_threads=1, t1=t1)
+    e2 = get_events(close, t_ev, [1,1], vol, 0.0, num_threads=2, t1=t1)
+    assert list(e1.index) == list(e2.index), "Indexes differ!"
+    pd.testing.assert_series_equal(e1['t1'].sort_index(), e2['t1'].sort_index())
+    pd.testing.assert_frame_equal(get_bins(e1, close), get_bins(e2, close))
+    print("✅ All multithreading tests passed.")
+
+
+if __name__ == '__main__':
+    run_threading_tests()
