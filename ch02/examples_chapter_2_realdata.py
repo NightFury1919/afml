@@ -206,3 +206,81 @@ for ax, x, y, color, title in info_plots:
 
 plt.subplots_adjust(hspace=0.6, wspace=0.3)
 plt.show()
+
+# =============================================================================
+# TDD TEST RESULTS — Chapter 2
+# pytest ch02/tests/test_ch02.py -v
+# Run date: 2026-06-12  |  Python 3.10.20  |  pytest 9.0.3
+# =============================================================================
+# TestEwma::test_empty_array_returns_zero                         PASSED
+# TestEwma::test_single_element_returns_that_element              PASSED
+# TestEwma::test_three_element_window_three                       PASSED
+# TestEwma::test_five_elements_window_two                         PASSED
+# TestEwma::test_larger_window_smoother                           PASSED
+# TestDelta::test_first_row_is_zero                               PASSED
+# TestDelta::test_price_changes_correct                           PASSED
+# TestDelta::test_output_length_matches_input                     PASSED
+# TestDelta::test_does_not_modify_price_column                    PASSED
+# TestTickRule::test_uptick_gives_positive_one                    PASSED
+# TestTickRule::test_downtick_gives_negative_one                  PASSED
+# TestTickRule::test_flat_price_carries_forward                   PASSED
+# TestTickRule::test_full_sequence                                 PASSED
+# TestTickRule::test_default_first_label_is_one                   PASSED
+# TestEstimateBuySellProbs::test_three_buys_one_sell              PASSED
+# TestEstimateBuySellProbs::test_probs_sum_to_one                 PASSED
+# TestEstimateBuySellProbs::test_all_buys                         PASSED  (bug fixed)
+# TestCusumFilter::test_fires_on_upward_drift                     PASSED
+# TestCusumFilter::test_event_dates_correct                       PASSED
+# TestCusumFilter::test_no_events_when_drift_below_threshold      PASSED
+# TestCusumFilter::test_returns_datetimeindex                     PASSED
+# TestCusumFilter::test_downward_drift_also_fires                 PASSED
+# TestTickBars::test_correct_number_of_bars                       PASSED
+# TestTickBars::test_ohlc_values_first_bar                        PASSED
+# TestTickBars::test_vwap_equal_volumes                           PASSED
+# TestTickBars::test_vwap_unequal_volumes                         PASSED
+# TestTickBars::test_incomplete_last_bar_not_included             PASSED
+# TestVolumeBars::test_closes_on_volume_threshold                 PASSED
+# TestVolumeBars::test_ohlc_values                                PASSED
+# TestVolumeBars::test_large_single_trade_closes_bar              PASSED
+# TestDollarBars::test_closes_on_dollar_threshold                 PASSED
+# TestDollarBars::test_ohlcv_values                               PASSED
+# TestDollarBars::test_single_large_trade_closes_bar              PASSED
+# TestTickImbalanceBars::test_produces_bars                       PASSED
+# TestTickImbalanceBars::test_first_bar_ohlc                      PASSED
+# TestTickImbalanceBars::test_open_lte_high                       PASSED
+# TestTickImbalanceBars::test_close_within_high_low               PASSED
+# TestVolumeImbalanceBars::test_produces_bars                     PASSED
+# TestVolumeImbalanceBars::test_has_vwap_column                   PASSED
+# TestVolumeImbalanceBars::test_high_gte_low                      PASSED
+# TestTickRunBars::test_correct_number_of_bars                    PASSED
+# TestTickRunBars::test_first_bar_ohlcv                           PASSED
+# TestTickRunBars::test_high_gte_open_and_close                   PASSED
+# TestVolumeRunBars::test_correct_number_of_bars                  PASSED
+# TestVolumeRunBars::test_first_bar_ohlcv                         PASSED
+# TestVolumeRunBars::test_has_vwap                                PASSED
+# TestPcaWeights::test_output_shape                               PASSED
+# TestPcaWeights::test_min_variance_weights                       PASSED
+# TestPcaWeights::test_equal_risk_weights                         PASSED
+# TestPcaWeights::test_identity_cov_min_var                       PASSED
+# TestPcaWeights::test_risk_target_scales_weights                 PASSED
+# TestRollGaps::test_gaps_backward_correct                        PASSED
+# TestRollGaps::test_last_gap_is_zero_when_match_end              PASSED
+# TestRollGaps::test_forward_roll_first_gap_is_zero               PASSED
+# TestGetRolledSeries::test_rolled_close_values                   PASSED
+# TestGetRolledSeries::test_no_jump_at_roll_date                  PASSED
+# TestGetRolledSeries::test_does_not_modify_original              PASSED
+# TestNonNegativeRolledPrices::test_rprices_always_positive       PASSED
+# TestNonNegativeRolledPrices::test_rprices_known_values          PASSED
+# TestNonNegativeRolledPrices::test_first_rprices_is_nan          PASSED
+# TestNonNegativeRolledPrices::test_has_returns_column            PASSED
+# TestEtfTrick::test_starts_at_one_dollar                         PASSED
+# TestEtfTrick::test_k_series_values                              PASSED
+# TestEtfTrick::test_output_columns                               PASSED
+# TestEtfTrick::test_output_length                                PASSED
+# TestEtfTrick::test_no_costs_when_zero_trans_costs               PASSED
+# -----------------------------------------------------------------------------
+# 66 passed in 1.71s
+# Note: test_all_buys revealed a real bug in estimate_buy_sell_probs —
+#       function crashed when all ticks had the same label. Fixed with
+#       a one-label guard in ch02/bars/utils.py.
+# =============================================================================

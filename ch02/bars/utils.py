@@ -103,26 +103,19 @@ def tick_rule(df):
 
 
 def estimate_buy_sell_probs(df):
-    # Estimates p_b and p_s — the probability that a tick is a buy or sell.
-    # Used to initialize expected imbalance before the first bar is formed.
-    # p_b = count of buy ticks / total ticks
-    # p_s = count of sell ticks / total ticks
-    # Referenced on page 31 as initial conditions for imbalance bars.
-    #
-    # --- Why do we need these probabilities? ---
-    # Imbalance and run bars need an initial guess for "how imbalanced is
-    # a typical bar?" before any bars have actually been formed. Rather than
-    # hard-coding a guess, we estimate it empirically from the raw tick data.
-    #
-    # pd.pivot_table counts how many rows have Label == -1 and Label == +1.
-    # We then divide each count by the total to get a probability.
-    # Example:  900 buy ticks, 100 sell ticks → p_b = 0.9, p_s = 0.1
-
-    # Count the number of ticks for each label value (-1 and +1)
     prob = pd.DataFrame(pd.pivot_table(df, index='Label', values='Price', aggfunc='count'))
-    prob = np.array(prob)       # convert to a plain numpy array for indexing
+    prob = np.array(prob)
 
-    # prob[0] = count of sells (Label = -1), prob[1] = count of buys (Label = +1)
-    p_b = prob[1] / (prob[0] + prob[1])    # fraction of ticks that were buys
-    p_s = prob[0] / (prob[0] + prob[1])    # fraction of ticks that were sells
+    # Original code assumes both -1 and +1 rows always exist — crashes if all buys or all sells
+    # Fix: check how many rows the pivot produced
+    if len(prob) == 1:
+        # Only one label present — check which one
+        only_label = df['Label'].iloc[0]
+        if only_label == 1:
+            return 1.0, 0.0   # all buys
+        else:
+            return 0.0, 1.0   # all sells
+
+    p_b = prob[1] / (prob[0] + prob[1])
+    p_s = prob[0] / (prob[0] + prob[1])
     return p_b, p_s
