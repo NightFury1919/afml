@@ -1,0 +1,216 @@
+import sys
+import os
+
+# Add ch02, ch03, ch04, and project root to path
+root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+ch02 = os.path.join(root, 'ch02')
+ch03 = os.path.join(root, 'ch03')
+ch04 = os.path.dirname(__file__)
+sys.path.insert(0, root)
+sys.path.insert(0, ch02)
+sys.path.insert(0, ch03)
+sys.path.insert(0, ch04)
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+import bars      # from ch02
+import labeling  # from ch03
+
+from sample_weights.co_events             import mp_num_co_events
+from sample_weights.uniqueness            import get_average_uniqueness
+from sample_weights.indicator_matrix      import get_ind_matrix
+from sample_weights.avg_uniqueness_matrix import get_avg_uniqueness
+from sample_weights.sequential_bootstrap  import seq_bootstrap
+from sample_weights.monte_carlo                  import get_rnd_t1, aux_mc
+from sample_weights.return_attribution           import get_sample_weights
+from sample_weights.time_decay                   import get_time_decay
+from sample_weights.real_data_bootstrap_comparison import compare_bootstrap_on_real_events
+
+sns.set_style("whitegrid")
+
+# =============================================================================
+# Load Raw Tick Data and Generate Dollar Bars + Events
+# =============================================================================
+data_path = os.path.join(ch02, 'input_data', 'BTCTUSD-trades-2026-03.csv')
+
+print("Loading tick data...")
+raw = pd.read_csv(data_path, header=None,
+                  names=['TradeID', 'Price', 'Volume', 'QuoteVolume',
+                         'Timestamp', 'IsBuyerMaker', 'IsBestMatch'])
+
+raw['Date']  = pd.to_datetime(raw['Timestamp'], unit='us')
+raw['Label'] = raw['IsBuyerMaker'].apply(lambda x: -1 if x else 1)
+
+df = raw[['Date', 'Price', 'Volume', 'Label']].copy()
+df['Dollar'] = df['Price'] * df['Volume']
+df = bars.delta(df)
+
+print(f"Loaded {len(df):,} ticks")
+
+print("\nGenerating dollar bars...")
+dollar_bars = bars.dollar_bars(df, thresh=50000)
+dollar_bars = dollar_bars.set_index('Date')
+close = dollar_bars['Close']
+print(f"Dollar bars: {len(close)} bars")
+
+print("\nApplying CUSUM filter...")
+cusum_df = pd.DataFrame({'Date': close.index, 'Price': close.values})
+events_dates = bars.cusum_filter(cusum_df, h=500)
+print(f"CUSUM events: {len(events_dates)}")
+
+print("\nComputing daily volatility and triple barrier events...")
+daily_vol = labeling.get_daily_vol(close, span0=100)
+t1_series = labeling.add_vertical_barrier(close, events_dates, num_days=3)
+tb_events = labeling.get_events(
+    close=close, t_events=events_dates, pt_sl=[1, 1],
+    trgt=daily_vol, min_ret=0.005, t1=t1_series
+)
+tb_events = tb_events.dropna(subset=['t1'])
+print(f"Triple barrier events with valid t1: {len(tb_events)}")
+
+# =============================================================================
+# Section 4.2/4.5 — Concurrency and Average Uniqueness
+# =============================================================================
+print("\nComputing concurrency and average uniqueness...")
+tw = get_average_uniqueness(close, tb_events, num_threads=1)
+print(f"Average uniqueness across all events: {tw.mean():.4f}")
+print(f"Min: {tw.min():.4f}  Max: {tw.max():.4f}")
+
+# --- Plot 1: Average Uniqueness Distribution ---
+fig, ax = plt.subplots(figsize=(12, 5))
+ax.hist(tw.values, bins=30, color='teal', alpha=0.7, edgecolor='black')
+ax.axvline(tw.mean(), color='red', linestyle='--', linewidth=2,
+           label=f'Mean = {tw.mean():.3f}')
+ax.set_title("Distribution of Average Uniqueness — Real Triple Barrier Events", fontsize=12)
+ax.set_xlabel("Average Uniqueness (tW)")
+ax.set_ylabel("Number of Events")
+ax.legend()
+plt.tight_layout()
+plt.show()
+
+# =============================================================================
+# Section 4.5.3-4.5.4 — Standard vs Sequential Bootstrap (Figure 4.2 replica)
+# =============================================================================
+print("\nRunning Monte Carlo comparison: standard vs sequential bootstrap...")
+np.random.seed(42)
+n_trials = 300
+results = [aux_mc(num_obs=10, num_bars=100, max_h=5) for _ in range(n_trials)]
+std_u_vals = [r['stdU'] for r in results]
+seq_u_vals = [r['seqU'] for r in results]
+
+print(f"Standard bootstrap — mean: {np.mean(std_u_vals):.4f}, median: {np.median(std_u_vals):.4f}")
+print(f"Sequential bootstrap — mean: {np.mean(seq_u_vals):.4f}, median: {np.median(seq_u_vals):.4f}")
+
+# --- Plot 2: Figure 4.2 replica — histogram comparison ---
+fig, ax = plt.subplots(figsize=(12, 6))
+ax.hist(std_u_vals, bins=20, alpha=0.5, color='grey', label='Standard bootstrap', density=True)
+ax.hist(seq_u_vals, bins=20, alpha=0.5, color='steelblue', label='Sequential bootstrap', density=True)
+ax.axvline(np.median(std_u_vals), color='grey', linestyle='--', linewidth=2)
+ax.axvline(np.median(seq_u_vals), color='steelblue', linestyle='--', linewidth=2)
+ax.set_title(f"Monte Carlo: Standard vs Sequential Bootstrap Uniqueness ({n_trials} trials)", fontsize=12)
+ax.set_xlabel("Average Uniqueness")
+ax.set_ylabel("Density")
+ax.legend()
+plt.tight_layout()
+plt.show()
+
+# =============================================================================
+# Section 4.5.3-4.5.4 — Standard vs Sequential Bootstrap on REAL data
+# =============================================================================
+# The plot above proves the GENERAL claim using synthetic, randomly generated
+# overlap scenarios. This plot answers the more practical question: how much
+# does sequential bootstrap actually help on MY OWN real, labeled events?
+#
+# We subsample down to a small, contiguous block of real events (kept small
+# so this runs in a few seconds, not minutes) and repeatedly bootstrap from
+# that real overlap structure.
+print("\nRunning bootstrap comparison on REAL triple barrier events...")
+real_result = compare_bootstrap_on_real_events(
+    close, tb_events, max_events=12, n_trials=15, seed=42
+)
+print(f"Real events used: {real_result['n_events']}  (bars spanned: {real_result['n_bars']})")
+print(f"Standard bootstrap (real data) — mean: {np.mean(real_result['std_vals']):.4f}")
+print(f"Sequential bootstrap (real data) — mean: {np.mean(real_result['seq_vals']):.4f}")
+
+# --- Plot: Standard vs Sequential Bootstrap on real events ---
+fig, ax = plt.subplots(figsize=(12, 6))
+ax.hist(real_result['std_vals'], bins=10, alpha=0.5, color='grey',
+        label='Standard bootstrap (real data)', density=True)
+ax.hist(real_result['seq_vals'], bins=10, alpha=0.5, color='seagreen',
+        label='Sequential bootstrap (real data)', density=True)
+ax.axvline(np.mean(real_result['std_vals']), color='grey', linestyle='--', linewidth=2)
+ax.axvline(np.mean(real_result['seq_vals']), color='seagreen', linestyle='--', linewidth=2)
+ax.set_title(
+    f"Real Data: Standard vs Sequential Bootstrap "
+    f"({real_result['n_events']} real events, 15 trials)",
+    fontsize=12
+)
+ax.set_xlabel("Average Uniqueness")
+ax.set_ylabel("Density")
+ax.legend()
+plt.tight_layout()
+plt.show()
+
+# =============================================================================
+# Section 4.6 — Sample Weights by Return Attribution
+# =============================================================================
+print("\nComputing sample weights by return attribution...")
+sample_w = get_sample_weights(close, tb_events, num_threads=1)
+print(f"Sample weights sum: {sample_w.sum():.4f} (should equal {len(sample_w)})")
+print(f"Mean weight: {sample_w.mean():.4f}")
+
+# --- Plot 3: Sample Weight Distribution ---
+fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+fig.suptitle("Sample Weights by Absolute Return Attribution (Section 4.6)", fontsize=12)
+
+axes[0].hist(sample_w.values, bins=30, color='orange', alpha=0.7, edgecolor='black')
+axes[0].axvline(1.0, color='black', linestyle='--', label='Mean weight = 1.0')
+axes[0].set_title("Weight Distribution")
+axes[0].set_xlabel("Sample Weight")
+axes[0].set_ylabel("Number of Events")
+axes[0].legend()
+
+axes[1].scatter(sample_w.index, sample_w.values, alpha=0.5, s=15, color='darkorange')
+axes[1].set_title("Sample Weight Over Time")
+axes[1].set_xlabel("Event Date")
+axes[1].set_ylabel("Sample Weight")
+axes[1].tick_params(axis='x', rotation=45)
+plt.tight_layout()
+plt.show()
+
+# =============================================================================
+# Section 4.7 — Time Decay Curves
+# =============================================================================
+print("\nComputing time decay curves for several clf_last_w values...")
+
+fig, ax = plt.subplots(figsize=(12, 6))
+for clw, color in zip([1.0, 0.5, 0.0, -0.5], ['green', 'blue', 'orange', 'red']):
+    decay = get_time_decay(tw, clf_last_w=clw)
+    ax.plot(decay.index, decay.values, label=f'clf_last_w = {clw}', color=color, linewidth=1.5)
+
+ax.set_title("Time Decay Curves for Different clf_last_w Values (Section 4.7)", fontsize=12)
+ax.set_xlabel("Event Date")
+ax.set_ylabel("Decayed Weight")
+ax.tick_params(axis='x', rotation=45)
+ax.legend()
+plt.tight_layout()
+plt.show()
+
+# =============================================================================
+# Summary
+# =============================================================================
+print("\n" + "="*60)
+print("CHAPTER 4 SUMMARY")
+print("="*60)
+print(f"Total triple barrier events analyzed: {len(tb_events)}")
+print(f"Average uniqueness (tW):              {tw.mean():.4f}")
+print(f"Standard bootstrap uniqueness (synthetic MC): {np.mean(std_u_vals):.4f}")
+print(f"Sequential bootstrap uniqueness (synthetic MC): {np.mean(seq_u_vals):.4f}")
+print(f"Standard bootstrap uniqueness (REAL data):    {np.mean(real_result['std_vals']):.4f}")
+print(f"Sequential bootstrap uniqueness (REAL data):  {np.mean(real_result['seq_vals']):.4f}")
+print(f"Improvement from sequential bootstrap (real data): "
+      f"{(np.mean(real_result['seq_vals'])/np.mean(real_result['std_vals']) - 1)*100:.1f}%")
+print(f"Sample weight (return attribution) mean: {sample_w.mean():.4f}")
