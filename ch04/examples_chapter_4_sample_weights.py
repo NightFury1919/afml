@@ -145,7 +145,7 @@ ax.axvline(np.mean(real_result['std_vals']), color='grey', linestyle='--', linew
 ax.axvline(np.mean(real_result['seq_vals']), color='seagreen', linestyle='--', linewidth=2)
 ax.set_title(
     f"Real Data: Standard vs Sequential Bootstrap "
-    f"({real_result['n_events']} real events, 15 trials)",
+    f"({real_result['n_events']} of {len(tb_events)} real events, 15 trials)",
     fontsize=12
 )
 ax.set_xlabel("Average Uniqueness")
@@ -214,3 +214,65 @@ print(f"Sequential bootstrap uniqueness (REAL data):  {np.mean(real_result['seq_
 print(f"Improvement from sequential bootstrap (real data): "
       f"{(np.mean(real_result['seq_vals'])/np.mean(real_result['std_vals']) - 1)*100:.1f}%")
 print(f"Sample weight (return attribution) mean: {sample_w.mean():.4f}")
+
+# =============================================================================
+# TDD TEST RESULTS — Chapter 4
+# pytest ch04/tests/test_ch04.py -v
+# Run date: 2026-06-23  |  Python 3.10.20  |  pytest 9.0.3
+# =============================================================================
+# TestMpNumCoEvents::test_known_concurrency_values                       PASSED
+# TestMpNumCoEvents::test_overlap_bar_has_highest_concurrency            PASSED
+# TestMpNumCoEvents::test_returns_series                                 PASSED
+# TestMpNumCoEvents::test_open_event_uses_last_bar_as_end                PASSED
+# TestMpSampleTw::test_known_uniqueness_values                           PASSED
+# TestMpSampleTw::test_non_overlapping_event_has_uniqueness_one          PASSED
+# TestMpSampleTw::test_uniqueness_bounded_between_zero_and_one           PASSED
+# TestGetAverageUniqueness::test_returns_series                          PASSED
+# TestGetAverageUniqueness::test_matches_known_values                    PASSED
+# TestGetAverageUniqueness::test_output_length_matches_events            PASSED
+# TestGetIndMatrix::test_matches_book_example                            PASSED
+# TestGetIndMatrix::test_shape_is_bars_by_events                         PASSED
+# TestGetIndMatrix::test_only_zeros_and_ones                             PASSED
+# TestGetIndMatrix::test_single_observation_no_overlap                   PASSED
+# TestGetAvgUniqueness::test_matches_book_example                        PASSED
+# TestGetAvgUniqueness::test_matches_bar_by_bar_method                   PASSED
+# TestGetAvgUniqueness::test_returns_series                              PASSED
+# TestSeqBootstrap::test_default_sample_length                           PASSED
+# TestSeqBootstrap::test_custom_sample_length                            PASSED
+# TestSeqBootstrap::test_all_drawn_values_are_valid_columns              PASSED
+# TestSeqBootstrap::test_deterministic_with_seed                        PASSED
+# TestSeqBootstrap::test_probability_after_first_draw_matches_book       PASSED
+# TestSeqBootstrap::test_already_drawn_observation_gets_lowest_probability PASSED
+# TestSeqBootstrap::test_non_overlapping_observation_gets_highest_probability PASSED
+# TestGetRndT1::test_output_is_sorted                                    PASSED
+# TestGetRndT1::test_correct_number_of_observations                      PASSED
+# TestGetRndT1::test_durations_within_bounds                             PASSED
+# TestGetRndT1::test_start_bars_within_bounds                            PASSED
+# TestAuxMc::test_returns_dict_with_expected_keys                        PASSED
+# TestAuxMc::test_uniqueness_values_in_valid_range                       PASSED
+# TestAuxMc::test_sequential_tends_to_beat_standard_on_average           PASSED
+# TestMpSampleW::test_known_weight_values                                PASSED
+# TestMpSampleW::test_weights_are_non_negative                           PASSED
+# TestMpSampleW::test_largest_return_gets_largest_weight                 PASSED
+# TestGetSampleWeights::test_weights_sum_to_number_of_observations       PASSED
+# TestGetSampleWeights::test_returns_series                              PASSED
+# TestGetSampleWeights::test_weights_non_negative                       PASSED
+# TestGetTimeDecay::test_no_decay_when_clf_last_w_is_one                 PASSED
+# TestGetTimeDecay::test_known_values_clf_last_w_half                    PASSED
+# TestGetTimeDecay::test_known_values_clf_last_w_zero                   PASSED
+# TestGetTimeDecay::test_known_values_negative_clf_last_w_hard_excludes  PASSED
+# TestGetTimeDecay::test_newest_observation_always_gets_weight_one       PASSED
+# TestGetTimeDecay::test_weights_never_negative                          PASSED
+# TestGetTimeDecay::test_monotonically_increasing_with_time              PASSED
+# TestCompareBootstrapOnRealEvents::test_returns_expected_keys           PASSED
+# TestCompareBootstrapOnRealEvents::test_n_events_never_exceeds_max_events PASSED
+# TestCompareBootstrapOnRealEvents::test_no_subsampling_when_fewer_events_than_cap PASSED
+# TestCompareBootstrapOnRealEvents::test_correct_number_of_trials        PASSED
+# TestCompareBootstrapOnRealEvents::test_uniqueness_values_in_valid_range PASSED
+# TestCompareBootstrapOnRealEvents::test_drops_events_with_unresolved_t1 PASSED
+# TestCompareBootstrapOnRealEvents::test_reproducible_with_seed          PASSED
+# TestCompareBootstrapOnRealEvents::test_runs_within_reasonable_time     PASSED
+# TestCompareBootstrapOnRealEvents::test_indicator_matrix_shape_matches_n_events PASSED
+# -----------------------------------------------------------------------------
+# 53 passed in 21.97s
+# =============================================================================

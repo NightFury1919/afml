@@ -36,6 +36,7 @@ from ch04.sample_weights.sequential_bootstrap  import seq_bootstrap
 from ch04.sample_weights.monte_carlo           import get_rnd_t1, aux_mc
 from ch04.sample_weights.return_attribution    import mp_sample_w, get_sample_weights
 from ch04.sample_weights.time_decay            import get_time_decay
+from ch04.sample_weights.real_data_bootstrap_comparison import compare_bootstrap_on_real_events
 
 
 # ===========================================================================
@@ -457,3 +458,144 @@ class TestGetTimeDecay:
         result = get_time_decay(tw_uniform, clf_last_w=0.3)
         diffs = result.values[1:] - result.values[:-1]
         assert (diffs >= -1e-9).all()
+
+
+# ===========================================================================
+# real_data_bootstrap_comparison.py
+# ===========================================================================
+# Companion to the Monte Carlo experiment (Snippets 4.7-4.9), built to run
+# the same standard-vs-sequential bootstrap comparison directly on a
+# student's own real, labeled events instead of synthetic data. Tests here
+# focus on STRUCTURE and PERFORMANCE rather than exact values, since the
+# function involves randomized bootstrap draws.
+
+class TestCompareBootstrapOnRealEvents:
+
+    @pytest.fixture
+    def real_events_setup(self):
+        # Build a realistically-sized synthetic stand-in for a student's
+        # real triple-barrier events DataFrame: many bars, many events,
+        # spanning a wide date range (similar in shape to real BTC dollar
+        # bars + CUSUM events from Chapter 3).
+        np.random.seed(7)
+        n_bars = 2000
+        dates = pd.date_range('2026-03-01', periods=n_bars, freq='h')
+        close = pd.Series(
+            100 + np.cumsum(np.random.randn(n_bars) * 0.3),
+            index=dates
+        )
+        n_events = 150
+        event_dates = sorted(np.random.choice(dates[:-50], size=n_events, replace=False))
+        t1_dates = [
+            dates[dates.get_loc(d) + np.random.randint(2, 40)]
+            for d in event_dates
+        ]
+        events = pd.DataFrame({'t1': t1_dates}, index=event_dates)
+        return close, events
+
+    def test_returns_expected_keys(self, real_events_setup):
+        close, events = real_events_setup
+        result = compare_bootstrap_on_real_events(
+            close, events, max_events=12, n_trials=5, seed=1
+        )
+        assert 'std_vals' in result
+        assert 'seq_vals' in result
+        assert 'n_events' in result
+        assert 'n_bars' in result
+        assert 'ind_m' in result
+
+    def test_n_events_never_exceeds_max_events(self, real_events_setup):
+        close, events = real_events_setup
+        result = compare_bootstrap_on_real_events(
+            close, events, max_events=12, n_trials=5, seed=1
+        )
+        assert result['n_events'] <= 12
+
+    def test_no_subsampling_when_fewer_events_than_cap(self):
+        # If the events DataFrame already has fewer rows than max_events,
+        # all of them should be used (no unnecessary subsampling)
+        np.random.seed(5)
+        n_bars = 100
+        dates = pd.date_range('2026-03-01', periods=n_bars, freq='h')
+        close = pd.Series(100 + np.cumsum(np.random.randn(n_bars) * 0.3), index=dates)
+
+        n_events = 8  # fewer than default max_events=12
+        event_dates = sorted(np.random.choice(dates[:-15], size=n_events, replace=False))
+        t1_dates = [dates[dates.get_loc(d) + np.random.randint(2, 10)] for d in event_dates]
+        small_events = pd.DataFrame({'t1': t1_dates}, index=event_dates)
+
+        result = compare_bootstrap_on_real_events(
+            close, small_events, max_events=12, n_trials=5, seed=1
+        )
+        assert result['n_events'] == 8
+
+    def test_correct_number_of_trials(self, real_events_setup):
+        close, events = real_events_setup
+        n_trials = 10
+        result = compare_bootstrap_on_real_events(
+            close, events, max_events=12, n_trials=n_trials, seed=1
+        )
+        assert len(result['std_vals']) == n_trials
+        assert len(result['seq_vals']) == n_trials
+
+    def test_uniqueness_values_in_valid_range(self, real_events_setup):
+        close, events = real_events_setup
+        result = compare_bootstrap_on_real_events(
+            close, events, max_events=12, n_trials=10, seed=1
+        )
+        for v in result['std_vals'] + result['seq_vals']:
+            assert 0 < v <= 1.0
+
+    def test_drops_events_with_unresolved_t1(self):
+        # Events with NaT (unresolved) t1 should be excluded before
+        # building the indicator matrix
+        np.random.seed(5)
+        n_bars = 100
+        dates = pd.date_range('2026-03-01', periods=n_bars, freq='h')
+        close = pd.Series(100 + np.cumsum(np.random.randn(n_bars) * 0.3), index=dates)
+
+        n_events = 8
+        event_dates = sorted(np.random.choice(dates[:-15], size=n_events, replace=False))
+        t1_dates = [dates[dates.get_loc(d) + np.random.randint(2, 10)] for d in event_dates]
+        events = pd.DataFrame({'t1': t1_dates}, index=event_dates)
+        events.iloc[0, 0] = pd.NaT  # mark one event as unresolved
+
+        result = compare_bootstrap_on_real_events(
+            close, events, max_events=12, n_trials=3, seed=1
+        )
+        assert result['n_events'] == 7  # one dropped
+
+    def test_reproducible_with_seed(self, real_events_setup):
+        close, events = real_events_setup
+        r1 = compare_bootstrap_on_real_events(
+            close, events, max_events=12, n_trials=5, seed=99
+        )
+        r2 = compare_bootstrap_on_real_events(
+            close, events, max_events=12, n_trials=5, seed=99
+        )
+        assert r1['std_vals'] == r2['std_vals']
+        assert r1['seq_vals'] == r2['seq_vals']
+
+    def test_runs_within_reasonable_time(self, real_events_setup):
+        # Performance regression guard: this function was specifically
+        # rebuilt to avoid runaway runtime on large real datasets (see
+        # real_data_bootstrap_comparison.py module docstring for the two
+        # bugs that caused 40s+ runtimes before the fix). A correct
+        # implementation on this dataset size should comfortably finish
+        # in well under 10 seconds.
+        import time
+        close, events = real_events_setup
+        start = time.time()
+        compare_bootstrap_on_real_events(
+            close, events, max_events=12, n_trials=15, seed=1
+        )
+        elapsed = time.time() - start
+        assert elapsed < 10.0
+
+    def test_indicator_matrix_shape_matches_n_events(self, real_events_setup):
+        close, events = real_events_setup
+        result = compare_bootstrap_on_real_events(
+            close, events, max_events=12, n_trials=3, seed=1
+        )
+        assert result['ind_m'].shape[1] == result['n_events']
+        assert result['ind_m'].shape[0] == result['n_bars']
