@@ -1,0 +1,22 @@
+# Chapter 5 -- Fractionally Differentiated Features
+#
+# Minimum version bounds shown below. Per project convention, run
+# `pip freeze > requirements.txt` in your own mlfinlab conda environment
+# once everything's confirmed working, to get exact pins for your
+# machine rather than versions from an unrelated environment.
+#
+# NEW THIS CHAPTER: statsmodels (for the ADF test in find_min_ffd /
+# Snippet 5.4) -- not used in any prior chapter.
+#
+# CONFIRMED WORKING on Ethan's mlfinlab env: pandas 1.5.3, numpy 1.23.5.
+# No upgrade needed -- the pandas>=2.1 note in an earlier draft of this
+# file was based on a wrong assumption (.ffill() works fine on much
+# older pandas too; that syntax isn't new, the *deprecated* alternative
+# fillna(method=...) is what's newer-pandas-unfriendly, not an issue here).
+
+numpy>=1.22        # sliding_window_view (used in frac_diff_ffd) needs >=1.20; 1.23.5 confirmed working
+pandas>=1.4         # confirmed working at 1.5.3; no need to upgrade
+statsmodels>=0.14  # adfuller, used in find_min_ffd.py
+matplotlib>=3.5
+pytest>=7.0
+nbformat>=5.9       # only needed if regenerating the notebook structure
