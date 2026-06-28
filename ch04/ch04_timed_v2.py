@@ -38,7 +38,7 @@ if __name__ == '__main__':
     # =============================================================================
     # Load Raw Tick Data and Generate Dollar Bars + Events
     # =============================================================================
-    data_path = os.path.join(ch02, 'input_data', 'BTCTUSD-trades-2026-03.csv')
+    data_path = os.path.join(root, 'input_data', 'BTCTUSD-trades-2026-03.csv')
 
     print("Loading tick data...")
     raw = pd.read_csv(data_path, header=None,
@@ -107,7 +107,7 @@ if __name__ == '__main__':
     # bottom of this file) or multiprocessing will fail/hang on Windows. If you
     # don't need the speedup, set NUM_THREADS = 1 below and it runs identically
     # to before, just single-threaded.
-    NUM_THREADS = 6   # set to 1 to disable multiprocessing; my machine has 6 cores
+    NUM_THREADS = 4   # set to 1 to disable multiprocessing; my machine has 6 cores
 
     print(f"\nRunning Monte Carlo comparison: standard vs sequential bootstrap "
           f"(num_threads={NUM_THREADS})...")
