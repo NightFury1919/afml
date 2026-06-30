@@ -56,6 +56,21 @@ C:\ws\AFML\
 - Older chapters (ch02-ch04) predate this convention and have NOT yet
   been migrated -- don't assume they already follow it unless told so.
 
+### Chat/session convention (decided 2026-06-30)
+One chat per day of work -- each conversation maps to one calendar date,
+making past-work retrieval reliable (search by date = find that session).
+At the END of each day's chat, Ethan says he's done, and Claude generates
+a structured end-of-day summary covering what was built, decided, debugged,
+and verified during that session. The next chat is a new day -- start fresh,
+search the prior conversation to pick up context if needed.
+
+### Notebook output convention (decided 2026-06-30)
+Wherever a notebook section would normally just print numbers (e.g.
+comparison stats, correlation values, summary metrics), also add an
+accompanying chart/plot alongside the text output -- don't replace the
+text, add a visual next to it. Applies going forward to all chapters,
+not just retroactively to existing ones unless asked.
+
 ### TDD workflow (always followed)
 1. Read the book's snippet/formula carefully.
 2. Implement in Python, snake_case, plain-English comments explaining

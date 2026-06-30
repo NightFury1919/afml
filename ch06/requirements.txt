@@ -1,0 +1,11 @@
+# Chapter 6 -- Ensemble Methods
+# Confirmed working on Ethan's mlfinlab env (Python 3.10.20).
+# NEW THIS CHAPTER: scikit-learn (for RandomForestClassifier,
+# BaggingClassifier, DecisionTreeClassifier -- Snippet 6.2).
+
+numpy>=1.22
+pandas>=1.4
+scipy>=1.8         # scipy.special.comb used in Snippet 6.1
+scikit-learn>=1.2  # tested at 1.2.2; estimator= param requires >=1.2
+matplotlib>=3.5
+pytest>=7.0
