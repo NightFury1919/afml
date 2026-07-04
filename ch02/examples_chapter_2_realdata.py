@@ -91,6 +91,9 @@ volume_bar = bars.volume_bars(df, thresh=1.0)
 
 # Dollar bars — close every $50,000 of BTC traded
 # Most robust to BTC's price changes over the month
+# NOTE: this ch02 demo uses $50k purely to illustrate bar construction.
+# The downstream pipeline (ch03 labeling onward) standardizes on thresh=10000,
+# which yields 249 bars / 104 CUSUM events / 88 triple-barrier labels.
 dollar_bar = bars.dollar_bars(df, thresh=50000)
 
 print(f"Time bars:   {len(time_bar)} bars")

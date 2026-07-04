@@ -234,6 +234,16 @@ if __name__ == '__main__':
     print(f"Improvement from sequential bootstrap (real data): "
           f"{(np.mean(real_result['seq_vals'])/np.mean(real_result['std_vals']) - 1)*100:.1f}%")
     print(f"Sample weight (return attribution) mean: {sample_w.mean():.4f}")
+    print(tw.shape, sample_w.shape)
+    print((tw.index == sample_w.index).all())
+    # --- Save Chapter 4 outputs for downstream chapters ---
+    input_data_dir = os.path.join(root, 'input_data')
+
+    ch04_weights = pd.DataFrame({'w': sample_w, 'tw': tw})
+    ch04_weights.to_pickle(os.path.join(input_data_dir, 'ch04_weights.pkl'))
+    ch04_weights.to_csv(os.path.join(input_data_dir, 'ch04_weights.csv'))
+
+    print(f"\nSaved ch04_weights: {ch04_weights.shape}, columns: {ch04_weights.columns.tolist()}")
 
     # =============================================================================
     # TDD TEST RESULTS — Chapter 4

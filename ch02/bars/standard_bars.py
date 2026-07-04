@@ -181,8 +181,9 @@ def dollar_bars(df, thresh):
     # to remain consistent in dollar terms throughout.
     #
     # --- Example ---
-    # thresh = $50,000. If one trade is 10 BTC at $5,000/BTC = $50,000 → bar closes.
-    # If trades are 1 BTC at $5,000 each → bar closes after exactly 10 trades.
+    # thresh = $10,000. If one trade is 2 BTC at $5,000/BTC = $10,000 → bar closes.
+    # If trades are 1 BTC at $5,000 each → bar closes after exactly 2 trades.
+    # (The AFML pipeline here standardizes on a $10,000 threshold from ch03 onward.)
 
     cumm_dollar = 0     # running total of dollar value within current bar
     cumm_vol    = 0     # running total of volume (needed for VWAP denominator)

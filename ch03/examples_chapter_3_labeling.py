@@ -19,7 +19,8 @@ import labeling  # from ch03
 # =============================================================================
 # Load Raw Tick Data and Generate Dollar Bars
 # =============================================================================
-data_path = os.path.join(ch02, 'input_data', 'BTCTUSD-trades-2026-03.csv')
+afml_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+data_path = os.path.join(afml_root, 'input_data', 'BTCTUSD-trades-2026-03.csv')
 
 print("Loading tick data...")
 raw = pd.read_csv(data_path, header=None,
@@ -40,7 +41,7 @@ print(f"Date range: {df['Date'].iloc[0]} to {df['Date'].iloc[-1]}")
 # Dollar Bars
 # =============================================================================
 print("\nGenerating dollar bars...")
-dollar_bars = bars.dollar_bars(df, thresh=50000)
+dollar_bars = bars.dollar_bars(df, thresh=10000)
 dollar_bars = dollar_bars.set_index('Date')
 print(f"Dollar bars: {len(dollar_bars)} bars")
 
@@ -245,3 +246,24 @@ print(tb_labels_clean['bin'].value_counts().sort_index())
 # -----------------------------------------------------------------------------
 # 38 passed in 1.03s
 # =============================================================================
+
+print(tb_events.columns.tolist())
+print(tb_events.head())
+print(tb_labels.columns.tolist())
+print(tb_labels.head())
+
+# --- Save Chapter 3 outputs for downstream chapters ---
+input_data_dir = os.path.join(afml_root, 'input_data')
+ch03_events = pd.concat([tb_events, tb_labels], axis=1)
+# LOAD-BEARING — do not remove. The outer concat above keeps all 94 tb_events
+# rows; the 6 events whose barrier never resolved (t1 NaN, vertical deadline
+# past the data end) come through with NaN in bin/ret. This dropna is the ONLY
+# thing preventing those 6 NaN-label rows from entering the Ch07 training table.
+# Deleting it silently poisons downstream chapters. 94 -> 88 by design.
+ch03_events = ch03_events.dropna(subset=['t1', 'bin'])  # drop unresolved events
+ch03_events.to_pickle(os.path.join(input_data_dir, 'ch03_events.pkl'))
+ch03_events.to_csv(os.path.join(input_data_dir, 'ch03_events.csv'))
+print(f"\nSaved ch03_events: {ch03_events.shape}, columns: {ch03_events.columns.tolist()}")
+
+print(tb_events.shape, tb_labels.shape)
+print(ch03_events.isna().sum())

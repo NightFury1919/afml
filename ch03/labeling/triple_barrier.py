@@ -255,6 +255,13 @@ def get_bins(events, close):
     entry_prices = close.reindex(events_.index, method='bfill').values
 
     out['ret'] = (np.array(exit_prices) / entry_prices) - 1
+    # DESIGN CHOICE (differs from the book's get_bins): we label purely by the
+    # SIGN of the realized return, so every resolved event is +1 or -1 and there
+    # is no explicit 0 class for vertical-barrier (timeout) touches. This is
+    # deliberate — it keeps the labeled set binary {-1, +1} (here 39/49), which
+    # is what the downstream meta-labeling / Ch06 / Ch07 pipeline expects. The
+    # book's version assigns bin=0 when the vertical barrier is hit first; if you
+    # ever need that 3-class behavior, branch on t1 == vertical_barrier here.
     out['bin'] = np.sign(out['ret'])
 
     return out
