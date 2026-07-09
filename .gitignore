@@ -1,1 +1,7 @@
 *__pycache__
+
+# local diagnostics / scratch (not for repo)
+*_diag.txt
+ch09_probe.txt
+mlfinlab_env_backup.txt
+*.lnk

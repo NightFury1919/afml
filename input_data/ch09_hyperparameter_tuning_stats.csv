@@ -1,0 +1,5 @@
+demo,search,C,gamma,scoring
+synthetic,grid,100.0,0.1,f1
+synthetic,randomized,35.42777650249835,0.12239730312041663,f1
+real,grid,100.0,0.1,neg_log_loss
+real,randomized,80.81022981217589,0.13759735778725546,neg_log_loss
