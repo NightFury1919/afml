@@ -1,25 +1,24 @@
 """
-conftest.py -- BLAS thread cap for the bet_sizing test suite.
+pytest conftest for Chapter 10.
 
-Mirrors the Ch08/Ch09 convention: cap BLAS/MKL threads so pytest doesn't
-oversubscribe cores when numpy/scipy operations run underneath multiple
-test cases, and to avoid resource contention with mp_pandas_obj's own
-multiprocessing when numThreads > 1 is exercised in real-data runs.
+Caps BLAS / OpenMP thread pools to a single thread BEFORE numpy is imported.
+On the Windows conda (MKL) build, the bet-sizing suite fits SVCs with
+probability=True (each running its own internal Platt-scaling CV) across
+purged CV folds, and dispatches avgActiveSignals through mp_pandas_obj.
+Left uncapped, every tiny matrix op spins up a thread pool across all cores;
+those pools then thrash against joblib's process-level parallelism and the
+suite slows to a crawl. Cap BLAS to one thread and let parallelism live at
+the joblib (n_jobs / numThreads) level instead.
 
-NOTE: I don't have the actual Ch08/Ch09 conftest.py content to diff
-against (only the handoff doc's description: "BLAS thread cap, mirrors
-Ch08") -- this is a reasonable reconstruction of that pattern, using this
-repo's established sweet spot of 4 threads. If your real conftest.py
-differs, let me know and I'll match it exactly rather than leave two
-versions drifting.
+Same mechanism as ch08/feature_importance/conftest.py and
+ch09/hyper_parameter_tuning/conftest.py.
 
-Must run before numpy/scipy/mkl get imported anywhere in the test
-session, hence setting the env vars at collection time in this file.
+Manual equivalent if you run the demo outside pytest:
+    PowerShell:  $env:OMP_NUM_THREADS=1; $env:MKL_NUM_THREADS=1; $env:OPENBLAS_NUM_THREADS=1
+    bash:        export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 """
-
 import os
 
-os.environ.setdefault('OMP_NUM_THREADS', '4')
-os.environ.setdefault('MKL_NUM_THREADS', '4')
-os.environ.setdefault('OPENBLAS_NUM_THREADS', '4')
-os.environ.setdefault('NUMEXPR_NUM_THREADS', '4')
+for _v in ('OMP_NUM_THREADS', 'MKL_NUM_THREADS', 'OPENBLAS_NUM_THREADS',
+           'NUMEXPR_NUM_THREADS'):
+    os.environ.setdefault(_v, '1')
