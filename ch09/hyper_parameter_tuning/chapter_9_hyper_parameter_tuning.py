@@ -254,3 +254,44 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+# ---------------------------------------------------------------------------
+# TDD results mirror -- same suite as hyper_parameter_tuning.py's embedded
+# block and this chapter's notebook, duplicated here per the .py/.ipynb mirror
+# convention (this script is the ipynb's paired mirror, not hyper_parameter_tuning.py).
+# ============================================================================
+# TDD results (test_hyper_parameter_tuning.py), embedded per project convention.
+# ============================================================================
+# NOTE: numbers below are from the DELIVERY SANDBOX (Python 3.12 / sklearn 1.8 /
+# scipy 1.17 / numpy 2.x / pandas 3.0), NOT the mlfinlab env. Re-run under
+# mlfinlab (Python 3.10.20 / sklearn 1.2.2) and refresh this header before the
+# final commit -- same step as Ch08. All 17 assertions are version-independent
+# behaviour checks, so they pass on both; only the runtime/warning text differs.
+#
+# ============================= test session starts ==============================
+# test_hyper_parameter_tuning.py::test_loguniform_constructs_without_percent_import_bug PASSED [  5%]
+# test_hyper_parameter_tuning.py::test_loguniform_docstring_has_no_percent_sign PASSED [ 11%]
+# test_hyper_parameter_tuning.py::test_loguniform_samples_stay_in_bounds PASSED [ 17%]
+# test_hyper_parameter_tuning.py::test_loguniform_cdf_endpoints_and_geometric_midpoint PASSED [ 23%]
+# test_hyper_parameter_tuning.py::test_loguniform_is_uniform_in_log_space_ks PASSED [ 29%]
+# test_hyper_parameter_tuning.py::test_mypipeline_routes_bare_sample_weight_to_final_estimator PASSED [ 35%]
+# test_hyper_parameter_tuning.py::test_plain_pipeline_rejects_bare_sample_weight PASSED [ 41%]
+# test_hyper_parameter_tuning.py::test_mypipeline_weights_actually_change_the_fit PASSED [ 47%]
+# test_hyper_parameter_tuning.py::test_pick_scoring_f1_for_binary_meta_labels PASSED [ 52%]
+# test_hyper_parameter_tuning.py::test_pick_scoring_neg_log_loss_otherwise PASSED [ 58%]
+# test_hyper_parameter_tuning.py::test_clfhyperfit_grid_returns_pipeline_with_grid_params PASSED [ 64%]
+# test_hyper_parameter_tuning.py::test_clfhyperfit_randomized_runs_with_loguniform PASSED [ 70%]
+# test_hyper_parameter_tuning.py::test_clfhyperfit_uses_purged_kfold_as_inner_cv PASSED [ 76%]
+# test_hyper_parameter_tuning.py::test_clfhyperfit_default_bagging_none_does_not_crash PASSED [ 82%]
+# test_hyper_parameter_tuning.py::test_clfhyperfit_bagging_wraps_winning_pipeline PASSED [ 88%]
+# test_hyper_parameter_tuning.py::test_clfhyperfit_requires_index_aligned_t1 PASSED [ 94%]
+# test_hyper_parameter_tuning.py::test_clfhyperfit_real_data_svc_neg_log_loss PASSED [100%]
+# ======================== 17 passed, 1 warning in ~63s ==========================
+#
+# The single warning is sklearn flagging max_samples=1.0 as a fraction of the
+# summed sample weight (~1.0 with getTestData's w=1/n) yielding few bootstrap
+# rows -- this is the newer-sklearn max_samples semantics documented in the
+# module header (LOAD-BEARING note). On 1.2.2 the float is a fraction of the
+# ROW count instead, so the warning will not appear. Harmless for the wiring
+# test either way.

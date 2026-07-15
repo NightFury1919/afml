@@ -133,3 +133,30 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+# ---------------------------------------------------------------------------
+# TDD results mirror -- same suite as bet_sizing.py's embedded block and this
+# chapter's notebook, duplicated here per the .py/.ipynb mirror convention
+# (this script is the ipynb's paired mirror, not bet_sizing.py).
+# ---------------------------------------------------------------------------
+# ============================= test session starts ==============================
+# platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+# collected 13 items
+#
+# tests/test_bet_sizing.py::TestDiscreteSignal::test_rounds_to_stepSize PASSED
+# tests/test_bet_sizing.py::TestDiscreteSignal::test_caps_at_plus_one PASSED
+# tests/test_bet_sizing.py::TestDiscreteSignal::test_floors_at_minus_one PASSED
+# tests/test_bet_sizing.py::TestMpAvgActiveSignals::test_two_overlapping_bets_averaged PASSED
+# tests/test_bet_sizing.py::TestMpAvgActiveSignals::test_no_active_bets_returns_zero PASSED
+# tests/test_bet_sizing.py::TestMpAvgActiveSignals::test_open_ended_bet_NaT_stays_active PASSED
+# tests/test_bet_sizing.py::TestAvgActiveSignalsEmptyEdgeCase::test_empty_signals_returns_empty_dataframe_not_series PASSED
+# tests/test_bet_sizing.py::TestGetSignal::test_single_bet_two_class_known_value PASSED
+# tests/test_bet_sizing.py::TestGetSignal::test_empty_prob_returns_empty_series PASSED
+# tests/test_bet_sizing.py::TestGetSignal::test_meta_labeling_side_flips_signal PASSED
+# tests/test_bet_sizing.py::TestDynamicSizing::test_getW_calibrates_betSize_to_target PASSED
+# tests/test_bet_sizing.py::TestDynamicSizing::test_book_demo_values PASSED
+# tests/test_bet_sizing.py::TestDynamicSizing::test_invPrice_inverts_betSize PASSED
+#
+# ============================== 13 passed in 1.11s ===============================
+# ---------------------------------------------------------------------------

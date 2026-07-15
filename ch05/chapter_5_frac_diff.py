@@ -134,3 +134,53 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+# ---------------------------------------------------------------------------
+# TDD results mirror -- same suite as this chapter's notebook (both notebooks
+# share test_ch05.py, since Ch05 has one test suite across two demo scripts).
+# ============================================================================
+# TDD TEST RESULTS -- Chapter 5 (tests/test_ch05.py, full suite)
+# All 29 tests passed before this notebook/script was assembled (run 2026-06-26):
+# ============================================================================
+# test_d_0_4_matches_hand_trace                                        PASSED
+# test_d_1_0_kills_everything_past_lag_1                                PASSED
+# test_d_0_is_identity_no_differencing                                  PASSED
+# test_last_weight_is_always_one                                        PASSED
+# test_weights_decay_in_magnitude_for_fractional_d                      PASSED
+# test_size_one_returns_just_w0                                         PASSED
+# test_invalid_size_raises                                              PASSED
+# test_output_shape_is_column_vector                                    PASSED
+# test_frac_diff_matches_hand_trace_thres_1                             PASSED
+# test_frac_diff_handles_nan_gap_correctly                              PASSED
+# test_skip_count_matches_independent_derivation                        PASSED
+# test_frac_diff_accepts_dataframe_multi_column                         PASSED
+# test_frac_diff_series_in_series_out                                   PASSED
+# test_frac_diff_rejects_duplicate_index                                PASSED
+# test_get_weights_ffd_matches_hand_trace                               PASSED
+# test_get_weights_ffd_last_weight_always_one                           PASSED
+# test_get_weights_ffd_smaller_thres_keeps_more_weights                 PASSED
+# test_get_weights_ffd_cross_checks_against_get_weights                 PASSED
+# test_frac_diff_ffd_matches_hand_trace                                 PASSED
+# test_frac_diff_ffd_handles_nan_gap_correctly                          PASSED
+# test_frac_diff_ffd_uses_fixed_width_for_every_point                   PASSED
+# test_frac_diff_ffd_series_in_series_out                               PASSED
+# test_frac_diff_ffd_rejects_duplicate_index                            PASSED
+# test_frac_diff_ffd_accepts_dataframe_multi_column                     PASSED
+# test_find_min_ffd_d0_fails_adf_on_true_random_walk                    PASSED
+# test_find_min_ffd_d1_passes_adf_on_true_random_walk                   PASSED
+# test_find_min_ffd_p_values_decrease_monotonically_for_clean_random_walk PASSED
+# test_find_minimum_d_returns_smallest_passing_d                        PASSED
+# test_find_minimum_d_returns_none_when_nothing_passes                  PASSED
+#
+# 29 passed in 1.22s
+#
+# Two real things this testing process caught, not just textbook correctness:
+# 1. A genuine duplicate-index bug, found only once real BTC tick data (561
+#    duplicate microsecond timestamps) was run through frac_diff/frac_diff_ffd
+#    -- fixed with a clear, fail-loudly guard rather than a cryptic pandas error.
+# 2. The book's printed fracDiff_FFD line
+#    w,width,df=getWeights_FFD(d,thres),len(w)-1,{} evaluates incorrectly under
+#    Python's tuple-assignment semantics -- implemented as three separate
+#    statements instead.
+# ============================================================================

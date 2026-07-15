@@ -176,3 +176,47 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+# ---------------------------------------------------------------------------
+# TDD results mirror -- same suite as feature_importance.py's embedded block
+# and this chapter's notebook, duplicated here per the .py/.ipynb mirror
+# convention (this script is the ipynb's paired mirror, not feature_importance.py).
+# ============================================================================
+# TDD results (test_feature_importance.py), embedded per project convention.
+#
+# NOTE: this run is from the delivery sandbox (Python 3.12.3 / sklearn 1.8.0),
+# NOT the mlfinlab env. Re-run under mlfinlab (Python 3.10.20 / sklearn 1.2.2)
+# to capture the canonical header; there the max_samples float warning below
+# does NOT appear (on 1.2.2 a float max_samples is a fraction of the fold ROW
+# count, so weights summing to 1 are irrelevant -- see the module docstring).
+# Fixtures set w=1.0 precisely so the suite is green on both stacks.
+# ============================================================================
+#
+# ============================= test session starts ==============================
+# platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+# collected 17 items
+#
+# test_gettestdata_shapes_and_columns PASSED                              [  5%]
+# test_gettestdata_column_order_is_I_then_R_then_N PASSED                 [ 11%]
+# test_gettestdata_weights_and_t1 PASSED                                  [ 17%]
+# test_mdi_normalizes_and_covers_all_features PASSED                      [ 23%]
+# test_mdi_informative_beats_noise PASSED                                 [ 29%]
+# test_permutation_idiom_actually_shuffles PASSED                         [ 35%]
+# test_mda_noise_near_zero_informative_positive PASSED                    [ 41%]
+# test_mda_rejects_bad_scoring PASSED                                     [ 47%]
+# test_sfi_returns_per_feature_mean_std PASSED                            [ 52%]
+# test_orthofeats_shape_and_decorrelation PASSED                          [ 58%]
+# test_get_evec_threshold_reduces_dimension PASSED                        [ 64%]
+# test_featpca_rank_corr_matches_book_example PASSED                      [ 70%]
+# test_featimportance_returns_triplet[MDI] PASSED                         [ 76%]
+# test_featimportance_returns_triplet[MDA] PASSED                         [ 82%]
+# test_featimportance_returns_triplet[SFI] PASSED                         [ 88%]
+# test_featimportance_rejects_bad_method PASSED                           [ 94%]
+# test_testfunc_summary_table PASSED                                      [100%]
+#
+# ======================= 17 passed, 42 warnings in 16.94s =======================
+#
+# (The 42 warnings are all sklearn 1.8's max_samples frequency-semantics notice,
+# emitted only by test_testfunc_summary_table, which alone exercises the
+# canonical w=1/n weights. Harmless here; absent on sklearn 1.2.2.)

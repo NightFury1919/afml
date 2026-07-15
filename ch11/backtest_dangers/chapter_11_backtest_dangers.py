@@ -287,3 +287,45 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+# ---------------------------------------------------------------------------
+# TDD results mirror -- same suite as pbo.py's embedded block and this
+# chapter's notebook, duplicated here per the .py/.ipynb mirror convention
+# (this script is the ipynb's paired mirror, not pbo.py).
+# ============================================================================
+# TDD results (test_pbo.py), embedded per project convention.
+# Expected values hand-derived from Section 11.6's seven-step algorithm.
+# ===========================================================================
+#
+# ============================= test session starts =============================
+# test_pbo.py::test_sharpe_hand_traced PASSED                              [  6%]
+# test_pbo.py::test_sharpe_zero_variance_is_nan PASSED                     [ 12%]
+# test_pbo.py::test_sharpe_is_scale_invariant PASSED                       [ 18%]
+# test_pbo.py::test_cscv_row_count_equals_S_choose_half PASSED             [ 25%]
+# test_pbo.py::test_cscv_book_example_S16_is_12870_not_12780 PASSED        [ 31%]
+# test_pbo.py::test_cscv_rejects_odd_S PASSED                              [ 37%]
+# test_pbo.py::test_cscv_rejects_single_trial PASSED                       [ 43%]
+# test_pbo.py::test_cscv_S_larger_than_rows_rejected PASSED                [ 50%]
+# test_pbo.py::test_train_and_test_sets_are_complementary_halves PASSED    [ 56%]
+# test_pbo.py::test_logit_is_zero_at_median_rank PASSED                    [ 62%]
+# test_pbo.py::test_omega_strictly_inside_unit_interval PASSED             [ 68%]
+# test_pbo.py::test_pbo_is_zero_when_one_strategy_dominates_everywhere PASSED [ 75%]
+# test_pbo.py::test_pbo_is_one_when_edge_is_purely_time_localised PASSED   [ 81%]
+# test_pbo.py::test_pbo_is_high_when_each_trial_fits_its_own_slice_of_history PASSED [ 87%]
+# test_pbo.py::test_pbo_averages_near_half_for_pure_noise PASSED           [ 93%]
+# test_pbo.py::test_pbo_returns_value_and_frame PASSED                     [100%]
+# ============================== 16 passed in 2.38s ==============================
+#
+# Notes on two tests that caught real misconceptions:
+#
+#  * test_pbo_averages_near_half_for_pure_noise -- PBO on N zero-edge trials
+#    centres on ~0.5, but a SINGLE draw ranges roughly 0.04-0.99 (measured over
+#    40 seeds). Any individual PBO estimate is therefore imprecise; the test
+#    asserts the MEAN over seeds, not one seed. Asserting a single draw would
+#    have been flaky AND would have taught students that one PBO number is
+#    precise. It is not.
+#
+#  * test_cscv_book_example_S16_is_12870_not_12780 -- BOOK ERRATUM guard.
+#    Section 11.6 prints "12,780" combinations for S=16. C(16,8) = 12,870.
+#    A digit transposition. Pinned in a test so it can never enter the code.
