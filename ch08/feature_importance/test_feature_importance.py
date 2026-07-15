@@ -12,15 +12,36 @@ fixtures set cont['w'] = 1.0 (uniform, sum = n) -- statistically identical to
 the uniform 1/n weights but immune to the frequency-semantics difference.
 The pipeline script/notebook keep the book's w = 1/n (correct on 1.2.2).
 """
+# --- import the module(s) under test ---------------------------------------
+# Derive the repo root from __file__, put it on sys.path, then import
+# fully-qualified.
+#
+# LOAD-BEARING -- do NOT replace this with a bare `from <module> import ...`,
+# and do NOT rely on pytest to put the repo root on sys.path for you. pytest
+# walks UP the __init__.py chain to decide which directory it inserts, so the
+# import statement that "works" silently depends on which folders happen to
+# contain an __init__.py. That makes tests break from a file two directories
+# away, and makes the correct import differ per chapter. Deriving ROOT from
+# __file__ works from any cwd, with or without pytest, and matches the .py
+# path convention in CLAUDE.md.
+import os
+import sys
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
 import numpy as np
 import pandas as pd
 import pytest
 
-from feature_importance import (
+from ch08.feature_importance.feature_importance import (  # noqa: E402
     getTestData, featImpMDI, featImpMDA, auxFeatImpSFI, featImportance,
     get_eVec, orthoFeats, featPCA_rank_corr,
 )
-from feature_importance import testFunc as _testFunc  # alias: avoid pytest collecting it
+from ch08.feature_importance.feature_importance import (  # noqa: E402
+    testFunc as _testFunc,
+)  # alias: avoid pytest collecting it
 
 
 # --------------------------------------------------------------------------- #

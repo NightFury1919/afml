@@ -6,17 +6,33 @@ Known expected values are hand-traced from the book's own formulas
 just shape/type checks -- per the repo's TDD workflow.
 """
 
+
+# --- import the module(s) under test ---------------------------------------
+# Derive the repo root from __file__, put it on sys.path, then import
+# fully-qualified.
+#
+# LOAD-BEARING -- do NOT replace this with a bare `from <module> import ...`,
+# and do NOT rely on pytest to put the repo root on sys.path for you. pytest
+# walks UP the __init__.py chain to decide which directory it inserts, so the
+# import statement that "works" silently depends on which folders happen to
+# contain an __init__.py. That makes tests break from a file two directories
+# away, and makes the correct import differ per chapter. Deriving ROOT from
+# __file__ works from any cwd, with or without pytest, and matches the .py
+# path convention in CLAUDE.md.
 import os
 import sys
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 
 import numpy as np
 import pandas as pd
 import pytest
 from scipy.stats import norm
 
-sys.path.insert(0, os.path.dirname(__file__))
 
-from bet_sizing import (  # noqa: E402
+from ch10.bet_sizing.bet_sizing import (  # noqa: E402
     getSignal,
     avgActiveSignals,
     mpAvgActiveSignals,

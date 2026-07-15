@@ -10,14 +10,34 @@ artifacts in input_data/. If those upstream artifacts aren't present either,
 the real-data tests skip cleanly (rather than erroring) so the synthetic
 tests still run and report green.
 """
+# --- import the module(s) under test ---------------------------------------
+# Derive the repo root from __file__, put it on sys.path, then import
+# fully-qualified.
+#
+# LOAD-BEARING -- do NOT replace this with a bare `from <module> import ...`,
+# and do NOT rely on pytest to put the repo root on sys.path for you. pytest
+# walks UP the __init__.py chain to decide which directory it inserts, so the
+# import statement that "works" silently depends on which folders happen to
+# contain an __init__.py. That makes tests break from a file two directories
+# away, and makes the correct import differ per chapter. Deriving ROOT from
+# __file__ works from any cwd, with or without pytest, and matches the .py
+# path convention in CLAUDE.md.
 import os
+import sys
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
 import numpy as np
 import pandas as pd
 import pytest
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.dummy import DummyClassifier
 
-from purged_kfold import PurgedKFold, cvScore
+from ch07.cross_validation.purged_kfold import (  # noqa: E402
+    PurgedKFold, cvScore,
+)
 
 
 # Resolve input_data/ relative to this test file: ch07/cross_validation/ -> ../../input_data
