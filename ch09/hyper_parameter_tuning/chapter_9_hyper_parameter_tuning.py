@@ -126,29 +126,50 @@ def demo_synthetic():
 # C. real-data plug-in
 # --------------------------------------------------------------------------- #
 def load_real_table():
-    ch03 = pd.read_csv(os.path.join(INPUT_DATA, 'ch03_events.csv'),
-                       index_col=0, parse_dates=True)
-    ch04 = pd.read_csv(os.path.join(INPUT_DATA, 'ch04_weights.csv'),
-                       index_col=0, parse_dates=True)
-    ch05 = pd.read_csv(os.path.join(INPUT_DATA, 'ch05_features.csv'),
-                       index_col=0, parse_dates=True)
-    X = ch05.loc[ch03.index][['fracdiff']]
-    y = ch03['bin']
-    w = ch04['w']
-    t1 = pd.to_datetime(ch03['t1'])
+    # Post-Ch19-enrichment: load the enriched artifact (fracdiff + Ch19's
+    # 11 microstructural features, 87 events -- one dropped for still
+    # being inside a rolling-window warmup period, same convention Ch05
+    # already uses for fracdiff's own FFD warmup) instead of rebuilding a
+    # fracdiff-only table straight from ch03/04/05. Falls back to the
+    # original single-feature path if the enriched artifact isn't present
+    # (e.g. running this chapter standalone before Ch19 exists on a
+    # machine).
+    enriched_path = os.path.join(INPUT_DATA, 'ch07_training_table_enriched.csv')
+    if os.path.exists(enriched_path):
+        table = pd.read_csv(enriched_path, index_col=0, parse_dates=[0, 't1'])
+        feature_cols = [c for c in table.columns if c not in ('bin', 'w', 't1')]
+        X = table[feature_cols]
+        y = table['bin']
+        w = table['w']
+        t1 = table['t1']
+    else:
+        ch03 = pd.read_csv(os.path.join(INPUT_DATA, 'ch03_events.csv'),
+                           index_col=0, parse_dates=True)
+        ch04 = pd.read_csv(os.path.join(INPUT_DATA, 'ch04_weights.csv'),
+                           index_col=0, parse_dates=True)
+        ch05 = pd.read_csv(os.path.join(INPUT_DATA, 'ch05_features.csv'),
+                           index_col=0, parse_dates=True)
+        X = ch05.loc[ch03.index][['fracdiff']]
+        y = ch03['bin']
+        w = ch04['w']
+        t1 = pd.to_datetime(ch03['t1'])
     assert X.index.equals(y.index) and X.index.equals(w.index) \
         and X.index.equals(t1.index), 'X/y/w/t1 index must match before PurgedKFold'
     return X, y, t1, w
 
 
 def demo_real():
-    print('=== C. Real-data plug-in: 88-row BTC/TUSD table (labels -> neg_log_loss) ===')
+    print('=== C. Real-data plug-in: real BTC/TUSD table (labels -> neg_log_loss) ===')
     X, y, t1, w = load_real_table()
-    print(f'  data {X.shape} (1 feature: fracdiff), labels={set(np.unique(y))} '
-          f'-> scoring={_pick_scoring(y.values)}')
-    print('  (single feature => thin tuning surface; this shows the machinery '
-          'on the REAL pipeline,\n   not a dramatic optimum. Motivates enriching '
-          'the real feature set later.)')
+    print(f'  data {X.shape} ({X.shape[1]} feature{"s" if X.shape[1] != 1 else ""}: '
+          f'{list(X.columns)}), labels={set(np.unique(y))} -> scoring={_pick_scoring(y.values)}')
+    if X.shape[1] == 1:
+        print('  (single feature => thin tuning surface; this shows the machinery '
+              'on the REAL pipeline,\n   not a dramatic optimum. Motivates enriching '
+              'the real feature set later.)')
+    else:
+        print('  (post-Ch19 enrichment: fracdiff + 11 microstructural features, '
+              'the first real multi-\n   feature tuning surface this pipeline has had.)')
 
     grid_best = clfHyperFit(
         X, y, t1, _svc_pipe(),

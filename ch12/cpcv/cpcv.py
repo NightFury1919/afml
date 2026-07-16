@@ -28,6 +28,8 @@ from math import comb
 
 import numpy as np
 import pandas as pd
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
 
@@ -208,13 +210,32 @@ def fit_predict_split(X, y, w, train_pos, test_pos, C, gamma, random_state=0):
     Ch10's out_of_sample_probs loop body exactly (same model, same
     random_state-pinning rationale -- SVC(probability=True)'s internal
     Platt-scaling CV is otherwise non-deterministic).
+
+    FIX (post-Ch19 enrichment, LOAD-BEARING): SVC's RBF kernel is fit on
+    raw Euclidean distance between feature vectors. With the single-
+    feature fracdiff table this chapter originally shipped with, that
+    was harmless (one column, one scale). Once X can carry Ch19's
+    features -- Kyle's Lambda in the thousands sitting next to
+    round_number_fraction around 0.01 -- an unscaled SVC's kernel
+    distance is dominated almost entirely by whichever feature happens
+    to have the largest raw magnitude, silently producing a near-useless
+    fit rather than a merely-worse one. Wrapped in a StandardScaler
+    Pipeline so every feature is on a comparable footing, same fix Ch09
+    already applies to its own SVC. The scaler is fit on the TRAINING
+    fold only (inside the Pipeline, refit per split) so no test-fold
+    information leaks into the scaling -- same purge/embargo discipline
+    as everything else in this module.
     """
-    clf = SVC(C=C, gamma=gamma, probability=True, random_state=random_state)
-    clf.fit(X.iloc[train_pos, :], y.iloc[train_pos], sample_weight=w.iloc[train_pos].values)
-    proba = clf.predict_proba(X.iloc[test_pos, :])
+    pipe = Pipeline([
+        ('scaler', StandardScaler()),
+        ('svc', SVC(C=C, gamma=gamma, probability=True, random_state=random_state)),
+    ])
+    pipe.fit(X.iloc[train_pos, :], y.iloc[train_pos],
+             svc__sample_weight=w.iloc[train_pos].values)
+    proba = pipe.predict_proba(X.iloc[test_pos, :])
     idx_max = proba.argmax(axis=1)
     prob = proba[np.arange(len(test_pos)), idx_max]
-    pred = clf.classes_[idx_max]
+    pred = pipe.named_steps['svc'].classes_[idx_max]
     return prob, pred
 
 
@@ -263,9 +284,9 @@ def run_cpcv(X, y, w, t1, n_groups, k, pct_embargo, C, gamma, random_state=0):
 
 # ---------------------------------------------------------------------------
 # Pytest results (sandbox validation -- Python 3.12.3, pandas 3.0.2,
-# scipy 1.17.1, numpy 2.4.4, sklearn 1.8.0). Confirmed on real mlfinlab
-# env (Python 3.10.20 / pandas 1.5.3 / sklearn 1.2.2) -- 17/17 pass,
-# identical results -- see project chat, July 2026.
+# scipy 1.17.1, numpy 2.4.4, sklearn 1.8.0). Original 17 confirmed on real
+# mlfinlab env (Python 3.10.20 / pandas 1.5.3 / sklearn 1.2.2) -- 17/17
+# pass, identical results -- see project chat, July 2026.
 #
 # Real-machine gotcha (not a code bug): bare `pytest` initially failed
 # with ImportError: cannot import name 'partition_groups' from 'cpcv' --
@@ -282,34 +303,45 @@ def run_cpcv(X, y, w, t1, n_groups, k, pct_embargo, C, gamma, random_state=0):
 # test_k1_matches_original_purged_kfold is a regression check against
 # Ch07 PurgedKFold's exact formula for the k=1 special case.
 #
+# POST-CH19-ENRICHMENT FIX (2026-07-16): fit_predict_split originally fit
+# a bare SVC directly on raw X. Harmless with the original single-feature
+# (fracdiff) table; once X could carry Ch19's 11 microstructural features
+# -- wildly different scales, e.g. Kyle's Lambda in the thousands next to
+# round_number_fraction around 0.01 -- an unscaled RBF kernel is
+# dominated almost entirely by whichever feature has the largest raw
+# magnitude, silently producing a near-useless fit rather than a merely
+# worse one. Fixed by wrapping SVC in a StandardScaler Pipeline (same fix
+# Ch09 already applies), scaler refit per-split on the training fold only
+# (no leakage). single_path_baseline() in chapter_12_cpcv.py had the
+# identical bug (its own bare SVC fit, duplicated logic) and got the same
+# fix. New regression test added:
+# TestRunCPCV::test_predictions_invariant_to_per_feature_rescaling --
+# proves predictions are now unchanged under an arbitrary further
+# per-column rescale of X, which would NOT have held before the fix.
+#
 # ============================= test session starts ==============================
-# platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
-# collected 17 items
+# collected 18 items
+# test_cpcv.py::TestPartitionGroups::test_book_example_T88_N6 PASSED       [  5%]
+# test_cpcv.py::TestPartitionGroups::test_evenly_divisible PASSED          [ 11%]
+# test_cpcv.py::TestPartitionGroups::test_rejects_fewer_than_two_groups PASSED [ 16%]
+# test_cpcv.py::TestSplitCounts::test_book_example_15_splits PASSED        [ 22%]
+# test_cpcv.py::TestSplitCounts::test_book_example_5_paths PASSED          [ 27%]
+# test_cpcv.py::TestSplitCounts::test_k1_reduces_to_plain_cv PASSED        [ 33%]
+# test_cpcv.py::TestSplitCounts::test_k2_rule_of_thumb_N_minus_1_paths PASSED [ 38%]
+# test_cpcv.py::TestSplitCounts::test_splits_are_lexicographic_combinations PASSED [ 44%]
+# test_cpcv.py::TestSplitCounts::test_rejects_k_out_of_range PASSED        [ 50%]
+# test_cpcv.py::TestPathAssignment::test_reproduces_book_path1_and_path2 PASSED [ 55%]
+# test_cpcv.py::TestPathAssignment::test_every_group_contributes_exactly_once_per_path PASSED [ 61%]
+# test_cpcv.py::TestPathAssignment::test_every_group_is_test_group_in_exactly_phi_splits PASSED [ 66%]
+# test_cpcv.py::TestPurgeEmbargo::test_k1_matches_original_purged_kfold PASSED [ 72%]
+# test_cpcv.py::TestPurgeEmbargo::test_k2_purges_around_both_test_groups PASSED [ 77%]
+# test_cpcv.py::TestPurgeEmbargo::test_never_trains_on_test_rows PASSED    [ 83%]
+# test_cpcv.py::TestRunCPCV::test_every_path_fully_populated_no_nans PASSED [ 88%]
+# test_cpcv.py::TestRunCPCV::test_reproducible_with_fixed_random_state PASSED [ 94%]
+# test_cpcv.py::TestRunCPCV::test_predictions_invariant_to_per_feature_rescaling PASSED [100%]
+# ============================== 18 passed in 1.63s ===============================
 #
-# test_cpcv.py::TestPartitionGroups::test_book_example_T88_N6 PASSED
-# test_cpcv.py::TestPartitionGroups::test_evenly_divisible PASSED
-# test_cpcv.py::TestPartitionGroups::test_rejects_fewer_than_two_groups PASSED
-# test_cpcv.py::TestSplitCounts::test_book_example_15_splits PASSED
-# test_cpcv.py::TestSplitCounts::test_book_example_5_paths PASSED
-# test_cpcv.py::TestSplitCounts::test_k1_reduces_to_plain_cv PASSED
-# test_cpcv.py::TestSplitCounts::test_k2_rule_of_thumb_N_minus_1_paths PASSED
-# test_cpcv.py::TestSplitCounts::test_splits_are_lexicographic_combinations PASSED
-# test_cpcv.py::TestSplitCounts::test_rejects_k_out_of_range PASSED
-# test_cpcv.py::TestPathAssignment::test_reproduces_book_path1_and_path2 PASSED
-# test_cpcv.py::TestPathAssignment::test_every_group_contributes_exactly_once_per_path PASSED
-# test_cpcv.py::TestPathAssignment::test_every_group_is_test_group_in_exactly_phi_splits PASSED
-# test_cpcv.py::TestPurgeEmbargo::test_k1_matches_original_purged_kfold PASSED
-# test_cpcv.py::TestPurgeEmbargo::test_k2_purges_around_both_test_groups PASSED
-# test_cpcv.py::TestPurgeEmbargo::test_never_trains_on_test_rows PASSED
-# test_cpcv.py::TestRunCPCV::test_every_path_fully_populated_no_nans PASSED
-# test_cpcv.py::TestRunCPCV::test_reproducible_with_fixed_random_state PASSED
-#
-# ============================== 17 passed in 1.23s ===============================
-#
-# Real mlfinlab machine (Python 3.10.20 / pandas 1.5.3 / sklearn 1.2.2):
-# ====================================================================== test session starts =======================================================================
-# platform win32 -- Python 3.10.20, pytest-9.0.3, pluggy-1.6.0
-# collected 17 items
-# [... all 17 PASSED, identical to above ...]
-# ======================================================================= 17 passed in 2.61s ========================================================================
+# REAL-MACHINE CONFIRMED (Python 3.10.20 / pytest 9.0.3 / mlfinlab env,
+# 2026-07-16): 18 passed in 6.39s. Identical pass/fail outcome to the
+# sandbox run above.
 # ---------------------------------------------------------------------------

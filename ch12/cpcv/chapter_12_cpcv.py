@@ -25,6 +25,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.svm import SVC
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 sys.path.insert(0, os.path.dirname(__file__))
 from cpcv import run_cpcv, partition_groups, enumerate_splits, n_paths  # noqa: E402
@@ -54,18 +56,32 @@ BASELINE_PCT_EMBARGO = 0.12
 
 
 def load_data():
-    """Real Ch03-07 BTC/TUSD pipeline: features/labels/weights/t1 from
-    ch07_training_table.csv, realized per-event returns from
-    ch03_events.csv (same 88-row index, verified aligned)."""
-    table = pd.read_csv(
-        os.path.join(INPUT_DIR, 'ch07_training_table.csv'), index_col=0, parse_dates=[0, 't1']
-    )
+    """Real Ch03-07(+19) BTC/TUSD pipeline: features/labels/weights/t1 from
+    the enriched training table (fracdiff + Ch19's 11 microstructural
+    features, falling back to the original fracdiff-only table if the
+    enriched artifact isn't present), realized per-event returns from
+    ch03_events.csv.
+
+    Note: the enriched table has 87 rows (ch03_events has 88) -- one event
+    was dropped by build_enriched_training_table.py for still being inside
+    a Ch19 rolling-window warmup period. events is aligned to table's
+    index (a strict equality check would incorrectly reject this)."""
+    enriched_path = os.path.join(INPUT_DIR, 'ch07_training_table_enriched.csv')
+    if os.path.exists(enriched_path):
+        table = pd.read_csv(enriched_path, index_col=0, parse_dates=[0, 't1'])
+    else:
+        table = pd.read_csv(
+            os.path.join(INPUT_DIR, 'ch07_training_table.csv'), index_col=0, parse_dates=[0, 't1']
+        )
     events = pd.read_csv(
         os.path.join(INPUT_DIR, 'ch03_events.csv'), index_col=0, parse_dates=[0, 't1']
     )
-    if not table.index.equals(events.index):
-        raise ValueError('ch07_training_table and ch03_events indices do not align')
-    X = table[['fracdiff']]
+    if not table.index.isin(events.index).all():
+        raise ValueError('every row of the training table must be a real Ch03 event')
+    events = events.loc[table.index]  # align (enriched table may be a subset of events)
+
+    feature_cols = [c for c in table.columns if c not in ('bin', 'w', 't1')]
+    X = table[feature_cols]
     y = table['bin']
     w = table['w']
     t1 = table['t1']
@@ -89,19 +105,27 @@ def path_to_signal_and_returns(t1, ret, prob_arr, pred_arr, step_size=STEP_SIZE)
 
 def single_path_baseline(X, y, w, t1, ret):
     """The Ch10-style single out-of-sample path (plain PurgedKFold,
-    n_splits=4) -- the one-Sharpe-ratio result CPCV is meant to improve on."""
+    n_splits=4) -- the one-Sharpe-ratio result CPCV is meant to improve on.
+
+    Uses the same StandardScaler-wrapped SVC as cpcv.py's fit_predict_split
+    (post-Ch19-enrichment fix -- see that function's docstring for why an
+    unscaled SVC silently breaks once X has multiple, differently-scaled
+    feature columns instead of just fracdiff)."""
     if PurgedKFold is None:
         return None
     gen = PurgedKFold(n_splits=BASELINE_N_SPLITS, t1=t1, pctEmbargo=BASELINE_PCT_EMBARGO)
     prob = pd.Series(index=X.index, dtype=float)
     pred = pd.Series(index=X.index, dtype=float)
     for train, test in gen.split(X=X):
-        clf = SVC(C=SVC_C, gamma=SVC_GAMMA, probability=True, random_state=RANDOM_STATE)
-        clf.fit(X.iloc[train, :], y.iloc[train], sample_weight=w.iloc[train].values)
-        proba = clf.predict_proba(X.iloc[test, :])
+        pipe = Pipeline([
+            ('scaler', StandardScaler()),
+            ('svc', SVC(C=SVC_C, gamma=SVC_GAMMA, probability=True, random_state=RANDOM_STATE)),
+        ])
+        pipe.fit(X.iloc[train, :], y.iloc[train], svc__sample_weight=w.iloc[train].values)
+        proba = pipe.predict_proba(X.iloc[test, :])
         idx_max = proba.argmax(axis=1)
         prob.iloc[test] = proba[np.arange(len(test)), idx_max]
-        pred.iloc[test] = clf.classes_[idx_max]
+        pred.iloc[test] = pipe.named_steps['svc'].classes_[idx_max]
     _, pos_returns, sharpe = path_to_signal_and_returns(t1, ret, prob.values, pred.values)
     return sharpe, pos_returns
 
@@ -131,6 +155,7 @@ def main():
     X, y, w, t1, ret = load_data()
     n_obs = len(t1)
     print(f'Loaded {n_obs} real BTC/TUSD triple-barrier events.')
+    print(f'Features ({X.shape[1]}): {list(X.columns)}')
     print(f'N={N_GROUPS} groups, k={K_TEST_GROUPS} test groups/split -> '
           f'{len(enumerate_splits(N_GROUPS, K_TEST_GROUPS))} splits, '
           f'{n_paths(N_GROUPS, K_TEST_GROUPS)} backtest paths.')

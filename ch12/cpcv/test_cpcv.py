@@ -258,3 +258,40 @@ class TestRunCPCV:
         r2 = run_cpcv(X, y, w, t1, n_groups=6, k=2, pct_embargo=0.0, C=1.0, gamma='scale', random_state=0)
         for p in r1[0]:
             assert np.allclose(r1[0][p], r2[0][p])
+
+    def test_predictions_invariant_to_per_feature_rescaling(self):
+        # LOAD-BEARING regression test for the post-Ch19 StandardScaler fix
+        # in fit_predict_split. Before that fix, run_cpcv's SVC fit raw
+        # feature magnitude directly into its RBF kernel -- multiplying
+        # one column by 1000x (simulating, e.g., Kyle's Lambda sitting
+        # next to round_number_fraction) would have completely changed
+        # which feature dominates kernel distance, and therefore the
+        # predictions. With the fix, StandardScaler removes each column's
+        # scale before the SVC ever sees it, so predictions on a
+        # per-column-rescaled X must match predictions on the original X.
+        n_obs = 48
+        rng = np.random.RandomState(7)
+        t1 = _make_synthetic_t1(n_obs, avg_span=3, seed=7)
+        X = pd.DataFrame({
+            'small_scale': rng.randn(n_obs) * 0.001,   # e.g. round_number_fraction's range
+            'large_scale': rng.randn(n_obs) * 5000.0,  # e.g. Kyle's Lambda's range
+        }, index=t1.index)
+        y = pd.Series(np.sign(rng.randn(n_obs)), index=t1.index).replace(0, 1)
+        w = pd.Series(rng.uniform(0.5, 1.5, n_obs), index=t1.index)
+
+        # An arbitrary further per-column rescale -- if the classifier were
+        # still scale-sensitive, this alone would change every prediction.
+        X_rescaled = X.copy()
+        X_rescaled['small_scale'] *= 37.0
+        X_rescaled['large_scale'] *= 0.0002
+
+        kwargs = dict(n_groups=6, k=2, pct_embargo=0.0, C=1.0, gamma='scale', random_state=0)
+        path_prob_orig, path_pred_orig, _, _ = run_cpcv(X, y, w, t1, **kwargs)
+        path_prob_rescaled, path_pred_rescaled, _, _ = run_cpcv(X_rescaled, y, w, t1, **kwargs)
+
+        for p in path_prob_orig:
+            assert np.allclose(path_prob_orig[p], path_prob_rescaled[p], atol=1e-8), (
+                f'path {p} probabilities changed under per-feature rescaling -- '
+                f'SVC is not properly scale-invariant'
+            )
+            assert np.array_equal(path_pred_orig[p], path_pred_rescaled[p])
