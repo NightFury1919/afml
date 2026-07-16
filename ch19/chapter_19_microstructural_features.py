@@ -293,7 +293,53 @@ print("\nNOTE: this table is bar-indexed (249 real dollar bars), not yet merged 
 # =============================================================================
 # TDD results -- embedded per project convention, after tests passed
 # =============================================================================
-# $ pytest test_microstructural_features.py -v
-# ... 41 passed in 0.39s (sandbox: Python 3.12.3 / pandas 3.0.2 / numpy 2.4.4)
-# Real-machine run (mlfinlab: Python 3.10.20 / pandas 1.5.3 / numpy 1.23.5)
-# still needs to be confirmed and this header refreshed -- see README.
+# REAL-MACHINE CONFIRMED (Python 3.10.20 / pytest 9.0.3 / mlfinlab env,
+# 2026-07-16) -- 41 passed in 0.88s. Real-data headline numbers above (tick
+# rule accuracy 0.6618, Kyle's Lambda range [-10787.4, 22233.8], VPIN mean
+# 0.5256, etc.) are byte-identical to the sandbox run -- nothing here was
+# environment-sensitive.
+#
+# ===================================================================== test session starts ======================================================================
+# test_microstructural_features.py::TestTickRule::test_hand_traced_sequence PASSED                                                                          [  2%]
+# test_microstructural_features.py::TestTickRule::test_b0_is_configurable PASSED                                                                            [  4%]
+# test_microstructural_features.py::TestTickRule::test_empty_input PASSED                                                                                   [  7%]
+# test_microstructural_features.py::TestTickRule::test_single_price PASSED                                                                                  [  9%]
+# test_microstructural_features.py::TestTickRuleAccuracy::test_hand_traced_5_of_6 PASSED                                                                    [ 12%]
+# test_microstructural_features.py::TestTickRuleAccuracy::test_perfect_agreement PASSED                                                                     [ 14%]
+# test_microstructural_features.py::TestTickRuleAccuracy::test_length_mismatch_raises PASSED                                                                [ 17%]
+# test_microstructural_features.py::TestTickRuleAccuracy::test_empty_raises PASSED                                                                          [ 19%]
+# test_microstructural_features.py::TestRollMeasure::test_cross_validated_against_numpy PASSED                                                              [ 21%]
+# test_microstructural_features.py::TestRollMeasure::test_known_regression_values PASSED                                                                    [ 24%]
+# test_microstructural_features.py::TestRollMeasure::test_too_short_raises PASSED                                                                           [ 26%]
+# test_microstructural_features.py::TestParkinsonVolatility::test_hand_traced_formula PASSED                                                                [ 29%]
+# test_microstructural_features.py::TestParkinsonVolatility::test_known_value PASSED                                                                        [ 31%]
+# test_microstructural_features.py::TestParkinsonVolatility::test_zero_range_gives_zero_vol PASSED                                                          [ 34%]
+# test_microstructural_features.py::TestParkinsonVolatility::test_length_mismatch_raises PASSED                                                             [ 36%]
+# test_microstructural_features.py::TestCorwinSchultz::test_cross_validated_against_reference_port PASSED                                                   [ 39%]
+# test_microstructural_features.py::TestCorwinSchultz::test_negative_alpha_clipped_to_zero_spread PASSED                                                    [ 41%]
+# test_microstructural_features.py::TestCorwinSchultz::test_known_values PASSED                                                                             [ 43%]
+# test_microstructural_features.py::TestCorwinSchultz::test_becker_parkinson_sigma_nonnegative PASSED                                                       [ 46%]
+# test_microstructural_features.py::TestKyleLambda::test_exact_slope_recovered PASSED                                                                       [ 48%]
+# test_microstructural_features.py::TestKyleLambda::test_cross_validated_against_polyfit PASSED                                                             [ 51%]
+# test_microstructural_features.py::TestKyleLambda::test_no_variation_in_volume_returns_nan PASSED                                                          [ 53%]
+# test_microstructural_features.py::TestKyleLambda::test_too_few_points_returns_nan PASSED                                                                  [ 56%]
+# test_microstructural_features.py::TestKyleLambda::test_length_mismatch_raises PASSED                                                                      [ 58%]
+# test_microstructural_features.py::TestKyleLambdaByBar::test_known_two_bar_case PASSED                                                                     [ 60%]
+# test_microstructural_features.py::TestKyleLambdaByBar::test_bar_below_min_trades_is_nan PASSED                                                            [ 63%]
+# test_microstructural_features.py::TestAmihudLambda::test_cross_validated_closed_form_ols PASSED                                                           [ 65%]
+# test_microstructural_features.py::TestAmihudLambda::test_known_value PASSED                                                                               [ 68%]
+# test_microstructural_features.py::TestAmihudLambda::test_zero_volume_returns_nan PASSED                                                                   [ 70%]
+# test_microstructural_features.py::TestAmihudLambda::test_length_mismatch_raises PASSED                                                                    [ 73%]
+# test_microstructural_features.py::TestVpin::test_hand_traced_rolling_window PASSED                                                                        [ 75%]
+# test_microstructural_features.py::TestVpin::test_window_one_gives_per_bar_imbalance_fraction PASSED                                                       [ 78%]
+# test_microstructural_features.py::TestVpin::test_length_mismatch_raises PASSED                                                                            [ 80%]
+# test_microstructural_features.py::TestVpin::test_zero_window_raises PASSED                                                                                [ 82%]
+# test_microstructural_features.py::TestRoundNumberFrequency::test_hand_traced_matches PASSED                                                               [ 85%]
+# test_microstructural_features.py::TestRoundNumberFrequency::test_custom_levels PASSED                                                                     [ 87%]
+# test_microstructural_features.py::TestRoundNumberFrequency::test_empty_raises PASSED                                                                      [ 90%]
+# test_microstructural_features.py::TestSerialCorrelationSignedFlow::test_perfect_alternation_gives_minus_one PASSED                                        [ 92%]
+# test_microstructural_features.py::TestSerialCorrelationSignedFlow::test_cross_validated_against_pandas_autocorr PASSED                                    [ 95%]
+# test_microstructural_features.py::TestSerialCorrelationSignedFlow::test_lag_2 PASSED                                                                      [ 97%]
+# test_microstructural_features.py::TestSerialCorrelationSignedFlow::test_too_short_raises PASSED                                                           [100%]
+#
+# ====================================================================== 41 passed in 0.88s ======================================================================
