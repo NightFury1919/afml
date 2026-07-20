@@ -130,7 +130,7 @@ def _pick_scoring(lbl):
 
 def clfHyperFit(feat, lbl, t1, pipe_clf, param_grid, cv=3,
                 bagging=(0, None, 1.), rndSearchIter=0, n_jobs=-1,
-                pctEmbargo=0., **fit_params):
+                pctEmbargo=0., random_state=None, **fit_params):
     # NOTE: book default is a LIST [0, None, 1.]; we use a tuple to avoid a
     # mutable default (never mutated here, so behaviour is identical).
     """AFML snippets 9.1 + 9.2: hyper-parameter search over a PURGED inner CV.
@@ -158,6 +158,11 @@ def clfHyperFit(feat, lbl, t1, pipe_clf, param_grid, cv=3,
         0 -> GridSearchCV. >0 -> RandomizedSearchCV with this many draws.
     n_jobs : int, default=-1
     pctEmbargo : float, default=0.
+    random_state : int, numpy.random.Generator, or None, default=None
+        Seeds RandomizedSearchCV's draws and BaggingClassifier's bootstrap
+        sampling. Per project convention (Ch09 SVC, Ch13 OTR): any code that
+        draws random numbers takes an explicit random_state rather than
+        relying on global RNG state.
     **fit_params
         Forwarded to ``.fit``. To weight the fit, pass
         ``{final_step_name}__sample_weight=w`` (e.g. ``svc__sample_weight=w``);
@@ -181,7 +186,7 @@ def clfHyperFit(feat, lbl, t1, pipe_clf, param_grid, cv=3,
     else:
         gs = RandomizedSearchCV(estimator=pipe_clf, param_distributions=param_grid,
                                 scoring=scoring, cv=inner_cv, n_jobs=n_jobs,
-                                n_iter=rndSearchIter)
+                                n_iter=rndSearchIter, random_state=random_state)
 
     gs = gs.fit(feat, lbl, **fit_params).best_estimator_  # a fitted Pipeline
 
@@ -193,7 +198,8 @@ def clfHyperFit(feat, lbl, t1, pipe_clf, param_grid, cv=3,
             n_estimators=int(bagging[0]),
             max_samples=float(bagging[1]),           # bagging tuple = (n_est, max_samples, max_features), per book 9.1/9.3
             max_features=float(bagging[2]),          # LOAD-BEARING (max_samples): see header
-            n_jobs=n_jobs)
+            n_jobs=n_jobs,
+            random_state=random_state)               # (random_state fix, July 20 session)
         sw_key = final_name + '__sample_weight'
         if sw_key in fit_params:                      # (fix 5) guard the lookup
             bag = bag.fit(feat, lbl, sample_weight=fit_params[sw_key])

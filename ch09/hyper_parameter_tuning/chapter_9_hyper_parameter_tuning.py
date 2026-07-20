@@ -113,6 +113,7 @@ def demo_synthetic():
         param_grid={'svc__C': logUniform(*C_RANGE),
                     'svc__gamma': logUniform(*GAMMA_RANGE)},
         cv=CV_SPLITS, rndSearchIter=RND_ITER, n_jobs=N_JOBS,
+        random_state=0,
         svc__sample_weight=w.values)
     rC, rG = rnd_best.named_steps['svc'].C, rnd_best.named_steps['svc'].gamma
     print(f'  RandomizedSearchCV best -> C={rC:.4g}, gamma={rG:.4g} '
@@ -183,6 +184,7 @@ def demo_real():
         param_grid={'svc__C': logUniform(*C_RANGE),
                     'svc__gamma': logUniform(*GAMMA_RANGE)},
         cv=CV_SPLITS, pctEmbargo=0.12, rndSearchIter=RND_ITER, n_jobs=N_JOBS,
+        random_state=0,
         svc__sample_weight=w.values)
     rC, rG = rnd_best.named_steps['svc'].C, rnd_best.named_steps['svc'].gamma
     print(f'  RandomizedSearchCV best -> C={rC:.4g}, gamma={rG:.4g}\n')
