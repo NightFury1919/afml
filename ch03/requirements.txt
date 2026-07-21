@@ -1,7 +1,30 @@
-numpy>=1.24.0
-pandas>=2.0.0
-matplotlib>=3.7.0
-seaborn>=0.12.0
-pytest>=7.4.0
-jupyter>=1.0.0
-nbformat>=5.9.0
+# Chapter 3 -- Labeling (triple-barrier, meta-labeling, fixed-time horizon)
+#
+# CONFIRMED WORKING on the mlfinlab conda env: Python 3.10.20,
+# pandas 1.5.3, numpy 1.23.5.
+#
+# NOTE (corrected 2026-07-21): an earlier version of this file specified
+# `pandas>=2.0.0` and `numpy>=1.24.0`. That was wrong and actively harmful --
+# it contradicted the environment the whole pipeline actually runs on, and a
+# student who followed it would install pandas 2.x into `mlfinlab`. The
+# consequences are not cosmetic:
+#   * pickles written under numpy 2.x cannot be read back by numpy 1.23.5
+#     (the numpy.core -> numpy._core rename), so ch03_events.pkl would stop
+#     loading for every downstream chapter;
+#   * pandas 2.x/3.x removed offset aliases and timedelta64 units that this
+#     codebase and the book's own snippets rely on (see ch14's notes on
+#     freq='M' and timedelta64[Y]).
+# ch05/requirements.txt already carried this correction; ch03 and ch04 did
+# not, until now. Lower bounds below are genuine minimums; the pins that
+# matter for reproducing the committed artifacts are the confirmed versions
+# above.
+#
+# Per project convention, run `pip freeze > requirements.txt` inside your own
+# mlfinlab env once everything is confirmed working if you want exact pins
+# for your machine.
+
+numpy>=1.22,<2.0      # <2.0 is LOAD-BEARING: numpy 2.x breaks cross-env pickle reads
+pandas>=1.4,<2.0      # confirmed at 1.5.3; 2.x removes APIs used here and in ch14
+matplotlib>=3.5
+seaborn>=0.11         # used in the labeling notebook's barrier plots
+pytest>=7.0

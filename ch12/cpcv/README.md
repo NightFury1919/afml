@@ -74,9 +74,16 @@ Sharpe = **−0.1254**.
 This is the chapter's point, made concretely on real data: the
 single-path baseline alone would read as "this strategy loses money."
 The 5-path CPCV distribution tells a more honest story — genuine
-disagreement in *sign* across paths (2 negative, 2 slightly positive, 1
-near-zero), consistent with the "thin feature set" theme flagged since
-Ch08/Ch09 (the real training table has only one feature, `fracdiff`).
+disagreement in *sign* across paths (1 clearly negative, 3 positive, 1
+essentially zero; mean Sharpe +0.067), which is what the committed
+`ch12_cpcv_stats.csv` actually contains.
+
+(Updated 2026-07-21. This paragraph previously read "2 negative, 2 slightly
+positive, 1 near-zero" and described the training table as having "only one
+feature, `fracdiff`". Both were true of the pre-Ch19 run and neither is true
+of the artifact committed alongside this README: since the enrichment, Ch12
+loads the 12-feature `ch07_training_table_enriched.csv`. The sign spread is
+still the chapter's point -- it just is not as bad as this file claimed.)
 The evidence points to a strategy with close-to-zero real skill and high
 estimation uncertainty, not a confidently bad one — a conclusion the
 single path alone couldn't support.

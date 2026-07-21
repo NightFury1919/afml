@@ -9,11 +9,15 @@ Three parts:
      SVC(RBF) inside a StandardScaler pipeline over PURGED folds, comparing
      GridSearchCV against RandomizedSearchCV-with-logUniform. This is where you
      can watch tuning "bite" across many features.
-  C. Real-data plug-in (88-row BTC/TUSD table, labels {-1,+1} -> neg_log_loss):
+  C. Real-data plug-in (87-row BTC/TUSD table, labels {-1,+1} -> neg_log_loss):
      the exact same clfHyperFit call on the real pipeline, with Ch04 sample
-     weights routed to the SVC via MyPipeline. Single feature (fracdiff), so the
-     tuning surface is thin -- the point here is that the machinery drops
-     straight onto the real data, not that it finds a dramatic optimum.
+     weights routed to the SVC via MyPipeline. Since the Ch19 enrichment this
+     loads the 12-feature enriched table (fracdiff + 11 microstructural
+     features, 87 events), NOT the original fracdiff-only table -- see
+     load_real_table() below. The enrichment is visible in the result: the
+     real-data grid optimum moved from C=100 on the single-feature table to
+     C=0.01 on the enriched one, i.e. sharply heavier regularization once
+     there is actually something to regularize.
 
 Run under the mlfinlab env (Python 3.10.20 / sklearn 1.2.2). Path convention:
 __file__-derived repo root. BLAS threads capped up top (see conftest/README).

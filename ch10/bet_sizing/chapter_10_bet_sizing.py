@@ -45,8 +45,21 @@ INPUT_DIR = os.path.join(AFML_ROOT, 'input_data')
 N_SPLITS = 4          # matches Ch07's real-data calibration for this dataset
 PCT_EMBARGO = 0.12     # matches Ch07's real-data calibration for this dataset
 STEP_SIZE = 0.01
-# Ch09's real-data grid-search winner (neg_log_loss), from
-# ch09_hyperparameter_tuning_stats.csv/pkl -- see project chat, July 2026.
+# Ch09's real-data grid-search winner (neg_log_loss) as of the ORIGINAL,
+# pre-enrichment single-feature training table.
+#
+# STALE -- OPEN DECISION (flagged 2026-07-21). ch09_hyperparameter_tuning_stats
+# .csv now reads `real,grid,0.01`, not 100.0. The Ch19 enrichment moved the
+# grid optimum four orders of magnitude, and Ch09 was re-run while Ch10 was
+# not. The value below is deliberately left at 100.0 rather than silently
+# updated, because changing it moves this chapter's published demo output and
+# cascades into Ch11, which imports getSignal from here. That is a decision to
+# take explicitly, not a cleanup to slip into a consistency pass.
+#
+# Note also that Ch10 still loads ch07_training_table.csv (88 rows, 1 feature),
+# so C=100.0 IS the correct tuned value for the data this chapter currently
+# uses -- the two are consistent with each other. What is stale is the claim
+# that this number comes from the current ch09 artifact. It no longer does.
 SVC_C = 100.0
 SVC_GAMMA = 0.1
 
