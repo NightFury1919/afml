@@ -20,6 +20,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import norm
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
 # --- repo root via __file__ (portable; see CLAUDE.md path convention) -------
@@ -35,7 +37,23 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 # Established calibration for this dataset (Ch07 CV, Ch09 tuning, Ch10 sizing)
 N_SPLITS, PCT_EMBARGO, GAMMA = 4, 0.12, 0.1
-C_GRID = [0.1, 1.0, 10.0, 100.0]
+# C_GRID: 100.0 -> 0.01 on 2026-07-21. LOAD-BEARING, and the choice between
+# swapping and appending was deliberate.
+#
+# This grid exists to manufacture N plausible strategy configurations so PBO
+# has something to overfit across; C_GRID x STEP_GRID = 4 x 5 = 20 trials.
+# After the Ch19 enrichment, Ch09's tuned optimum on this data is C=0.01 --
+# BELOW the old grid's floor of 0.1 -- so every one of the 20 trials was being
+# run at a mis-regularized C.
+#
+# The number of trials is itself an input to PBO (more trials => more
+# opportunity to select an overfit winner). Appending 0.01 as a fifth value
+# would have moved the trial count to 25 and changed the statistic for a
+# reason unrelated to the enrichment, making the new PBO non-comparable to the
+# previously published one. Swapping the top value out instead keeps N=20, so
+# the only thing that changed between the old PBO and the new one is the
+# feature set. That comparability is the whole point.
+C_GRID = [0.01, 0.1, 1.0, 10.0]
 STEP_GRID = [0.01, 0.02, 0.05, 0.10, 0.20]
 S_BLOCKS = 8
 
@@ -130,15 +148,26 @@ def out_of_sample_probs(X, y, w, t1, C):
     randomised Platt-scaling CV and flips class predictions run-to-run on this
     small dataset without it (bug found in Ch10).
     """
-    clf = SVC(C=C, gamma=GAMMA, probability=True, random_state=0)
+    # StandardScaler Pipeline is LOAD-BEARING (added 2026-07-21, same fix
+    # Ch09 and Ch12 already carry, never migrated here). Harmless while X was
+    # the single fracdiff column; on the enriched table the feature magnitudes
+    # span ~3.8e9 to 1, and an unscaled RBF kernel is then dominated by
+    # whichever column has the largest raw magnitude. Every one of the 20 PBO
+    # trials would have been produced by a silently broken model, which would
+    # make the resulting PBO meaningless rather than merely different.
+    # Refit per fold on the training fold only -- no test-fold leakage.
+    clf = Pipeline([
+        ('scaler', StandardScaler()),
+        ('svc', SVC(C=C, gamma=GAMMA, probability=True, random_state=0)),
+    ])
     pkf = PurgedKFold(n_splits=N_SPLITS, t1=t1, pctEmbargo=PCT_EMBARGO)
     prob = pd.Series(index=X.index, dtype=float)
     pred = pd.Series(index=X.index, dtype=float)
     for tr, te in pkf.split(X=X):
-        fit = clf.fit(X.iloc[tr], y.iloc[tr], sample_weight=w.iloc[tr].values)
+        fit = clf.fit(X.iloc[tr], y.iloc[tr], svc__sample_weight=w.iloc[tr].values)
         p = fit.predict_proba(X.iloc[te])
         prob.iloc[te] = p.max(axis=1)
-        pred.iloc[te] = fit.classes_[p.argmax(axis=1)]
+        pred.iloc[te] = fit.named_steps['svc'].classes_[p.argmax(axis=1)]
     return prob.dropna(), pred.dropna()
 
 
@@ -146,17 +175,37 @@ def part_c_build_trials():
     print('=' * 74)
     print('PART C -- N real strategy configurations, backtested on real BTC data')
     print('=' * 74)
-    events = pd.read_csv(os.path.join(INPUT, 'ch07_training_table.csv'),
-                         index_col=0, parse_dates=True)
+    # MIGRATED 2026-07-21 -- LOAD-BEARING. This used to load
+    # ch07_training_table.csv (88 rows, fracdiff only) while Ch09, Ch12 and
+    # Ch14 had already moved to the enriched table. Ch11's PBO was therefore
+    # being cited as corroborating evidence alongside Ch12's Sharpe spread and
+    # Ch14's DSR while not measuring the same strategy they were. It now loads
+    # the enriched artifact so the ch09->ch14 run is on one dataset and the
+    # "several independent diagnostics agree" claim is actually true.
+    #
+    # ch05_features.csv is still loaded, but only for its `close` column (the
+    # bar series the trial PnLs are marked to market against). That has nothing
+    # to do with the feature set and is unaffected by the migration.
+    enriched = os.path.join(INPUT, 'ch07_training_table_enriched.csv')
+    if os.path.exists(enriched):
+        events = pd.read_csv(enriched, index_col=0, parse_dates=True)
+    else:
+        print('  WARNING: enriched table not found -- falling back to the '
+              'single-feature table. PBO will NOT match published output.')
+        events = pd.read_csv(os.path.join(INPUT, 'ch07_training_table.csv'),
+                             index_col=0, parse_dates=True)
     events['t1'] = pd.to_datetime(events['t1'])
     feats = pd.read_csv(os.path.join(INPUT, 'ch05_features.csv'),
                         index_col=0, parse_dates=True)
 
-    X, y, w, t1 = events[['fracdiff']], events['bin'], events['w'], events['t1']
+    # All feature columns, not a hardcoded [['fracdiff']] -- same pattern as
+    # Ch09/Ch12, so an upstream feature addition can't silently bypass Ch11.
+    feature_cols = [c for c in events.columns if c not in ('bin', 'w', 't1')]
+    X, y, w, t1 = events[feature_cols], events['bin'], events['w'], events['t1']
     close = feats['close']
     bar_ret = close.pct_change().dropna()
-    print(f'  events: {events.shape[0]}   bars: {close.shape[0]}   '
-          f'classes: {sorted(y.unique())}')
+    print(f'  events: {events.shape[0]}   features: {len(feature_cols)}   '
+          f'bars: {close.shape[0]}   classes: {sorted(y.unique())}')
 
     cols, meta = {}, []
     for C in C_GRID:
@@ -222,16 +271,54 @@ def part_d_pbo(M):
           f'{res["n_star"].nunique()} of {n}')
     print(res['n_star'].value_counts().to_string())
 
+    # -----------------------------------------------------------------
+    # LOAD-BEARING interpretation note (2026-07-21). The before/after here
+    # is the most important thing this chapter produced, and it is
+    # counter-intuitive enough that it must not be left to memory.
+    #
+    # This experiment was first run on the ORIGINAL single-feature
+    # (fracdiff) training table and gave PBO = 0.7286. The README at the
+    # time drew the natural conclusion -- "a one-feature model has no real
+    # edge; the correct response is to go and enrich the feature set" --
+    # and Ch19 was pulled forward out of book order to do exactly that.
+    #
+    # Re-run on the 12-feature enriched table, the result was:
+    #
+    #     PBO                        0.7286 -> 0.8286
+    #     median logit lambda       -0.9163 -> -1.2993
+    #     mean IS  Sharpe of winner  +0.0232 -> +0.0882
+    #     mean OOS Sharpe of winner  -0.0187 -> +0.0086
+    #     mean OOS rank of winner     6.84/20 -> 6.12/20   (1 = worst)
+    #
+    # Every individual trial got BETTER looking: full-sample Sharpes moved
+    # from mostly negative to almost entirely positive, and the in-sample
+    # winner's Sharpe nearly quadrupled. And selection among them got
+    # WORSE: PBO rose by 10 points and the winner's out-of-sample rank
+    # fell. Eleven extra features on 87 rows bought capacity to fit noise,
+    # not edge -- and the in-sample numbers cannot tell those apart, which
+    # is precisely why PBO exists.
+    #
+    # So the enrichment did not "fix" the backtest. It made the backtest
+    # more flattering and less trustworthy at the same time. Anyone reading
+    # only the Sharpe column would conclude the opposite.
+    # -----------------------------------------------------------------
     verdict = ('selection is RELIABLE' if value < 0.25 else
                'selection is a COIN FLIP' if value < 0.55 else
                'selection is ACTIVELY HARMFUL')
     print(f"""
   PBO = {value:.2f} -> {verdict}.
-  The configuration that wins in-sample lands, on average, in the bottom
-  half out-of-sample. There is no stable winner here -- which is the honest
-  answer for a strategy family built on a single feature (fracdiff) with no
-  real edge. Section 11.4: the purpose of a backtest is to DISCARD bad
-  models, not to improve them. This one is telling us to discard.
+  The configuration that wins in-sample lands, on average, in the bottom half
+  out-of-sample -- rank {res["rank_oos"].mean():.2f} of {n}, where 1 = worst.
+  There is no stable winner in this strategy family.
+
+  Note what did NOT rescue this. These 20 trials run on the 12-feature
+  enriched table; the same experiment on the old single-feature table gave
+  PBO = 0.73. Adding features made every trial look better in-sample and
+  made selection among them worse. Capacity to fit noise is not edge, and
+  in-sample Sharpe cannot tell you which one you bought.
+
+  Section 11.4: the purpose of a backtest is to DISCARD bad models, not to
+  improve them. This one is telling us to discard.
 """)
 
     # Figure 11.1 analogue -- IS vs OOS Sharpe of the selected strategy

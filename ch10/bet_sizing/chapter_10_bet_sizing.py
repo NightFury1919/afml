@@ -33,6 +33,8 @@ AFML_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -45,31 +47,72 @@ INPUT_DIR = os.path.join(AFML_ROOT, 'input_data')
 N_SPLITS = 4          # matches Ch07's real-data calibration for this dataset
 PCT_EMBARGO = 0.12     # matches Ch07's real-data calibration for this dataset
 STEP_SIZE = 0.01
-# Ch09's real-data grid-search winner (neg_log_loss) as of the ORIGINAL,
-# pre-enrichment single-feature training table.
+# Ch09's real-data grid-search winner (neg_log_loss) on the ENRICHED table,
+# read from ch09_hyperparameter_tuning_stats.csv (`real,grid,0.01`).
 #
-# STALE -- OPEN DECISION (flagged 2026-07-21). ch09_hyperparameter_tuning_stats
-# .csv now reads `real,grid,0.01`, not 100.0. The Ch19 enrichment moved the
-# grid optimum four orders of magnitude, and Ch09 was re-run while Ch10 was
-# not. The value below is deliberately left at 100.0 rather than silently
-# updated, because changing it moves this chapter's published demo output and
-# cascades into Ch11, which imports getSignal from here. That is a decision to
-# take explicitly, not a cleanup to slip into a consistency pass.
+# RESOLVED 2026-07-21 -- LOAD-BEARING, and the history matters.
 #
-# Note also that Ch10 still loads ch07_training_table.csv (88 rows, 1 feature),
-# so C=100.0 IS the correct tuned value for the data this chapter currently
-# uses -- the two are consistent with each other. What is stale is the claim
-# that this number comes from the current ch09 artifact. It no longer does.
-SVC_C = 100.0
+# This constant was 100.0 until today. That was Ch09's grid winner on the
+# ORIGINAL single-feature table. When Ch19's enrichment landed, Ch09 was
+# re-run and its optimum moved to 0.01 -- four orders of magnitude of extra
+# regularization, which is what you would expect once there are 12 correlated
+# features on 87 rows instead of 1. Ch10 was not re-run at the time, so for
+# several days this file cited a source that disagreed with it.
+#
+# It is now 0.01 because Ch10 loads the enriched table (see
+# load_training_table below). The two move together: C is tuned FOR a dataset,
+# so the constant and the loader are a single decision, not two.
+#
+# CORRECTION to a claim made in this comment on 2026-07-21: an earlier version
+# said changing this value "cascades into Ch11, which imports getSignal from
+# here." The import is real but the cascade is not. Ch11 imports only
+# getSignal -- a pure function of (events, stepSize, prob, pred) -- and builds
+# its OWN SVC from its own C_GRID and GAMMA. SVC_C never reaches Ch11. The
+# blast radius of this constant is Ch10's own demo output and nothing else.
+#
+# PRECONDITION: 0.01 is only meaningful because out_of_sample_probs now fits
+# inside a StandardScaler Pipeline. Ch09 tuned this value on scaled features;
+# using it on raw features would be borrowing a constant calibrated under a
+# transform we don't apply. If the scaler is ever removed, this number is
+# invalid and must be re-tuned.
+SVC_C = 0.01
 SVC_GAMMA = 0.1
 
 
 def load_training_table():
-    """The real Ch03-05 BTC/TUSD triple-barrier table: fracdiff feature,
-    bin label, w (Ch04 sample-uniqueness weight), t1 (label end time)."""
+    """The real Ch03-05(+19) BTC/TUSD triple-barrier table: 12 features
+    (fracdiff + Ch19's 11 microstructural features), bin label, w (Ch04
+    sample-uniqueness weight), t1 (label end time).
+
+    MIGRATED 2026-07-21 -- LOAD-BEARING. This used to load
+    ch07_training_table.csv (88 rows, fracdiff only). It now loads the
+    enriched artifact (87 rows, 12 features; one event was dropped by
+    build_enriched_training_table.py for still sitting inside a Ch19
+    rolling-window warmup, the same convention Ch05 already uses for
+    fracdiff's own FFD warmup).
+
+    Why: before this change the pipeline alternated between the two tables --
+    Ch09 enriched, Ch10 thin, Ch11 thin, Ch12 and Ch14 enriched. Chapters 10
+    and 11 were a single-feature island in the middle of an enriched run,
+    which meant their results were not comparable with the chapters on either
+    side of them. Ch07 deliberately stays on the thin table: it is chapter 7,
+    the enrichment is built by chapter 19, and pointing Ch07 at the enriched
+    artifact would create a forward dependency that breaks book order for
+    anyone reading in sequence.
+
+    Falls back to the original table if the enriched artifact is absent (e.g.
+    running this chapter standalone before Ch19 exists on a machine), and says
+    so out loud rather than silently -- a silent fallback here would produce
+    single-feature results that look identical in shape to enriched ones.
+    """
+    enriched = os.path.join(INPUT_DIR, 'ch07_training_table_enriched.csv')
+    if os.path.exists(enriched):
+        return pd.read_csv(enriched, index_col=0, parse_dates=[0, 't1'])
+    print('  WARNING: ch07_training_table_enriched.csv not found -- falling '
+          'back to the original single-feature ch07_training_table.csv. '
+          'Results will NOT match the published Ch10 output.')
     path = os.path.join(INPUT_DIR, 'ch07_training_table.csv')
-    df = pd.read_csv(path, index_col=0, parse_dates=[0, 't1'])
-    return df
+    return pd.read_csv(path, index_col=0, parse_dates=[0, 't1'])
 
 
 def out_of_sample_probs(X, y, w, t1, n_splits=N_SPLITS, pct_embargo=PCT_EMBARGO,
@@ -102,18 +145,40 @@ def out_of_sample_probs(X, y, w, t1, n_splits=N_SPLITS, pct_embargo=PCT_EMBARGO,
     prob = pd.Series(index=X.index, dtype=float)
     pred = pd.Series(index=X.index, dtype=float)
     for train, test in gen.split(X=X):
-        clf = SVC(C=C, gamma=gamma, probability=True, random_state=random_state)
-        clf.fit(X.iloc[train, :], y.iloc[train], sample_weight=w.iloc[train].values)
-        proba = clf.predict_proba(X.iloc[test, :])
+        # StandardScaler Pipeline is LOAD-BEARING (added 2026-07-21, same fix
+        # Ch09 and Ch12 already carry). A bare SVC on raw X was harmless while
+        # X was the single fracdiff column. On the enriched table the feature
+        # magnitudes span ~3.8e9 to 1 (kyle_lambda mean |x| ~2.4e3 next to
+        # amihud_lambda_20bar ~6.3e-07), and an unscaled RBF kernel's squared
+        # distance is then dominated almost entirely by the largest-magnitude
+        # column -- the other ten features stop contributing. That yields a
+        # near-useless fit that still returns plausible-looking probabilities,
+        # which is the dangerous kind of wrong. The scaler is refit per fold on
+        # the TRAINING fold only (inside the Pipeline), so no test-fold
+        # statistics leak. sample_weight is routed with the svc__ prefix, the
+        # standard Pipeline mechanism.
+        pipe = Pipeline([
+            ('scaler', StandardScaler()),
+            ('svc', SVC(C=C, gamma=gamma, probability=True,
+                        random_state=random_state)),
+        ])
+        pipe.fit(X.iloc[train, :], y.iloc[train],
+                 svc__sample_weight=w.iloc[train].values)
+        proba = pipe.predict_proba(X.iloc[test, :])
         idx_max = proba.argmax(axis=1)
         prob.iloc[test] = proba[np.arange(len(test)), idx_max]
-        pred.iloc[test] = clf.classes_[idx_max]
+        pred.iloc[test] = pipe.named_steps['svc'].classes_[idx_max]
     return prob, pred
 
 
 def main():
     table = load_training_table()
-    X = table[['fracdiff']]
+    # All feature columns, not a hardcoded [['fracdiff']] -- same pattern as
+    # Ch09 and Ch12, so adding a feature upstream never silently bypasses this
+    # chapter again.
+    feature_cols = [c for c in table.columns if c not in ('bin', 'w', 't1')]
+    X = table[feature_cols]
+    print(f'  training table: {X.shape[0]} events x {X.shape[1]} features')
     y = table['bin']
     w = table['w']
     t1 = table['t1']

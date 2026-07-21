@@ -46,8 +46,11 @@ pinned rather than assumed.
 No fitted Ch09 classifier exists on disk — only its winning hyperparameters
 were persisted (`ch09_hyperparameter_tuning_stats.{csv,pkl}`). Rather than
 wait or reconstruct, `chapter_10_bet_sizing.py`/`.ipynb` refit an SVC with
-Ch09's real winning hyperparameters (`C=100, gamma=0.1`, the real-data
-grid-search winner on `neg_log_loss`) on the real Ch07 training table,
+Ch09's real winning hyperparameters (`C=0.01, gamma=0.1`, the real-data
+grid-search winner on `neg_log_loss` for the enriched table — this was
+`C=100` until 2026-07-21, when this chapter migrated from the original
+single-feature table and the constant followed the data) on the real Ch07
+enriched training table,
 **out-of-sample via Ch07's `PurgedKFold`** (not a plain in-sample refit,
 which would be lookahead bias for a bet-sizing signal). If a future chapter
 ever does persist a fitted classifier to disk, switch to using that object
@@ -71,8 +74,9 @@ Running `chapter_10_bet_sizing.py` on the real `mlfinlab` env surfaced a
 real determinism bug: `SVC(probability=True)` without a pinned
 `random_state` fits an internal randomized 5-fold CV (Platt scaling) to
 calibrate `predict_proba`. Left unset, `predict`/`predict_proba` are
-non-deterministic run-to-run, and this dataset is small and thin enough
-(single feature, 88 rows) that sklearn 1.2.2 (real machine) and a later
+non-deterministic run-to-run, and this dataset was small and thin enough
+at the time (single feature, 88 rows; it is now 12 features over 87 rows)
+that sklearn 1.2.2 (real machine) and a later
 sklearn (sandbox) landed on **entirely different winning classes** for
 `pred` — not just noisy probabilities, a flipped majority class. Fixed by
 pinning `random_state=0` in `out_of_sample_probs`; verified reproducible
