@@ -7,11 +7,29 @@ description of path 1 and path 2 for its N=6, k=2 example (Section
 12.4.1), and (2) exact formulas given in the chapter text (phi[N,k],
 C(N,k)).
 """
+# --- import the module(s) under test ---------------------------------------
+# Derive the repo root from __file__, put it on sys.path, then import
+# fully-qualified.
+#
+# LOAD-BEARING (2026-07-22): this used to be a bare 'from cpcv import ...'
+# with no sys.path handling, which the 2026-07-21 audit flagged as fragile --
+# it only passes when pytest is invoked from inside this module's own
+# folder; from the repo root it raises ModuleNotFoundError (both this
+# folder and ch12/ have __init__.py, per the audit's verified truth table).
+# See ch10/bet_sizing/test_bet_sizing.py or ch13/otr/test_otr.py for the
+# pattern this was generalized from.
+import os
+import sys
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
 import numpy as np
 import pandas as pd
 import pytest
 
-from cpcv import (
+from ch12.cpcv.cpcv import (  # noqa: E402
     partition_groups,
     enumerate_splits,
     n_paths,

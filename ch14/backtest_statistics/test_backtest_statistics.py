@@ -6,12 +6,30 @@ All tests use hand-traced, synthetic data with known expected values
 real BTC/TUSD data is exercised in chapter_14_backtest_statistics.py,
 consuming Ch12's real CPCV path signal/returns).
 """
+# --- import the module(s) under test ---------------------------------------
+# Derive the repo root from __file__, put it on sys.path, then import
+# fully-qualified.
+#
+# LOAD-BEARING (2026-07-22): this used to be a bare 'from backtest_statistics
+# import ...' with no sys.path handling, which the 2026-07-21 audit flagged
+# as fragile -- it only passes when pytest is invoked from inside this
+# module's own folder; from the repo root it raises ModuleNotFoundError
+# (both this folder and ch14/ have __init__.py, per the audit's verified
+# truth table). See ch10/bet_sizing/test_bet_sizing.py or ch13/otr/test_otr.py
+# for the pattern this was generalized from.
+import os
+import sys
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
 import numpy as np
 import pandas as pd
 import pytest
 from scipy.stats import norm
 
-from backtest_statistics import (
+from ch14.backtest_statistics.backtest_statistics import (  # noqa: E402
     getBetTiming, getHoldingPeriod, getHHI, hhi_concentration_stats,
     computeDD_TuW, probabilistic_sharpe_ratio, expected_max_sharpe,
     deflated_sharpe_ratio, EULER_MASCHERONI,

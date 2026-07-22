@@ -2,9 +2,27 @@
 TDD suite for classification_scores, hand-traced against AFML Table 14.1's
 four degenerate cases of binary classification.
 """
+# --- import the module under test ------------------------------------------
+# Derive the repo root from __file__, put it on sys.path, then import
+# fully-qualified.
+#
+# LOAD-BEARING (2026-07-22): this used to be a bare 'from
+# classification_scores import ...' with no sys.path handling, which the
+# 2026-07-21 audit flagged as fragile -- it only passes when pytest is
+# invoked from inside this module's own folder; from the repo root it
+# raises ModuleNotFoundError (both this folder and ch14/ have __init__.py,
+# per the audit's verified truth table). See ch10/bet_sizing/test_bet_sizing.py
+# or ch13/otr/test_otr.py for the pattern this was generalized from.
+import os
+import sys
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
 import numpy as np
 import pytest
-from classification_scores import classification_scores
+from ch14.backtest_statistics.classification_scores import classification_scores  # noqa: E402
 
 
 class TestClassificationScores:
