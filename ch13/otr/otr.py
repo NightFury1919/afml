@@ -77,8 +77,11 @@ def build_xy_from_opportunities(paths, targets):
     bin=-1 losses, which drift AWAY from that always-long target) pools a
     converging process with a diverging one and produced phi_hat=1.027 on
     real data -- non-stationary. See chapter_13_otr.py for the full
-    real-data investigation and the interim fix used there (entry-price
-    centering) plus the deeper random-walk finding that surfaced regardless.
+    real-data investigation. Entry-price centering is the FINAL choice used
+    there (2026-07-22 decision, not an interim placeholder) -- a deeper
+    random-walk finding surfaced regardless of target choice, and is
+    reported as this chapter's real, book-consistent result rather than
+    something pending further work.
     """
     if len(paths) != len(targets):
         raise ValueError(

@@ -45,7 +45,7 @@ ratios across the entire real mesh are flat and near zero (range roughly
 ±0.09), unlike Part A's book-reproduction cases (Sharpe ~3-13 at the optimal
 node). **This is a genuine, book-consistent finding, not an implementation
 bug** — treated as the chapter's real result rather than forced into a false
-"optimal" trading rule.
+"optimal" trading rule. **(2026-07-22.)** This is no longer an isolated finding: Ch11's PBO (~0.83), Ch12's CPCV (all 5 real paths negative), and Ch14's DSR (0/5 paths survive at 0.95) are three independently-mechanised diagnostics on this same real-data pipeline, all corroborating "no exploitable signal in this feature set/model combination." Per-side calibration was considered as an alternative and rejected — see the `DECISION` comment in `chapter_13_otr.py`'s Part B.
 
 ## Reproducibility note
 

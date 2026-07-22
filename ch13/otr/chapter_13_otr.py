@@ -98,7 +98,8 @@ def part_b_real_calibration():
     feats = pd.read_csv(os.path.join(INPUT, 'ch05_features.csv'), index_col=0, parse_dates=True)
     close = feats['close']
 
-    # LOAD-BEARING -- forecast-target shortcut, deferred proper fix pending.
+    # LOAD-BEARING -- forecast-target shortcut; FINAL as of 2026-07-22
+    # (see DECISION below), not deferred.
     #
     # The book defines E0[Pi,Ti] as "the level targeted by opportunity i" --
     # an ex-ante forecast known at trade inception. Ch03's triple_barrier.py
@@ -111,11 +112,11 @@ def part_b_real_calibration():
     # away from it) and produced phi_hat=1.027 -- non-stationary, violates
     # the O-U requirement phi in (-1,1).
     #
-    # INTERIM FIX (this file): center deviations on ENTRY PRICE instead
-    # (target=0 in centered coordinates), not the literal book-defined
-    # profit-taking level. This is a real departure from strict book-
-    # fidelity on E0[Pi,Ti] -- documented here rather than silently
-    # substituted.
+    # FIX APPLIED (this file, FINAL): center deviations on ENTRY PRICE
+    # instead (target=0 in centered coordinates), not the literal
+    # book-defined profit-taking level. This is a real departure from
+    # strict book-fidelity on E0[Pi,Ti] -- documented here rather than
+    # silently substituted.
     #
     # DEEPER FINDING (surfaced regardless of the fix above): even with
     # entry-price centering, phi_hat comes out at 1.042 -- STILL non-
@@ -123,15 +124,24 @@ def part_b_real_calibration():
     # shortcut: raw BTC bar-level prices, over these short (~12-bar) trade
     # windows, behave close to a RANDOM WALK. The book itself (Section
     # 13.6.1) states that as phi->1, "there are no recognizable areas where
-    # performance can be maximized" -- i.e. this may be a genuine, book-
+    # performance can be maximized" -- i.e. this is a genuine, book-
     # consistent finding (no fittable OTR exists for this data), not an
     # implementation bug.
     #
-    # PROPER FIX (deferred, not yet done): split calibration by realized
-    # side -- for bin=-1 opportunities, either flip the target (mirror it
-    # below entry, treating them as implicit short trades) or calibrate
-    # {phi,sigma} separately per group. Revisit if the pipeline ever gains
-    # real side-aware barrier construction, or if this comes up again.
+    # DECISION (2026-07-22): do NOT pursue per-side calibration as a "fix."
+    # Considered and rejected -- splitting by realized side would roughly
+    # halve the sample (87 -> ~44 per side), materially increasing
+    # estimation noise, and per-side calibration isn't part of the book's
+    # printed OTR methodology; pursuing it here would mean searching for a
+    # subset where phi_hat looks more favorable, not reporting the result
+    # the full dataset actually gives. This is also no longer an isolated
+    # finding: as of 2026-07-22, three other independently-mechanised
+    # real-data diagnostics on this same pipeline corroborate "no real
+    # exploitable signal in this feature set/model combination" -- Ch11's
+    # PBO (~0.83), Ch12's CPCV (all 5 paths negative), and Ch14's DSR (0/5
+    # paths survive at 0.95). Non-stationarity here is reported as this
+    # chapter's real result, consistent with the rest of the pipeline, not
+    # treated as a bug to fix.
     paths, targets = [], []
     for entry_t, row in ev3.iterrows():
         exit_t = row['t1']
