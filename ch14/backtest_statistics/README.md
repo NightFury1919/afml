@@ -67,16 +67,23 @@ consumes:
 
 ## Real-data finding
 **0 of 5 real CPCV paths survive DSR at the 0.95 significance level** — even
-path 2, whose PSR against a naive zero benchmark alone looked reasonably
-strong (0.92), fails once DSR corrects for having genuinely run N=5 trials.
+path 4, whose PSR against a naive zero benchmark alone looked strongest
+(0.4465), fails once DSR corrects for having genuinely run N=5 trials.
+
+*(Corrected 2026-07-22: this previously named "path 2 ... 0.92" -- a figure
+that was hardcoded as a literal string in `chapter_14_backtest_statistics.py`'s
+print statement rather than computed from the actual DSR results, and was
+never true of any committed run. The script now computes the
+strongest-PSR path dynamically; see that file's 2026-07-22 LOAD-BEARING note.)*
 
 This is a fourth, differently-mechanised real-data diagnostic pointing the
-same direction as Ch11's PBO (~0.73), Ch12's own CPCV Sharpe spread (mean
-0.067, straddling zero), and Ch13's O-U non-stationarity finding: **this real
-feature set/model combination shows no backtest result that survives rigorous
-statistical scrutiny.** Not a code bug — a real, book-consistent result (this
-is exactly the kind of overfitting DSR exists to catch — Snippet 14.5, the
-"third law of backtesting").
+same direction as Ch11's PBO (~0.83), Ch12's own CPCV Sharpe spread (mean
+−0.139, uniformly negative across all 5 paths), and Ch13's O-U
+non-stationarity finding: **this real feature set/model combination shows no
+backtest result that survives rigorous statistical scrutiny.** Not a code
+bug — a real, book-consistent result (this is exactly the kind of
+overfitting DSR exists to catch — Snippet 14.5, the "third law of
+backtesting").
 
 ## Running the tests
 ```powershell

@@ -55,43 +55,50 @@ distribution of them.
   signal; this reports the per-bet Sharpe, same spirit as Ch11's PBO
   comparison.
 
-## Real-data result (88-row BTC/TUSD triple-barrier table)
+## Real-data result (87-row enriched BTC/TUSD training table; 88 real triple-barrier events -- one dropped for still being inside a Ch19 rolling-window warmup, see `load_data()`'s docstring)
 
 | path | Sharpe |
 |------|--------|
-| 1 | −0.0380 |
-| 2 | −0.1738 |
-| 3 | +0.2770 |
-| 4 | +0.0237 |
-| 5 | −0.1343 |
+| 1 | -0.1952 |
+| 2 | -0.2075 |
+| 3 | -0.0998 |
+| 4 | -0.0146 |
+| 5 | -0.1780 |
 
-Distribution: mean −0.009, std 0.178, range [−0.174, +0.277].
+Distribution: mean **-0.139**, std 0.081, range [-0.208, -0.015].
 
-**Single-path baseline** (Ch10-style plain `PurgedKFold`, `n_splits=4` —
+**Single-path baseline** (Ch10-style plain `PurgedKFold`, `n_splits=4` --
 the one number a walk-forward or plain-CV backtest would have reported):
-Sharpe = **−0.1254**.
+Sharpe = **-0.0115**.
 
-This is the chapter's point, made concretely on real data: the
-single-path baseline alone would read as "this strategy loses money."
-The 5-path CPCV distribution tells a more honest story — genuine
-disagreement in *sign* across paths (1 clearly negative, 3 positive, 1
-essentially zero; mean Sharpe +0.067), which is what the committed
-`ch12_cpcv_stats.csv` actually contains.
+**(Corrected 2026-07-22.)** The table and paragraph below replace two
+earlier, inconsistent versions of this section. `SVC_C` was `100.0` --
+Ch09's *pre*-Ch19-enrichment grid-search winner -- from Ch12's original
+commit straight through the Ch19-enrichment commit (97a5101), which fixed
+the StandardScaler bug but never migrated this constant (the same class of
+bug Ch10/Ch11 had and were fixed for). An earlier version of the table
+above, with mean approx -0.009, was what that stale run actually produced --
+but the prose paragraph that followed it in this file claimed "mean Sharpe
++0.067, 1 negative/3 positive" regardless, directly contradicting the table
+above it. That number was never produced by any committed run of this
+chapter; it appears to have been a transcription error introduced during
+the 2026-07-21 audit and never reconciled against the table it sat next to.
 
-(Updated 2026-07-21. This paragraph previously read "2 negative, 2 slightly
-positive, 1 near-zero" and described the training table as having "only one
-feature, `fracdiff`". Both were true of the pre-Ch19 run and neither is true
-of the artifact committed alongside this README: since the enrichment, Ch12
-loads the 12-feature `ch07_training_table_enriched.csv`. The sign spread is
-still the chapter's point -- it just is not as bad as this file claimed.)
-The evidence points to a strategy with close-to-zero real skill and high
-estimation uncertainty, not a confidently bad one — a conclusion the
-single path alone couldn't support.
+With `SVC_C` corrected to **0.01** (Ch09's real post-enrichment winner, the
+same value Ch10/Ch11 use), the result sharpens rather than reverses: **all 5
+CPCV paths are negative**, in a materially tighter distribution than either
+prior version showed. Where the earlier (fabricated) narrative was "genuine
+disagreement in sign across paths reveals uncertainty," the corrected result
+tells a different but equally CPCV-relevant story: the single-path baseline
+alone looks close to breakeven (-0.0115), but all 5 resampled paths agree the
+real performance is meaningfully negative -- exactly the kind of consistent
+signal a single lucky/unlucky path can mask, and exactly what CPCV exists to
+surface.
 
 Section 12.5 variance-reduction check: average pairwise path-return
-correlation ρ̄ ≈ 0.052 (paths are close to independent, as CPCV intends),
-giving an implied variance of the CPCV mean Sharpe well below any single
-path's own variance.
+correlation rho_bar approx **-0.041** (still close to zero -- paths remain close to
+independent, as CPCV intends), giving an implied variance of the CPCV mean
+Sharpe (0.0011) well below any single path's own variance (0.0066).
 
 ## Files
 

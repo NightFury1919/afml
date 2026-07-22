@@ -18,7 +18,7 @@ Three parts:
      predictions vs. real true labels.
 
 Why B matters (ties to the pipeline's running theme): Ch11's PBO
-(~0.73), Ch12's own CPCV Sharpe spread (mean 0.067, straddling zero),
+(~0.83), Ch12's own CPCV Sharpe spread (mean -0.139, uniformly negative),
 and Ch13's O-U non-stationarity finding have each independently pointed
 to "no reliable signal in this data." DSR is a fourth, differently-
 mechanised diagnostic -- if it also shows no path surviving deflation,
@@ -124,9 +124,17 @@ def main():
 
     n_survive = sum(r['survives_dsr'] for r in dsr_results)
     print(f'\n  {n_survive}/5 paths survive DSR at the {DSR_SIGNIFICANCE} significance level.')
-    print('  Even paths whose PSR[0] alone looked reasonably strong (e.g. path 2 at 0.92) '
-          'fail once DSR corrects for having run N=5 trials -- a real, book-consistent '
-          'illustration of the third law of backtesting (Snippet 14.5).')
+    # LOAD-BEARING (2026-07-22): this used to hardcode 'path 2 at 0.92' as a
+    # literal string, independent of dsr_results -- never actually computed,
+    # and wrong once Ch12's SVC_C fix changed which path has the strongest
+    # PSR[0]. Compute it for real instead of hardcoding a claim about output
+    # this print statement doesn't actually inspect.
+    best_psr = max(dsr_results, key=lambda r: r['psr_vs_zero'])
+    best_path = best_psr['path']
+    best_psr_val = best_psr['psr_vs_zero']
+    print(f'  Even the path whose PSR[0] alone looked strongest (path {best_path} at '
+          f'{best_psr_val:.4f}) fails once DSR corrects for having run N=5 trials -- '
+          f'a real, book-consistent illustration of the third law of backtesting (Snippet 14.5).')
 
     # ======================================================================
     # C. Classification scores (14.8) on path 1's real predictions

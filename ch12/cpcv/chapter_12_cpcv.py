@@ -46,7 +46,13 @@ N_GROUPS = 6            # mirrors AFML Fig 12.1/12.2 exactly
 K_TEST_GROUPS = 2
 PCT_EMBARGO = 0.12       # matches Ch07/Ch10's real-data calibration for this dataset
 STEP_SIZE = 0.01         # matches Ch10
-SVC_C = 100.0            # Ch09's real-data grid-search winner (neg_log_loss)
+# LOAD-BEARING (2026-07-22): SVC_C was 100.0 from Ch12's original commit through
+# the Ch19-enrichment commit (97a5101) -- that commit fixed the StandardScaler
+# bug but never migrated this constant, unlike Ch10/Ch11's SVC_C. 100.0 was
+# Ch09's PRE-enrichment grid-search winner; the post-enrichment winner (what
+# Ch10/Ch11 use) is 0.01. All Ch12/Ch14 numbers committed before this fix were
+# produced under the stale, pre-enrichment value.
+SVC_C = 0.01              # Ch09's real-data grid-search winner, POST-Ch19-enrichment
 SVC_GAMMA = 0.1
 RANDOM_STATE = 0         # SVC(probability=True) determinism -- see Ch09/Ch10 handoffs
 
