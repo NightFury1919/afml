@@ -64,7 +64,7 @@ def get_weights_ffd(d: float, thres: float) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------
-# TDD TEST RESULTS (tests/test_ch05.py, get_weights_ffd portion)
+# TDD TEST RESULTS (frac_diff/test_ch05.py, get_weights_ffd portion)
 # Run 2026-06-26.
 # ---------------------------------------------------------------------
 # test_get_weights_ffd_matches_hand_trace               PASSED

@@ -129,7 +129,7 @@ def find_minimum_d(results: pd.DataFrame, p_value_threshold: float = 0.05):
 
 
 # ---------------------------------------------------------------------
-# TDD TEST RESULTS (tests/test_ch05.py, find_min_ffd portion)
+# TDD TEST RESULTS (frac_diff/test_ch05.py, find_min_ffd portion)
 # Run 2026-06-26. Verified against a KNOWN-ground-truth synthetic
 # random walk (true unit root by construction), not just "looks
 # reasonable" checks.

@@ -21,7 +21,7 @@ addresses this with three complementary weighting schemes:
 
 ```
 ch04/
-├── sample_weights/                          ← all implementation code
+├── sample_weights/                          ← all implementation code + tests
 │   ├── __init__.py
 │   ├── co_events.py                         Snippet 4.1 — mp_num_co_events
 │   ├── uniqueness.py                        Snippet 4.2 — mp_sample_tw, get_average_uniqueness
@@ -32,11 +32,14 @@ ch04/
 │   ├── monte_carlo.py                       Snippets 4.7-4.9 — get_rnd_t1, aux_mc, main_mc
 │   ├── return_attribution.py                Snippet 4.10 — mp_sample_w, get_sample_weights
 │   ├── time_decay.py                        Snippet 4.11 — get_time_decay
-│   └── real_data_bootstrap_comparison.py    companion: bootstrap comparison on real events
-├── tests/
+│   ├── real_data_bootstrap_comparison.py    companion: bootstrap comparison on real events
 │   └── test_ch04.py                         44 TDD tests, all numeric values verified
-├── chapter_4_sample_weights.ipynb           notebook with explanations + inline graphs
-├── examples_chapter_4_sample_weights.py     standalone script, same content, popup graphs
+├── chapter_4_ntrials_fix.ipynb              notebook with explanations + inline graphs
+├── chapter_4_ntrials_fix.py                 standalone script, same content, popup graphs
+│                                             (renamed from ch04_timed_v2.py, 2026-07 layout
+│                                             refactor -- this README previously described
+│                                             chapter_4_sample_weights.{ipynb,py}, which never
+│                                             matched what was actually on disk; corrected here)
 ├── README.md                                this file
 └── requirements.txt
 ```
@@ -46,7 +49,7 @@ ch04/
 ```bash
 conda activate mlfinlab
 cd C:\ws\AFML
-pytest ch04/tests/test_ch04.py -v
+pytest ch04/sample_weights/test_ch04.py -v
 ```
 
 ## Running the notebook / example script
@@ -56,10 +59,10 @@ events built the same way as Chapter 3.
 
 ```bash
 # Notebook (inline plots)
-jupyter notebook ch04/chapter_4_sample_weights.ipynb
+jupyter notebook ch04/chapter_4_ntrials_fix.ipynb
 
 # Standalone script (popup plot windows)
-python ch04/examples_chapter_4_sample_weights.py
+python ch04/chapter_4_ntrials_fix.py
 ```
 
 ## Key design notes

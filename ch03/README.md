@@ -19,15 +19,14 @@ increasing sophistication:
 
 ```
 ch03/
-├── labeling/                             ← all implementation code
+├── labeling/                             ← all implementation code + tests
 │   ├── __init__.py
 │   ├── returns.py                        Section 3.2 — fixed_time_horizon
 │   ├── triple_barrier.py                 Sections 3.3-3.5 — get_daily_vol,
 │   │                                      add_vertical_barrier, apply_pt_sl_on_t1,
 │   │                                      get_events, get_bins
-│   └── meta_labeling.py                  Sections 3.6-3.9 — get_events_meta,
-│                                          get_bins_meta, drop_labels
-├── tests/
+│   ├── meta_labeling.py                  Sections 3.6-3.9 — get_events_meta,
+│   │                                      get_bins_meta, drop_labels
 │   └── test_ch03.py                      38 TDD tests, all numeric values verified
 │                                          (includes multithreading tests, skipped on
 │                                          Windows due to multiprocessing constraints)
@@ -42,7 +41,7 @@ ch03/
 ```bash
 conda activate mlfinlab
 cd C:\ws\AFML
-pytest ch03/tests/test_ch03.py -v
+pytest ch03/labeling/test_ch03.py -v
 ```
 
 To verify multithreading manually (skipped automatically in pytest on Windows):

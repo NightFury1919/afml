@@ -1,11 +1,11 @@
 """
 test_ch03.py — TDD tests for AFML Chapter 3 implementations
-Run with: pytest ch03/tests/test_ch03.py -v
+Run with: pytest ch03/labeling/test_ch03.py -v
 
 📁 C:\ws\AFML\
 └── ch03\
-    └── tests\
-        └── test_ch03.py   ← goes here
+    └── labeling\
+        └── test_ch03.py   ← goes here (moved from ch03\tests\, 2026-07 layout refactor)
 
 All expected values were computed by running the actual implementation
 functions and recording their output. Tests verify specific numeric values,

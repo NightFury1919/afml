@@ -138,7 +138,7 @@ def frac_diff(series, d: float, thres: float = 0.01):
 
 
 # ---------------------------------------------------------------------
-# TDD TEST RESULTS (tests/test_ch05.py, frac_diff portion)
+# TDD TEST RESULTS (frac_diff/test_ch05.py, frac_diff portion)
 # Run 2026-06-26.
 # ---------------------------------------------------------------------
 # test_frac_diff_matches_hand_trace_thres_1            PASSED

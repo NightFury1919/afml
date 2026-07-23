@@ -212,7 +212,7 @@ plt.show()
 
 # =============================================================================
 # TDD TEST RESULTS — Chapter 2
-# pytest ch02/tests/test_ch02.py -v
+# pytest ch02/bars/test_ch02.py -v
 # Run date: 2026-06-12  |  Python 3.10.20  |  pytest 9.0.3
 # =============================================================================
 # TestEwma::test_empty_array_returns_zero                         PASSED

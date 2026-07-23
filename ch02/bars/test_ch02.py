@@ -1,11 +1,13 @@
 r"""
 test_ch02.py — TDD tests for AFML Chapter 2 implementations
-Run with: pytest ch02/tests/test_ch02.py -v
+Run with: pytest ch02/bars/test_ch02.py -v
 
 📁 C:\ws\AFML\
 └── ch02\
-    └── tests\
-        └── test_ch02.py   ← goes here
+    └── bars\
+        └── test_ch02.py   ← goes here (moved from ch02\tests\, 2026-07 layout refactor;
+                              covers ch02/bars and ch02/multi_product via fully-qualified
+                              ch02.* imports, not co-location)
 
 All expected values were computed by running the actual implementation
 functions and recording their output. Tests verify specific numeric values,

@@ -140,7 +140,7 @@ if __name__ == '__main__':
 # TDD results mirror -- same suite as this chapter's notebook (both notebooks
 # share test_ch05.py, since Ch05 has one test suite across two demo scripts).
 # ============================================================================
-# TDD TEST RESULTS -- Chapter 5 (tests/test_ch05.py, full suite)
+# TDD TEST RESULTS -- Chapter 5 (frac_diff/test_ch05.py, full suite)
 # All 29 tests passed before this notebook/script was assembled (run 2026-06-26):
 # ============================================================================
 # test_d_0_4_matches_hand_trace                                        PASSED

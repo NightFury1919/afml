@@ -11,8 +11,7 @@ uniqueness machinery.
 ch06/
 ├── ensemble/
 │   ├── __init__.py
-│   └── bagging_accuracy.py   Snippet 6.1 -- P[X > N/k] calculation
-├── tests/
+│   ├── bagging_accuracy.py   Snippet 6.1 -- P[X > N/k] calculation
 │   └── test_ch06.py          10 tests, all passing
 ├── chapter_6_ensemble.py      example script (Snippets 6.1 + 6.2)
 ├── chapter_6_ensemble.ipynb   notebook walkthrough
@@ -52,7 +51,7 @@ Tested against sklearn 1.2.2 (Ethan's mlfinlab environment):
 
 ```bash
 # Tests
-cd ch06/tests && pytest test_ch06.py -v
+cd ch06/ensemble && pytest test_ch06.py -v
 
 # Example script
 cd ch06 && python chapter_6_ensemble.py

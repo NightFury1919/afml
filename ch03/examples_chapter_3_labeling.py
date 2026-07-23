@@ -202,7 +202,7 @@ print(tb_labels_clean['bin'].value_counts().sort_index())
 
 # =============================================================================
 # TDD TEST RESULTS — Chapter 3
-# pytest ch03/tests/test_ch03.py -v
+# pytest ch03/labeling/test_ch03.py -v
 # Run date: 2026-06-12  |  Python 3.10.20  |  pytest 9.0.3
 # =============================================================================
 # TestFixedTimeHorizon::test_labels_known_values                  PASSED

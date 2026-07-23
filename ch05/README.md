@@ -17,10 +17,9 @@ ch05/
 │   │                          (VECTORIZED -- see module docstring; not a
 │   │                          book snippet detail, our own perf rewrite)
 │   ├── find_min_ffd.py        Snippet 5.4 -- ADF-based search across d values
-│   └── calibration.py         OUR OWN utility (not a book snippet) -- finds
-│                              a fair absolute thres for frac_diff_ffd that
-│                              matches frac_diff's relative thres semantics
-├── tests/
+│   ├── calibration.py         OUR OWN utility (not a book snippet) -- finds
+│   │                          a fair absolute thres for frac_diff_ffd that
+│   │                          matches frac_diff's relative thres semantics
 │   └── test_ch05.py           29 tests, all passing
 ├── input_data/
 │   └── BTCTUSD-trades-2026-03.csv   real Binance BTC/TUSD tick data
@@ -93,7 +92,7 @@ chapter.
 
 ```bash
 # Tests
-cd ch05/tests && pytest test_ch05.py -v
+cd ch05/frac_diff && pytest test_ch05.py -v
 
 # Example script (real data)
 cd ch05 && python chapter_5_frac_diff.py

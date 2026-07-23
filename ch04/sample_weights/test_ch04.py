@@ -1,11 +1,11 @@
 """
 test_ch04.py — TDD tests for AFML Chapter 4 implementations
-Run with: pytest ch04/tests/test_ch04.py -v
+Run with: pytest ch04/sample_weights/test_ch04.py -v
 
 📁 C:\\ws\\AFML\\
 └── ch04\\
-    └── tests\\
-        └── test_ch04.py   ← goes here
+    └── sample_weights\\
+        └── test_ch04.py   ← goes here (moved from ch04\\tests\\, 2026-07 layout refactor)
 
 All expected values were computed by running the actual implementation
 functions and recording their output, or by replicating the book's

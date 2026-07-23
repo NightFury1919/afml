@@ -83,7 +83,7 @@ def get_weights(d: float, size: int) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------
-# TDD TEST RESULTS (tests/test_ch05.py, get_weights portion)
+# TDD TEST RESULTS (frac_diff/test_ch05.py, get_weights portion)
 # Run 2026-06-26. All hand-traced against the book's recursive formula.
 # ---------------------------------------------------------------------
 # test_d_0_4_matches_hand_trace                       PASSED

@@ -100,7 +100,7 @@ def bagging_classifier_accuracy(N: int, p: float, k: int) -> float:
 
 
 # ---------------------------------------------------------------------
-# TDD TEST RESULTS (tests/test_ch06.py)
+# TDD TEST RESULTS (ensemble/test_ch06.py)
 # Run 2026-06-30. All verified against the book's argument and
 # independently cross-checked against scipy.stats.binom.cdf.
 # ---------------------------------------------------------------------

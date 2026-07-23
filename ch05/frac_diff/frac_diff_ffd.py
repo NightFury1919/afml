@@ -140,7 +140,7 @@ def frac_diff_ffd(series, d: float, thres: float = 1e-5):
 
 
 # ---------------------------------------------------------------------
-# TDD TEST RESULTS (tests/test_ch05.py, frac_diff_ffd portion)
+# TDD TEST RESULTS (frac_diff/test_ch05.py, frac_diff_ffd portion)
 # Run 2026-06-26.
 # ---------------------------------------------------------------------
 # test_frac_diff_ffd_matches_hand_trace                  PASSED

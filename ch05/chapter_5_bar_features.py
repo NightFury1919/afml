@@ -181,7 +181,7 @@ if __name__ == '__main__':
 
 # =============================================================================
 # TDD TEST RESULTS -- Chapter 5
-# pytest ch05/tests/test_ch05.py -v
+# pytest ch05/frac_diff/test_ch05.py -v
 # Run 2026-06-26  |  Python 3.10.20  |  pytest 9.0.3
 # =============================================================================
 # get_weights          8 passed  (all hand-traced against the recursive formula)
@@ -199,7 +199,7 @@ if __name__ == '__main__':
 # TDD results mirror -- same suite as this chapter's notebook (both notebooks
 # share test_ch05.py, since Ch05 has one test suite across two demo scripts).
 # ============================================================================
-# TDD TEST RESULTS -- Chapter 5 (tests/test_ch05.py, full suite)
+# TDD TEST RESULTS -- Chapter 5 (frac_diff/test_ch05.py, full suite)
 # All 29 tests passed before this notebook/script was assembled (run 2026-06-26):
 # ============================================================================
 # test_d_0_4_matches_hand_trace                                        PASSED

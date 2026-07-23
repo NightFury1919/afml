@@ -247,7 +247,7 @@ if __name__ == '__main__':
 
     # =============================================================================
     # TDD TEST RESULTS — Chapter 4
-    # pytest ch04/tests/test_ch04.py -v
+    # pytest ch04/sample_weights/test_ch04.py -v
     # Run date: 2026-06-23  |  Python 3.10.20  |  pytest 9.0.3
     # =============================================================================
     # TestMpNumCoEvents::test_known_concurrency_values                       PASSED
