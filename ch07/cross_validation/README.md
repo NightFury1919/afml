@@ -105,11 +105,16 @@ on real data, or open the paired notebook for the full walkthrough.
 
 | Fold | train_n | test_n | RF accuracy | Bagging neg_log_loss |
 |---|---|---|---|---|
-| 0 | 52 | 22 | 0.459 | -0.813 |
-| 1 | 43 | 22 | 0.589 | -0.661 |
-| 2 | 42 | 22 | 0.716 | -0.686 |
-| 3 | 63 | 22 | 0.422 | -0.843 |
+| 0 | 52 | 22 | 0.459 | -0.796 |
+| 1 | 43 | 22 | 0.589 | -0.622 |
+| 2 | 42 | 22 | 0.716 | -0.710 |
+| 3 | 63 | 22 | 0.422 | -0.801 |
 
-Mean RF accuracy: 0.547 (std 0.116). Mean bagging neg log loss: -0.751
-(std 0.079). High fold-to-fold variance is expected at n=88 with purged
+Mean RF accuracy: 0.547 (std 0.116). Mean bagging neg log loss: -0.732
+(std 0.073). High fold-to-fold variance is expected at n=88 with purged
 CV -- each fold's test set is only 22 rows.
+
+*(Table regenerated from a real-machine run under `mlfinlab` on 2026-07-27,
+matching `input_data/ch07_cv_scores.csv` exactly -- an earlier committed
+version of this table and a stray duplicate `ch07/ch07_cv_scores.csv` had
+drifted from that canonical artifact and have been corrected/removed.)*
