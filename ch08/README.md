@@ -66,9 +66,9 @@ weights.
 
 ```bash
 # from the repo root, mlfinlab env active
-python ch08/feature_importance/chapter_8_feature_importance.py
+python ch08/chapter_8_feature_importance.py
 # tests
-pytest ch08/feature_importance/test_feature_importance.py -v
+python -m pytest ch08/feature_importance/test_feature_importance.py -v
 ```
 
 The demo uses the book's canonical size (40 features, 10k samples, 1000 trees,

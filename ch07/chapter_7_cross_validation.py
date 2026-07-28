@@ -38,14 +38,20 @@ import os
 import sys
 
 # Hybrid path convention: .py scripts derive AFML_ROOT from __file__.
-AFML_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+# NOTE: this script lives at ch07/ (chapter root, Ch19-onward layout),
+# so AFML_ROOT is one hop up, not two.
+AFML_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier, BaggingClassifier
 
-sys.path.insert(0, os.path.dirname(__file__))
+# purged_kfold.py stays in the cross_validation/ implementation subfolder
+# (Ch19-onward layout: chapter script/notebook at chapter root, impl in a
+# subfolder) -- this script no longer lives alongside it, so point
+# sys.path at that subfolder explicitly rather than at our own dirname.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'cross_validation'))
 from purged_kfold import PurgedKFold, cvScore
 
 INPUT_DIR = os.path.join(AFML_ROOT, 'input_data')
