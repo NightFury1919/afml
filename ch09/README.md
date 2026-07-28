@@ -35,8 +35,8 @@ over a random `KFold` would.
 ```powershell
 conda activate mlfinlab          # Python 3.10.20 / sklearn 1.2.2
 cd C:\ws\AFML
-python ch09\hyper_parameter_tuning\chapter_9_hyper_parameter_tuning.py
-pytest ch09\hyper_parameter_tuning\test_hyper_parameter_tuning.py -v
+python ch09\chapter_9_hyper_parameter_tuning.py
+python -m pytest ch09\hyper_parameter_tuning\test_hyper_parameter_tuning.py -v
 ```
 
 The notebook hardcodes `AFML_ROOT = r'C:\ws\AFML'` (edit if your root differs),
@@ -61,8 +61,16 @@ from ch07.cross_validation.purged_kfold import PurgedKFold
 from ch08.feature_importance.feature_importance import getTestData
 ```
 
-Requires the `__init__.py` files under `ch07/`, `ch07/cross_validation/`,
-`ch08/`, `ch08/feature_importance/` (all present since Ch08). Sanity check:
+No `__init__.py` files are required anywhere in this chain -- `ch07/`,
+`ch07/cross_validation/`, `ch08/`, `ch08/feature_importance/`, `ch09/`, and
+`ch09/hyper_parameter_tuning/` are all bare subfolders (implicit namespace
+packages). The `__file__`-derived `sys.path` insert plus a fully-qualified
+import is what makes this work from any cwd -- no `__init__.py` needed.
+(An earlier version of this README incorrectly claimed `__init__.py` files
+were required and present; they were never present under ch07/ch08, and
+ch09's own two `__init__.py` files -- vestigial, unused by the
+fully-qualified import style -- were removed during the chapter-root
+layout migration for consistency.) Sanity check:
 
 ```powershell
 python -c "from ch07.cross_validation.purged_kfold import PurgedKFold; print('ok')"
