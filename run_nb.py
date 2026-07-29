@@ -59,6 +59,20 @@ def main():
         print(str(exc)[:3000])
         return 1
 
+    # nbclient populates language_info from the running kernel's reply, but
+    # it never touches kernelspec -- that's normally set by whoever last
+    # saved the notebook in Jupyter with a given kernel selected. On a
+    # never-opened notebook (kernelspec missing) or one whose cell content
+    # was edited outside Jupyter (kernelspec stale/wrong from a prior save),
+    # this silently leaves the recorded metadata not reflecting what was
+    # actually executed. Force it to match the kernel actually used, every
+    # successful run, so the persisted metadata is never stale or absent.
+    nb.metadata['kernelspec'] = {
+        'display_name': kernel,
+        'language': 'python',
+        'name': kernel,
+    }
+
     nbformat.write(nb, path)
     ran = sum(1 for c in nb.cells
               if c.cell_type == 'code' and c.get('execution_count'))
