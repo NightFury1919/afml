@@ -36,9 +36,9 @@ The chapter in one line:
 
 ```powershell
 conda activate mlfinlab
-cd C:\ws\AFML\ch11\backtest_dangers
-pytest test_pbo.py -v
-python chapter_11_backtest_dangers.py
+cd C:\ws\AFML
+python ch11\chapter_11_backtest_dangers.py
+python -m pytest ch11\backtest_dangers\test_pbo.py -v
 ```
 
 ---
