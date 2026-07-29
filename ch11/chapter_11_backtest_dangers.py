@@ -25,7 +25,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
 # --- repo root via __file__ (portable; see CLAUDE.md path convention) -------
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, ROOT)
 
 from ch07.cross_validation.purged_kfold import PurgedKFold          # noqa: E402
