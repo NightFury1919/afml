@@ -28,21 +28,24 @@ same one.
 import os
 import sys
 
-AFML_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+# --- repo root via __file__ (portable; see CLAUDE.md path convention) -------
+AFML_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, AFML_ROOT)
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-sys.path.insert(0, os.path.dirname(__file__))
-from backtest_statistics import (
+from ch14.backtest_statistics.backtest_statistics import (  # noqa: E402
     getBetTiming, getHoldingPeriod, hhi_concentration_stats, computeDD_TuW,
     probabilistic_sharpe_ratio, expected_max_sharpe, deflated_sharpe_ratio,
 )
-from classification_scores import classification_scores
+from ch14.backtest_statistics.classification_scores import classification_scores  # noqa: E402
 
-sys.path.insert(0, os.path.join(AFML_ROOT, 'ch12', 'cpcv'))
-from chapter_12_cpcv import (  # noqa: E402
+# Cross-chapter reference: chapter_12_cpcv moved from ch12/cpcv/ to ch12/ root
+# in the same migration pass as this file, precisely to keep this import
+# consistent with where the file actually lives (see Ch12/Ch14 handoff notes).
+from ch12.chapter_12_cpcv import (  # noqa: E402
     load_data, run_cpcv, path_to_signal_and_returns,
     N_GROUPS, K_TEST_GROUPS, PCT_EMBARGO, SVC_C, SVC_GAMMA, RANDOM_STATE,
 )

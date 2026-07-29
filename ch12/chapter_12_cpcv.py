@@ -19,7 +19,9 @@ single-path Sharpe you'd have reported was mostly noise.
 import os
 import sys
 
-AFML_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+# --- repo root via __file__ (portable; see CLAUDE.md path convention) -------
+AFML_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, AFML_ROOT)
 
 import numpy as np
 import pandas as pd
@@ -28,15 +30,11 @@ from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-sys.path.insert(0, os.path.dirname(__file__))
-from cpcv import run_cpcv, partition_groups, enumerate_splits, n_paths  # noqa: E402
+from ch12.cpcv.cpcv import run_cpcv, partition_groups, enumerate_splits, n_paths  # noqa: E402
+from ch10.bet_sizing.bet_sizing import getSignal  # noqa: E402
 
-sys.path.insert(0, os.path.join(AFML_ROOT, 'ch10', 'bet_sizing'))
-from bet_sizing import getSignal  # noqa: E402
-
-sys.path.insert(0, os.path.join(AFML_ROOT, 'ch07', 'cross_validation'))
 try:
-    from purged_kfold import PurgedKFold  # noqa: E402
+    from ch07.cross_validation.purged_kfold import PurgedKFold  # noqa: E402
 except ImportError:
     PurgedKFold = None  # single-path baseline skipped if Ch07 isn't on this machine's path
 
