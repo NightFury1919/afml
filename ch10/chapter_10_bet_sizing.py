@@ -28,7 +28,11 @@ without a saved model object.
 import os
 import sys
 
-AFML_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+# script now lives at ch10/ root (Ch19-onward layout), so AFML_ROOT is one
+# hop up, not two.
+AFML_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if AFML_ROOT not in sys.path:
+    sys.path.insert(0, AFML_ROOT)
 
 import numpy as np
 import pandas as pd
@@ -37,11 +41,12 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
-sys.path.insert(0, os.path.dirname(__file__))
-from bet_sizing import getSignal  # noqa: E402
-
-sys.path.insert(0, os.path.join(AFML_ROOT, 'ch07', 'cross_validation'))
-from purged_kfold import PurgedKFold  # noqa: E402
+# fully-qualified imports (matches ch08/ch09 and this chapter's own
+# test_bet_sizing.py) -- robust to the script's own location, unlike the
+# previous bare `from bet_sizing import ...` / `from purged_kfold import ...`
+# which depended on sys.path tricks tied to __file__'s own folder.
+from ch10.bet_sizing.bet_sizing import getSignal  # noqa: E402
+from ch07.cross_validation.purged_kfold import PurgedKFold  # noqa: E402
 
 INPUT_DIR = os.path.join(AFML_ROOT, 'input_data')
 N_SPLITS = 4          # matches Ch07's real-data calibration for this dataset
