@@ -99,5 +99,5 @@ book's own Table 14.1 -- no real-data dependency in the unit tests themselves
 ## Running the real-data demo
 ```powershell
 conda activate mlfinlab
-python ch14\backtest_statistics\chapter_14_backtest_statistics.py
+python ch14\chapter_14_backtest_statistics.py
 ```

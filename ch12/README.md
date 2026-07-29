@@ -102,15 +102,20 @@ Sharpe (0.0011) well below any single path's own variance (0.0066).
 
 ## Files
 
+At `ch12/` root (Ch19-onward layout convention):
+- `chapter_12_cpcv.py` — real-data demo script (this README's results).
+- `chapter_12_cpcv.ipynb` — paired notebook.
+- `README.md` — this file.
+
+In `ch12/cpcv/` (implementation package):
 - `cpcv.py` — partitioning, split enumeration, path-assignment algorithm,
   generalized purge/embargo, classifier fit/predict, and the `run_cpcv`
   orchestrator.
-- `test_cpcv.py` — 17-test TDD suite (golden book-reproduction test,
+- `test_cpcv.py` — 18-test TDD suite (golden book-reproduction test,
   k=1 regression test against Ch07 `PurgedKFold`, synthetic-data
   end-to-end checks).
-- `chapter_12_cpcv.py` — real-data demo script (this README's results).
-- `chapter_12_cpcv.ipynb` — paired notebook.
 - `conftest.py` — BLAS/MKL thread cap.
+- `requirements.txt`
 
 ## Real-machine confirmation
 
