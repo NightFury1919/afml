@@ -16,6 +16,14 @@ instead of printing them (also makes `batch()` testable).
 
 ## Files
 
+At `ch13/` root (Ch19-onward layout convention):
+- `chapter_13_otr.py` / `chapter_13_otr.ipynb` — three-part demo:
+  - Part A: reproduces two of the book's own synthetic heat-maps
+  - Part B: calibrates {phi, sigma} from real Ch10 BTC/TUSD opportunities
+  - Part C: applies the real calibration to a real mesh sweep
+- `README.md` — this file.
+
+In `ch13/otr/` (implementation package):
 - `otr.py` — core implementation:
   - `build_xy_from_opportunities` / `estimate_ou_params` — Step 1 (eq. 13.5–13.7)
   - `phi_to_half_life` / `half_life_to_phi` — Section 13.5.1 conversions
@@ -25,10 +33,7 @@ instead of printing them (also makes `batch()` testable).
 - `test_otr.py` — 19-test TDD suite, including a genuine book-magnitude
   validation test (reproduces the ~3.2 and ~12.0 Sharpe figures the book
   states for its own {forecast=0,hl=5} and {forecast=5,hl=5} examples).
-- `chapter_13_otr.py` / `chapter_13_otr.ipynb` — three-part demo:
-  - Part A: reproduces two of the book's own synthetic heat-maps
-  - Part B: calibrates {phi, sigma} from real Ch10 BTC/TUSD opportunities
-  - Part C: applies the real calibration to a real mesh sweep
+- `conftest.py`, `requirements.txt`
 
 ## Real-data result (important — read before trusting any OTR output on this data)
 
