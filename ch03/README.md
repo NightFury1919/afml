@@ -49,7 +49,7 @@ To verify multithreading manually (skipped automatically in pytest on Windows):
 ```bash
 python -c "
 import sys; sys.path.insert(0, '.')
-from ch03.tests.test_ch03 import run_threading_tests
+from ch03.labeling.test_ch03 import run_threading_tests
 run_threading_tests()
 "
 ```

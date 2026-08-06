@@ -33,7 +33,7 @@ ch04/
 │   ├── return_attribution.py                Snippet 4.10 — mp_sample_w, get_sample_weights
 │   ├── time_decay.py                        Snippet 4.11 — get_time_decay
 │   ├── real_data_bootstrap_comparison.py    companion: bootstrap comparison on real events
-│   └── test_ch04.py                         44 TDD tests, all numeric values verified
+│   └── test_ch04.py                         53 TDD tests, all numeric values verified
 ├── chapter_4_ntrials_fix.ipynb              notebook with explanations + inline graphs
 ├── chapter_4_ntrials_fix.py                 standalone script, same content, popup graphs
 │                                             (renamed from ch04_timed_v2.py, 2026-07 layout

@@ -42,10 +42,12 @@ distribution of them.
   "safe" (per Ch07's leading/trailing formula) with respect to *every*
   held-out group at once, not just one. Verified to reduce to Ch07's
   original single-block output exactly when k=1.
-- **Classifier**: Ch09's real winning SVC (`C=100, gamma=0.1`),
-  `probability=True`, `random_state=0` (determinism — see Ch09/Ch10
-  handoffs), `n_jobs=1` (Windows joblib/loky + `SVC(probability=True)`
-  crash risk).
+- **Classifier**: Ch09's real winning SVC on the enriched table
+  (`C=0.01, gamma=0.1`), `probability=True`, `random_state=0` (determinism
+  — see Ch09/Ch10 handoffs), `n_jobs=1` (Windows joblib/loky +
+  `SVC(probability=True)` crash risk). (`C=100` was Ch09's pre-Ch19-enrichment
+  winner — see the "Corrected 2026-07-22" note below for how this constant
+  drifted and was fixed.)
 - **Per-path Sharpe**: each path's prob/pred forecasts are fed through
   Ch10's real `getSignal` (same `stepSize=0.01`) to get discretized bet
   sizes, multiplied by `ch03_events.csv`'s real per-event `ret` (raw
@@ -124,7 +126,7 @@ sklearn 1.2.2), July 2026:
 - `chapter_12_cpcv.py`'s real-data output matched the sandbox run exactly
   (all 5 path Sharpes, ρ̄, and the variance-reduction numbers above,
   same precision).
-- `test_cpcv.py`: **17/17 pass**.
+- `test_cpcv.py`: **18/18 pass**.
 
 **Gotcha hit along the way (worth knowing for any future chapter with a
 module and its containing folder sharing a name, like `cpcv.py` inside

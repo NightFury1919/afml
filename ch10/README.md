@@ -11,8 +11,8 @@ prevent overtrading, and dynamic position sizing against a limit price.
   hand-traced from the book's own formulas (Section 10.3's z/m
   derivation, Snippet 10.4's calibration math) — not shape checks
 - `conftest.py` — BLAS/MKL thread cap for the test session
-- `chapter_10_bet_sizing.py` / `chapter_10_bet_sizing.ipynb` — pending
-  real-data run (see below)
+- `chapter_10_bet_sizing.py` / `chapter_10_bet_sizing.ipynb` — real-data
+  demo (see Status below)
 
 ## Functions
 | Snippet | Function(s) | Purpose |

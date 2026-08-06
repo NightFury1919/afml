@@ -108,10 +108,13 @@ that number.
 ## Notes / departures (flagged for the boss)
 
 - Demonstrated on **both** synthetic `getTestData` (meta-labels {0,1} → F1) and
-  the real 88-row BTC/TUSD table (labels {−1,+1} → neg_log_loss). The real
-  feature set is a single `fracdiff` column, so the tuning surface is thin — the
-  real-data run shows the machinery plugging in, not a dramatic optimum. Motivates
-  enriching the real feature set later.
+  the real BTC/TUSD table (labels {−1,+1} → neg_log_loss). Since 2026-07-21 this
+  loads Ch19's real **12-feature enriched table** (fracdiff + 11 microstructural
+  features, 87 events) by default, falling back to the original single-feature
+  table only if the enriched artifact isn't present. Real winning
+  hyperparameters on the enriched table: grid search `C=0.01, gamma=0.1`;
+  randomized search `C≈1.223, gamma≈0.175` (both `neg_log_loss`-scored) — see
+  `input_data/ch09_hyperparameter_tuning_stats.csv`.
 - A matched log-spaced grid runs alongside the randomized search purely so the
   grid-vs-randomized comparison is fair (not from the book).
 - `_pick_scoring` was factored out of `clfHyperFit` (identical behaviour) only to

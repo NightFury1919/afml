@@ -413,7 +413,7 @@ class TestDropLabels:
 # To run manually on Windows outside pytest:
 #   python -c "
 #   import sys; sys.path.insert(0, '.')
-#   from ch03.tests.test_ch03 import run_threading_tests
+#   from ch03.labeling.test_ch03 import run_threading_tests
 #   run_threading_tests()
 #   "
 
@@ -474,7 +474,7 @@ def run_threading_tests():
     From C:\\ws\\AFML in a terminal:
         python -c "
         import sys; sys.path.insert(0, '.')
-        from ch03.tests.test_ch03 import run_threading_tests
+        from ch03.labeling.test_ch03 import run_threading_tests
         run_threading_tests()
         "
     """

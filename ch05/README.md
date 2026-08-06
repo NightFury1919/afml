@@ -21,8 +21,6 @@ ch05/
 │   │                          a fair absolute thres for frac_diff_ffd that
 │   │                          matches frac_diff's relative thres semantics
 │   └── test_ch05.py           29 tests, all passing
-├── input_data/
-│   └── BTCTUSD-trades-2026-03.csv   real Binance BTC/TUSD tick data
 ├── chapter_5_frac_diff.py      example script, runs the full pipeline on
 │                              real data
 ├── chapter_5_frac_diff.ipynb   notebook walkthrough, executed end-to-end
