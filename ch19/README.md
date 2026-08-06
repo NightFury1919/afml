@@ -58,6 +58,19 @@ essentially one feature (`fracdiff`). This chapter exists to give it more.
   printed code, in the book — implemented directly from those equations
   (Secs 19.4.1, 19.4.2, 19.5.2), same bar as every other chapter's
   book-fidelity rule.
+- **Import style modernized (2026-08-06):** `chapter_19_microstructural_features.py`
+  and its notebook originally used a bare `import microstructural_features as mf`
+  (via an explicit `sys.path.insert` on the module's own subfolder) instead of the
+  fully-qualified pattern used from Ch09 onward. Deliberately deferred until this
+  chapter was otherwise finished, per project convention. Now converted to
+  `from ch19.microstructural_features import microstructural_features as mf`,
+  matching Ch10/13's style. `mf.`-prefixed calls throughout the script/notebook are
+  unchanged — only the import line and the now-unneeded extra `sys.path.insert`
+  were touched. `test_microstructural_features.py`'s own bare import was left as-is
+  — it already works from any directory because `ch19/microstructural_features/`
+  has no `__init__.py` (the same "subfolder without `__init__.py` works from
+  anywhere" shape as Ch08, confirmed by the project's own import-fragility audit),
+  so it wasn't actually fragile to begin with.
 
 ## Genuine judgment calls / adaptations (read before trusting these features blindly)
 
@@ -114,12 +127,19 @@ essentially one feature (`fracdiff`). This chapter exists to give it more.
   sandbox run (tick rule accuracy 0.6618, Kyle's Lambda range
   [-10787.4, 22233.8], VPIN mean 0.5256, etc.) — nothing here was
   environment-sensitive.
-- **Not yet merged into Ch07's training table.** This chapter produces a
-  bar-indexed 249-row feature table
-  (`input_data/ch19_microstructural_features.{csv,pkl}`); joining it onto
-  the 88-event training table (aligning each triple-barrier event to its
-  bar) and re-running Ch08/09/12/13 against the enriched table is the
-  deliberate next step, not done in this chapter's delivery.
+- **Merged into Ch07's training table — done.** `build_enriched_training_table.py`
+  joins this chapter's 249-bar feature table onto the 88-event Ch03-05 training data
+  (one event dropped for still being inside a rolling-window warmup, matching Ch05's
+  own FFD-warmup convention — 87 events, 12 features). Saved to
+  `input_data/ch07_training_table_enriched.{csv,pkl}`, and consumed directly by both
+  `ch09/chapter_9_hyper_parameter_tuning.py` and `ch12/chapter_12_cpcv.py`. (This
+  bullet previously said "not yet done" — that was stale; the join happened during
+  the 2026-07-21 Ch10/Ch11 enrichment-migration session, just never reflected back
+  into this README until now.) **Real headline result** (see Ch11/Ch12's own
+  READMEs for full detail): enrichment made things *worse*, not better — Ch11's PBO
+  rose from ~0.73 to ~0.83, and Ch12's CPCV Sharpe distribution stayed negative
+  across all 5 paths. 11 extra real features on 87 real rows bought capacity to fit
+  noise, not edge — the book's own PBO thesis landing on real data.
 - A handful of `RuntimeWarning: invalid value encountered in divide`
   warnings appeared during Part C in the sandbox run (from
   `pandas.Series.autocorr()` hitting a zero-variance window and correctly
