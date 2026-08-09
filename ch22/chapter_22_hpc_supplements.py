@@ -113,3 +113,39 @@ def part2_nufft(freq_max_per_day=4.0, n_freqs=400):
 if __name__ == '__main__':
     part1_io_benchmark()
     part2_nufft()
+
+
+# =============================================================================
+# TDD TEST RESULTS (embedded per project convention -- proactively, after
+# real-machine confirmation, not just synthetic sandbox output)
+# =============================================================================
+# REAL-MACHINE CONFIRMED -- 2026-08-09, mlfinlab conda env
+# (Python 3.10.20, pytest 9.0.3, pyarrow 14.0.2, C:\ws\AFML, Windows)
+#
+# $ python -m pytest ch22\hpc_supplements\ -v   (from repo root)
+# $ python -m pytest -v                                               (from module folder)
+# test_hpc_supplements.py -- 16 passed
+# TOTAL: 16 passed, 0 failed, two-pass (repo root + module folder) -- ~1s each
+# (Sandbox pre-check, Python 3.12.3: same 16/16 passed -- confirmed match.)
+#
+# Note: initial real-machine run failed 3/16 (parquet engine missing --
+# pyarrow was listed in requirements.txt but not yet installed into the
+# mlfinlab env). Fixed via `pip install pyarrow==14.0.2`; all 16 passed
+# on re-run. requirements.txt updated to pin the exact version.
+#
+# Part 1 (I/O benchmark), real-machine run, 1,841,000 replicated rows:
+#   csv:     write=5.3937s  read=0.8612s  size=99.21 MB
+#   parquet: write=0.2398s  read=0.0367s  size=11.43 MB
+#   -> Parquet read speedup vs CSV: 23.47x (sandbox pre-check ranged
+#      3.7x-6.4x across runs -- wall-clock timing is inherently
+#      non-deterministic and machine-dependent; direction/magnitude of
+#      the effect is the reproducible finding, not the exact multiplier)
+#   -> Parquet file size vs CSV: 8.68x smaller
+#   -> Single-column ('price') read speedup: 39.54x
+#
+# Part 2 (non-uniform FFT), real-machine run -- BIT-FOR-BIT IDENTICAL to
+# sandbox (deterministic math, as expected):
+#   Price-return spectrum: peak at 2.980 cycles/day (magnitude 0.3281)
+#   Trade-size spectrum:   peak at 0.505 cycles/day (magnitude 8.9660)
+#   Spectral flatness: price returns 0.543, trade size 0.438
+# =============================================================================

@@ -128,18 +128,20 @@ matching the book's own "replicated the data 10 times" approach in
 
 | | CSV | Parquet |
 |---|---|---|
-| Write | 4.66s | 0.15s |
-| Full-file read | 0.77s | 0.21s (**3.68x faster**) |
-| File size | 97.4 MB | 13.6 MB (**7.2x smaller**) |
-| Single-column ('price') read | 0.44s | 0.01s (**37.7x faster**) |
+| Write | 5.39s | 0.24s |
+| Full-file read | 0.86s | 0.04s (**23.47x faster**) |
+| File size | 99.2 MB | 11.4 MB (**8.68x smaller**) |
+| Single-column ('price') read | 0.63s | 0.02s (**39.54x faster**) |
 
-*(These exact timing numbers will vary run-to-run and machine-to-machine —
-wall-clock benchmarks aren't reproducible the way this project's other
-hand-traced values are; repeated sandbox runs here ranged from ~3.7x to
-~6.4x read speedup. The **direction and rough magnitude** of the effect —
-Parquet reads meaningfully faster, especially for single-column access —
-is the reproducible, real finding; the file-size ratio is exactly
-reproducible since it depends on the data, not the clock.)*
+*(Real-machine confirmed, mlfinlab env. These exact timing numbers will
+vary run-to-run and machine-to-machine — wall-clock benchmarks aren't
+reproducible the way this project's other hand-traced values are; a
+sandbox pre-check on different hardware ranged ~3.7x-6.4x read speedup.
+The **direction and rough magnitude** of the effect — Parquet reads
+meaningfully faster, especially for single-column access — is the
+reproducible, real finding; the file-size ratio is closer to exactly
+reproducible since it depends mostly on the data and compression, not
+the clock.)*
 
 The single-column result is the closest single-machine analogy to the
 book's own HDF5-indexing finding (Figure 22.8: 16.95s → 4.59s, a 3.7x
@@ -170,13 +172,40 @@ trade sizes:
 
 ## Real-machine confirmation
 
-Sandbox pre-check (Python 3.12.3): **16/16 tests passed**, two-pass (repo
-root + inside `hpc_supplements/`). Driver script and notebook executed
-end-to-end with real output (numbers above). **Final gate**: re-run under
-the `mlfinlab` conda env and confirm reproduction.
+**Fully confirmed 2026-08-09, mlfinlab conda env** (Python 3.10.20, pytest
+9.0.3, pyarrow 14.0.2, `C:\ws\AFML`, Windows): **16/16 tests passed**,
+two-pass (repo root + inside `hpc_supplements/`). Driver script confirmed
+real-machine with genuine output.
+
+One real setup snag worth recording: the first real-machine run failed 3/16
+tests with a parquet-engine `ImportError` — `pyarrow` was listed in
+`requirements.txt` but not yet actually installed into the `mlfinlab` env
+(a gap in the handoff, not the code — flagged and fixed by explicitly
+running `pip install pyarrow==14.0.2` rather than just documenting the
+dependency in a file). All 16 passed on re-run.
+
+Part 1 (I/O benchmark) results, real machine, 1,841,000 replicated rows:
+
+| | CSV | Parquet |
+|---|---|---|
+| Write | 5.39s | 0.24s |
+| Full-file read | 0.86s | 0.04s (**23.47x faster**) |
+| File size | 99.2 MB | 11.4 MB (**8.68x smaller**) |
+| Single-column ('price') read | 0.63s | 0.02s (**39.54x faster**) |
+
+*(As expected, these exact multipliers differ from the sandbox pre-check
+(3.7x-6.4x range) — wall-clock timing is inherently non-deterministic and
+machine-dependent. The direction and rough magnitude of the effect is the
+reproducible finding, not the exact number.)*
+
+Part 2 (non-uniform FFT) results are **bit-for-bit identical** to the
+sandbox pre-check, as expected for deterministic math: price-return
+spectrum peak at 2.980 cycles/day (magnitude 0.3281), trade-size spectrum
+peak at 0.505 cycles/day (magnitude 8.9660).
 
 ```powershell
 conda activate mlfinlab
+pip install pyarrow==14.0.2
 cd C:\ws\AFML
 python -m pytest ch22\hpc_supplements\ -v
 cd ch22\hpc_supplements
