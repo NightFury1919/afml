@@ -13,14 +13,16 @@ real-data infrastructure) into two worked examples:
             diversified commodity futures (gold, crude oil, corn, live
             hogs, T-bonds, GBP), comparing HRP to plain inverse-variance
             (IVP) weighting.
-  Part C -- status note on Section 16.5/16.6's Monte Carlo comparison
-            (HRP vs CLA vs IVP out-of-sample): deliberately NOT built
-            yet. Blocked on Ethan sourcing the CLA reference
-            implementation (Bailey & Lopez de Prado 2013) -- see
-            ch16/README.md. Building a Monte Carlo harness with only
-            two of the three methods would be premature: the book's own
-            point is a three-way comparison, and CLA is exactly the
-            method HRP is positioned against.
+  Part C -- Section 16.5/16.6's Monte Carlo comparison (HRP vs CLA vs
+            IVP out-of-sample), book-exact synthetic methodology
+            (Snippet 16.5 / Appendix 16.A.4). CLA reference: Bailey &
+            Lopez de Prado (2013). Deliberately synthetic-only, not
+            adapted to real data -- see ch16/README.md for the reasoning
+            (Ethan sign-off 2026-08-10). Parallelized across 4 worker
+            processes via this project's existing AFML multiprocessing
+            engine (utils/multiprocess.py) -- num_threads changes
+            wall-clock time only, never the result (see
+            monte_carlo/test_monte_carlo.py's regression test).
 
 Why HRP instead of Markowitz's CLA?
 ------------------------------------
@@ -65,6 +67,7 @@ from hrp.hrp import (
     generateData, plotCorrMatrix,
 )
 from data_loader.continuous_futures import build_continuous_price, COMMODITIES
+from monte_carlo.monte_carlo import hrpMC
 import scipy.cluster.hierarchy as sch
 import warnings
 
@@ -190,38 +193,67 @@ def part_b_real_data():
 
 
 # =============================================================================
-# Part C -- Monte Carlo comparison: NOT YET BUILT
+# Part C -- Section 16.5/16.6 Monte Carlo (HRP vs CLA vs IVP), book-exact
 # =============================================================================
-def part_c_status_note():
+def part_c_monte_carlo():
     print()
     print("=" * 78)
     print("PART C -- Section 16.5/16.6 Monte Carlo (HRP vs CLA vs IVP)")
     print("=" * 78)
-    print("NOT YET IMPLEMENTED. Blocked on the CLA reference implementation")
-    print("(Bailey & Lopez de Prado 2013) -- book-fidelity convention applies")
-    print("to external referenced material same as printed book snippets:")
-    print("Claude does not reconstruct CLA from memory or a web search.")
-    print("Once Ethan supplies the reference source, this section will add")
-    print("a genuine 3-way out-of-sample comparison, with a real-data")
-    print("adaptation decision (single historical run vs. block-bootstrap")
-    print("Monte Carlo on the real 6-asset returns) still to be made.")
+    print("Book-exact synthetic Monte Carlo (Snippet 16.5 / Appendix 16.A.4).")
+    print("Deliberately NOT adapted to real data -- this experiment's whole")
+    print("point is to inject KNOWN, controlled shocks (one common, one")
+    print("idiosyncratic) and observe each method's response; that requires")
+    print("synthetic control by construction, the same category of exception")
+    print("already sanctioned for Ch08. See ch16/README.md for the full")
+    print("reasoning and Ethan's sign-off.\n")
+    print("Book defaults kept exactly as printed: numIters=10000, nObs=520")
+    print("(2yrs daily), sLength=260 (1yr lookback), rebal=22 (~monthly).")
+    print("Parallelized across 4 worker processes (this project's documented")
+    print("multiprocessing sweet spot -- see CLAUDE.md), via the existing")
+    print("AFML multiprocessing engine (utils/multiprocess.py), mirroring")
+    print("ch04/sample_weights/monte_carlo.py's own established pattern.")
+    print("num_threads only changes wall-clock time, never the result --")
+    print("see monte_carlo/test_monte_carlo.py's num_threads regression test.\n")
+
+    csv_path = os.path.join(OUTPUT_DIR, 'monte_carlo_stats.csv')
+    stats, summary = hrpMC(
+        numIters=10000, nObs=520, size0=5, size1=5, mu0=0, sigma0=1e-2,
+        sigma1F=.25, sLength=260, rebal=22, random_state=12345,
+        num_threads=4, output_csv_path=csv_path, verbose=True)
+
+    print("\nOut-of-sample variance comparison (book's headline figures --")
+    print("book reports sigma^2_CLA=0.1157, sigma^2_IVP=0.0928, ")
+    print("sigma^2_HRP=0.0671; CLA 72.47% greater variance than HRP,")
+    print("IVP 38.24% greater variance than HRP):\n")
+    print(summary.to_string())
+    print(f"\nPer-iteration results saved to {csv_path}")
+
+    return stats, summary
 
 
 if __name__ == '__main__':
     hrp_synth, ivp_synth, corr_synth = part_a_synthetic_example()
     hrp_real, ivp_real, corr_real, returns_real = part_b_real_data()
-    part_c_status_note()
+    mc_stats, mc_summary = part_c_monte_carlo()
 
 # =============================================================================
 # Real-machine pytest results
 # =============================================================================
 # This driver script has no dedicated test file of its own (consistent with
 # other chapter drivers, e.g. ch15/chapter_15_strategy_risk.py) -- the
-# algorithm it calls is covered by ch16/hrp/test_hrp.py (24/24) and the
-# data plumbing by ch16/data_loader/test_continuous_futures.py (17/17),
-# both real-machine confirmed 2026-07-31. This script's own correctness was
-# verified by running it end-to-end (Part A against generateData's seeded
-# synthetic data, Part B's data-wiring logic against a synthetic two-asset
-# fixture standing in for the real six commodities) in Claude's sandbox.
-# STILL NEEDS: an actual end-to-end run against the real six-commodity
-# input_data/ on the real mlfinlab machine -- Ethan's next action.
+# algorithms it calls are covered by ch16/hrp/test_hrp.py (24/24),
+# ch16/data_loader/test_continuous_futures.py (17/17), ch16/cla/test_cla.py
+# (52/52), and ch16/monte_carlo/test_monte_carlo.py (14/14). hrp/ and
+# data_loader/ real-machine confirmed 2026-07-31; cla/ and monte_carlo/
+# passed 52/52 and 14/14 respectively in Claude's sandbox (numpy 2.4.4 /
+# Python 3.12.3) -- STILL NEEDS real-machine (mlfinlab: numpy 1.23.5 /
+# Python 3.10.20) two-pass confirmation, both test suites, from repo root
+# AND from inside their own folders.
+# STILL NEEDS: an actual end-to-end run of this full driver script
+# (Parts A, B, AND C) against the real six-commodity input_data/ AND the
+# real 10,000-iteration Monte Carlo, on the real mlfinlab machine --
+# Ethan's next action. Part C in particular has not been run at book
+# scale anywhere yet (only sandbox-verified at small numIters, e.g. 20
+# iterations, which already reproduces the book's DIRECTIONAL finding:
+# var_CLA > var_IVP > var_HRP).
