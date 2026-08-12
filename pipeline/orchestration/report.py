@@ -8,9 +8,13 @@ probability, deflated Sharpe ratio, latest bet signal) into a plain-English
 No new AFML formula lives here -- this is presentation logic over
 stages.py's real, already-computed numbers. Deliberately does NOT output a
 buy/sell directive: per this project's scope, the report states the
-evidence (edge, risk, confidence) and lets the reader decide, consistent
-with this codebase's own honestly-reported null results on this same
-dataset (Ch11-15: PBO ~0.83, CPCV paths negative, DSR 0/5 survive).
+evidence (edge, risk, confidence) and lets the reader decide.
+
+PHASE 1b (2026-08-12): stages.py now reuses Ch11's real, established
+20-trial bar-level construction (not Phase 1a's 3-trial event-level proxy),
+reconciling PBO to ~0.83 and dropping DSR from a false 0.9995 to ~0.54 --
+consistent with this codebase's own honestly-reported near-null results on
+this same dataset (Ch11-15).
 """
 
 
@@ -25,19 +29,24 @@ def _confidence_band(dsr):
 
 
 def build_report(eval_result, signal, asset_label='this asset',
-                  min_reliable_T=250, min_reliable_trials=5):
+                  min_reliable_T=150, min_reliable_trials=10):
     """
     Parameters
     ----------
     eval_result : dict, output of stages.evaluate_overfitting
     signal : float or None, output of stages.latest_bet_signal
     asset_label : str, human-readable asset name for the writeup
-    min_reliable_T : int, below this sample size, PBO/DSR are flagged as
-        statistically unreliable (a single draw can range ~0.04-0.99 for a
-        genuinely zero-edge strategy on small samples -- see this project's
-        own ch11/backtest_dangers/pbo.py TDD notes on estimator imprecision)
+    min_reliable_T : int, below this nonzero-bet count, PBO/DSR are flagged
+        as statistically less reliable. Lowered from Phase 1a's 250 to 150
+        now that T is a real nonzero-bet count bounded by this dataset's
+        ~238-bar ceiling (Phase 1a's 250 threshold could never be met by
+        this dataset at all, which defeated the point of the check) -- see
+        this project's own ch11/backtest_dangers/pbo.py TDD notes on
+        estimator imprecision for why any threshold here is a heuristic,
+        not a statistically derived cutoff
     min_reliable_trials : int, below this trial count, DSR's multiple-
-        testing correction has too little information to be meaningful
+        testing correction has too little information to be meaningful.
+        Phase 1b's real trial count is 20 (vs Phase 1a's 3)
 
     Returns
     -------
@@ -49,6 +58,8 @@ def build_report(eval_result, signal, asset_label='this asset',
     n_trials = eval_result['n_trials']
     best_trial = eval_result['best_trial']
     T = eval_result['T']
+    skew = eval_result.get('skew')
+    kurtosis = eval_result.get('kurtosis')
     small_sample = T < min_reliable_T or n_trials < min_reliable_trials
 
     lines = []
@@ -81,6 +92,13 @@ def build_report(eval_result, signal, asset_label='this asset',
         "indicate the apparent outperformance is statistically "
         "indistinguishable from noise."
     )
+    if skew is not None and kurtosis is not None:
+        lines.append(
+            f"(Computed using the winning trial's real realized-return "
+            f"skew={skew:.4f} and kurtosis={kurtosis:.4f}, not a Gaussian "
+            "assumption -- fatter tails or negative skew in real returns "
+            "would otherwise cause DSR to overstate confidence.)"
+        )
     lines.append("")
 
     if small_sample:

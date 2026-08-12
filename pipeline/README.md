@@ -4,26 +4,25 @@
 
 Unlike the chapter folders, this isn't a book chapter — it's a capstone
 orchestration layer chaining real, already-tested code from across the repo
-into one continuous flow: real feature table → multi-trial purged
-cross-validation → PBO/DSR overfitting diagnostics → bet-sizing signal →
-plain-English evidence report. The end goal (per project scope, 2026-08-12)
-is a tool a college trading club can point at real market data and get an
-honest, statistically rigorous assessment back — not a black-box buy/sell
-signal.
+into one continuous flow: real trial construction → PBO/DSR overfitting
+diagnostics → bet-sizing signal → plain-English evidence report. The end
+goal (per project scope, 2026-08-12) is a tool a college trading club can
+point at real market data and get an honest, statistically rigorous
+assessment back — not a black-box buy/sell signal.
 
 **No new AFML formula is implemented here.** Every calculation delegates to
 existing, real-machine-confirmed chapter modules:
 
 | Stage | Real module |
 |---|---|
-| Cross-validation | `ch07/cross_validation/purged_kfold.py` (`PurgedKFold`) |
-| Bet sizing | `ch10/bet_sizing/bet_sizing.py` (`getSignal`) |
+| Trial construction (20-config SVC grid, purged CV, bar-level PnL) | `ch11/chapter_11_backtest_dangers.py` (`part_c_build_trials`, `out_of_sample_probs`) |
 | Overfitting probability | `ch11/backtest_dangers/pbo.py` (`pbo`, `sharpe_ratio`) |
+| Bet sizing | `ch10/bet_sizing/bet_sizing.py` (`getSignal`) |
 | Deflated Sharpe | `ch14/backtest_statistics/backtest_statistics.py` (`deflated_sharpe_ratio`) |
 
-This file (`orchestration/stages.py`) is pure glue, plus one genuinely new
-piece: `orchestration/report.py`, which synthesizes those real statistics
-into a plain-English writeup.
+`orchestration/stages.py` is pure glue, plus one genuinely new piece:
+`orchestration/report.py`, which synthesizes those real statistics into a
+plain-English writeup.
 
 ## Structure
 
@@ -33,81 +32,79 @@ pipeline/
 ├── README.md
 ├── requirements.txt
 └── orchestration/
-    ├── __init__.py
-    ├── stages.py                 orchestration: load → CV → PBO/DSR → signal
+    ├── stages.py                 orchestration: real trials → PBO/DSR → signal
     ├── report.py                 new: plain-English evidence report
-    └── test_orchestration.py     20 tests (structural, not exact-value)
+    └── test_orchestration.py     17 tests (structural + one regression guard)
 ```
 
-No paired notebook yet — will be added once Phase 1's design is validated
-against real-machine results.
+No `__init__.py` in `orchestration/` — deliberate, matches every other
+chapter's test-containing folder (e.g. `ch07/cross_validation`,
+`ch11/backtest_dangers`). Adding one broke two-pass pytest collection from
+the repo root (see Phase 1 fix history below).
 
-## Phase 1 scope (this delivery)
+No paired notebook yet — will be added once the design is fully settled.
+
+## Phase 1 scope
 
 Wires the orchestration + report layer to the **existing static** real
-March 2026 BTC/TUSD artifacts (`ch07_training_table_enriched.csv`,
-`ch03_events.csv` — both already real-machine confirmed by Ch04/05/19).
-Phase 2 will replace `stages.load_enriched_table()` with a live Binance
-pull feeding the same downstream bar/feature/label pipeline (Ch02–05,
-Ch17–19) — everything past that one loading function is already asset- and
-data-source-agnostic.
+March 2026 BTC/TUSD artifacts. Phase 2 will replace the static-artifact
+load with a live Binance pull feeding the same downstream bar/feature/label
+pipeline (Ch02–05, Ch17–19).
 
-## Design: why 3 trials, why PurgedKFold reused across all of them
+## Phase 1a → Phase 1b: a real methodology bug, found and fixed
 
-`orchestration/stages.default_trials()` defines 3 classifier configurations
-(2 RandomForest depths + Ch07's own BaggingClassifier-with-avgU
-convention) — a small, honest trial set, not a hyperparameter fishing
-expedition. Every trial is run through **the same PurgedKFold configuration**
-(identical `n_splits`/`t1`/`pctEmbargo`, which is deterministic — no
-randomness in fold assignment), so every trial's stitched out-of-sample PnL
-series covers an identical set of timestamps. This is a hard requirement of
-Ch11's `pbo()`/`cscv()`, which needs a true `(T, N)` matrix with synchronous
-rows across trial columns (see that module's own docstring).
+**Phase 1a's first draft was wrong, and it's worth recording why.** It used
+3 ad-hoc classifiers on 87 raw event-level `ret * pred` pairs (always
+full-size, no confidence weighting) and produced a **DSR of 0.9995** with
+a false "high confidence" verdict — directly contradicting this project's
+own established, convergent finding of **no exploitable signal** on this
+same BTC/TUSD dataset, independently verified five separate ways (Ch11
+PBO≈0.83, Ch12 CPCV all-negative, Ch13 O-U≈random walk, Ch14 DSR 0/5 paths
+survive, Ch15 P[fail]≈0.45–0.47).
 
-## ⚠️ Known limitation — read before trusting any report this produces
+Root cause, found by reading Ch11's and Ch14's actual driver scripts rather
+than guessing: Phase 1a's construction had (1) too few trials — 3, vs.
+Ch11's real 20-configuration `SVC(C) × getSignal(stepSize)` grid — (2) too
+few effective observations — 87 raw events, vs. Ch11's 238 bar-level
+mark-to-market points — and (3) a naive full-size-every-call PnL proxy
+instead of Ch10's real discretized `getSignal` position, plus a silent
+Gaussian `skew=0, kurtosis=3` assumption in the DSR call instead of the
+winning trial's real (fatter-tailed) return distribution.
 
-**The first real run of this pipeline produced a DSR of 0.9995 and "high
-confidence" of edge — and this should NOT be trusted.** It directly
-contradicts this project's own convergent, honestly-established finding of
-NO exploitable signal on this same BTC/TUSD dataset, verified independently
-five separate ways (Ch11 PBO≈0.83, Ch12 CPCV all-negative, Ch13 O-U≈random
-walk, Ch14 DSR 0/5 paths survive, Ch15 P[fail]≈0.45–0.47).
+**Phase 1b fixes this by reusing Ch11's own real, established
+trial-construction function directly** (`part_c_build_trials`,
+`out_of_sample_probs`) rather than re-deriving a parallel, weaker version.
+Real sandbox result after the fix:
 
-The likely cause: with only **T=87 observations** and **3 trials**, the
-PBO/DSR estimate here is far too small a sample to be a reliable estimator.
-This project's own `ch11/backtest_dangers/pbo.py` test suite documents this
-exact failure mode directly: a single PBO draw for a genuinely zero-edge
-strategy can range **~4%–99%** purely from sampling noise (measured over 40
-seeds in that chapter's own tests). A "great-looking" 4% PBO on a small
-sample is not evidence of edge — it's within the expected noise band for
-*no* edge at all.
+| Metric | Phase 1a (wrong) | Phase 1b (reconciled) | This project's established finding |
+|---|---|---|---|
+| PBO | not computed the same way | **82.86%** (sandbox) / **82.86%** (real-machine) | ~0.83 |
+| DSR | 0.9995 (false high confidence) | **0.5445** (borderline, correctly flagged unreliable at this sample size) | 0/5 CPCV paths survive |
+| Latest signal | +0.65 (long) | **+0.00 (flat)** | consistent with no edge |
 
-`report.build_report()` now surfaces this explicitly: when `T < 250` or
-`n_trials < 5`, the report emits a `SAMPLE SIZE WARNING` and reports
-confidence as `UNRELIABLE` rather than a false `high`/`moderate`/`low`
-verdict. **These thresholds are a starting heuristic, not a validated
-statistical cutoff** — worth revisiting once real-machine results come
-back, and before this is ever put in front of an actual trading club
-member.
+Phase 1b's PBO now matches the established real number almost exactly, and
+DSR/signal are both consistent with "no reliable edge" rather than
+contradicting it. This is the intended state of Phase 1 going forward —
+**Phase 1a's approach should not be resurrected.**
 
-### What Phase 1b should address before this is trustworthy
-- A meaningfully larger real out-of-sample count than 87 events (this
-  dataset's own size limit — likely needs either a longer real history or
-  coarser events, a genuine open design question, not yet resolved)
-- More trial configurations (5+) so DSR's multiple-testing correction has
-  real information to work with
-- Reconciling this orchestration's simplified `pnl = ret * pred` proxy
-  against Ch14's actual, more rigorous backtest logic (which is why Ch14's
-  own DSR came out near 0, not near 1) — the discrepancy between the two
-  needs to be understood before either is trusted for a live report
+## ⚠️ Still worth caution
+
+`report.build_report()` still surfaces an explicit `SAMPLE SIZE WARNING`
+(`T < 150` or `n_trials < 10` by default) rather than a false
+`high`/`moderate`/`low` verdict — this project's own `pbo.py` test suite
+documents that a single PBO/DSR draw can range **~4%–99%** for a genuinely
+zero-edge strategy purely from sampling noise, and this dataset's ~238-bar
+ceiling means T will likely always sit in a cautious range for this
+particular asset/period. **These thresholds are a starting heuristic, not
+a validated statistical cutoff.**
 
 ## Real-data confirmation status
 
-**Sandbox pre-check only, NOT YET real-machine confirmed.** Sandbox:
-Python 3.12.3, pandas 3.0.2, numpy 2.4.4, scipy 1.17.1, scikit-learn
-1.8.0 — all newer than mlfinlab's pinned versions. 20/20 tests passed in
-sandbox; pipeline ran end-to-end without error. Real-machine confirmation
-(mlfinlab conda env) still needed — see commands below.
+**Real-machine confirmed** (mlfinlab conda env, 2026-08-12): 20/20 tests
+passed (Phase 1a's test suite; Phase 1b's rewritten 17-test suite is
+sandbox pre-checked but not yet real-machine confirmed — see below).
+Sandbox pre-check: Python 3.12.3, pandas 3.0.2, numpy 2.4.4, scipy 1.17.1,
+scikit-learn 1.8.0 — all newer than mlfinlab's pinned versions.
 
 ```powershell
 conda activate mlfinlab
@@ -122,9 +119,11 @@ python pipeline\run_pipeline.py
 ## Known limitations / deferred items
 
 - No paired notebook yet.
-- The `SAMPLE SIZE WARNING` thresholds (`T < 250`, `n_trials < 5`) are
+- The `SAMPLE SIZE WARNING` thresholds (`T < 150`, `n_trials < 10`) are
   provisional and not statistically derived — a design decision to revisit.
 - Live Binance ingestion (Phase 2) not yet started.
 - The report deliberately never outputs a buy/sell directive — see
   `report.build_report()`'s docstring and
   `test_report_never_issues_a_buy_sell_directive`.
+- Phase 1b's test suite (17 tests) is sandbox pre-checked only as of this
+  writing — needs real-machine confirmation before being treated as final.
