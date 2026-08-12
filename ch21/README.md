@@ -156,6 +156,37 @@ monotonically (K=3 → SR=0.3076, K=4 → SR=0.3080, K=5 → SR=0.3031) since
 different K values produce genuinely different, non-nested discretizations
 of the feasible weight set — worth flagging as a teaching point on its own.
 
+## Why quantum computing, concretely (not implemented here)
+
+This chapter's brute-force search is only tractable because this repo's
+real-data run keeps the search space small on purpose: K=4 discretization
+levels, H=2 horizons, N=3 assets → 14,400 trajectories, enumerated
+sequentially on an ordinary CPU in the run above. The number of candidate
+trajectories in this class of problem scales combinatorially with the
+number of assets, horizons, and discretization levels — coarser grids or
+more assets/horizons blow the search space up exponentially, the same way
+`k` holding levels over `N` time steps in the book's simpler framing yields
+`k^N` possible trading rules (e.g. 5 levels over 10 steps ≈ 9.8 million
+sequences; over 50 steps, ≈ 8.9 × 10^34 — more than the number of atoms in
+a human body). Classical brute force, however parallelized (see Ch20's
+`utils/multiprocess.py`), still evaluates candidates at a fixed rate; more
+cores does not change the exponent.
+
+This is the concrete reason §21.1-21.2 point to quantum computing:
+algorithms like Grover's search offer a **quadratic** speedup over
+classical exhaustive search — roughly `sqrt(M)` steps instead of `M` for a
+search space of size `M` (e.g. `sqrt(9.8 million) ≈ 3,130`, a ~3,000x
+speedup at that scale). That pushes the size of tractable brute-force
+problems out considerably, but it is a quadratic speedup, not a change from
+exponential to polynomial — `sqrt(k^N) = k^(N/2)` is still exponential in
+`N`, just with the exponent effectively halved. A large enough N still
+breaks even a quantum-Grover approach eventually; quantum computing extends
+the horizon of what's brute-forceable, it doesn't dissolve the underlying
+combinatorial-optimization problem. This repo's real-data run above sits
+comfortably in the classical-brute-force regime specifically because K, H,
+and N were kept small enough that 14,400 trajectories was a tractable
+sequential search, not because quantum acceleration was applied.
+
 ## Known limitations / deferred items
 
 - No blockers. Chapter is complete and real-machine-pending (sandbox
