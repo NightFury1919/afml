@@ -1,0 +1,16 @@
+AFML Pipeline Assessment -- BTC/TUSD
+====================================
+
+Across 3 model configuration(s) tested on 87 out-of-sample (purged, embargoed) observations, the best-performing configuration was 'rf_shallow', with an unannualized Sharpe ratio of 0.4949.
+
+Probability of Backtest Overfitting (PBO): 17.14%. This estimates the chance that the best in-sample configuration underperforms the median configuration out-of-sample -- i.e. that picking the 'winning' model was a matter of noise, not genuine skill.
+
+Deflated Sharpe Ratio (DSR): 1.0000. This corrects the best trial's Sharpe ratio for the fact that 3 configurations were tried and the best one was cherry-picked. DSR estimates the probability that the TRUE Sharpe ratio exceeds zero once that selection bias is accounted for. Values near 1.0 indicate strong evidence of genuine, non-overfit edge; values near 0.5 or below indicate the apparent outperformance is statistically indistinguishable from noise.
+
+** SAMPLE SIZE WARNING: only 87 observations and 3 trial configuration(s) went into this estimate. This project's own PBO test suite documents that a SINGLE PBO/DSR estimate on a small sample can range roughly 4%-99% even for a genuinely zero-edge strategy, purely from sampling noise. The specific PBO/DSR values above should NOT be read as reliable evidence of edge (or lack of it) until this is re-checked with a substantially larger out-of-sample count and more trial configurations. **
+
+Overall confidence in a real, exploitable edge: UNRELIABLE (sample too small to trust).
+
+Most recent model-implied position size: +0.65 (long) on a [-1, 1] scale, discretized per Ch10's getSignal. This is a statistically-derived position size, NOT investment advice or a directive to trade -- it reflects this specific model's confidence given real historical purged-CV performance, nothing more.
+
+IMPORTANT: This report reflects rigorous statistical testing, not a guarantee of future performance. Prior real-data runs on this same BTC/TUSD dataset found convergent evidence of NO exploitable signal across five independent methods (Ch11-15 of this project) -- a genuine, honestly-reported null result. A low PBO/DSR score here is not a bug; it may be the correct, honest answer, and should be treated as such rather than re-run until a better number appears.
