@@ -8,3 +8,6 @@ mlfinlab_env_backup.txt
 ch09_*probe.txt
 repo_structure.txt
 diff_*.txt
+pipeline/live_staging_data/
+pipeline/live_run_output/
+pipeline/latest_live_report.txt

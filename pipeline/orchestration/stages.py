@@ -147,3 +147,34 @@ def latest_bet_signal(best_trial, meta, ch11, input_data_dir):
         return None
     latest_val = signal.iloc[-1]
     return float(latest_val) if pd.notna(latest_val) else None
+def run_live_trials(ch11, live_input_dir, live_here_dir):
+    """Runs Ch11's real part_c_build_trials() against LIVE data instead of
+    the static March 2026 dataset, WITHOUT modifying chapter_11_backtest_
+    dangers.py at all. That file has no parameters for this -- it hard-
+    loads two filenames from its own module-level INPUT constant.
+
+    *** LOAD-BEARING (2026-08-14): monkeypatches ch11's INPUT and HERE
+    module globals rather than editing the file ***
+    Two reasons this is monkeypatched, not parameterized in the source:
+    (1) chapter_11_backtest_dangers.py is a real-machine-confirmed
+    TEACHING deliverable (Ch11's README, notebook, and committed PNGs all
+    describe ITS OWN exact static-data run) -- adding live-data plumbing
+    to it would blur what that chapter's own confirmed output means.
+    (2) part_c_build_trials() has a side effect beyond its return value:
+    it SAVES PNG PLOTS to HERE (ch11_trial_sharpes.png etc). Without also
+    patching HERE, every live pipeline run would silently overwrite Ch11's
+    own committed teaching plots with live-run byproducts. Both INPUT and
+    HERE are patched here, and restored in a finally block so a live run
+    can never leave the ch11 module object in a state that would corrupt
+    a SUBSEQUENT static-data call in the same Python process.
+    """
+    original_input, original_here = ch11.INPUT, ch11.HERE
+    try:
+        ch11.INPUT = live_input_dir
+        ch11.HERE = live_here_dir
+        os.makedirs(live_here_dir, exist_ok=True)
+        M, meta = ch11.part_c_build_trials()
+    finally:
+        ch11.INPUT = original_input
+        ch11.HERE = original_here
+    return M, meta
