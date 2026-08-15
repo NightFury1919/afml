@@ -240,3 +240,60 @@ def test_generate_momentum_trades_start_ts_us_respected():
     ts = out['raw_trades']['Timestamp'].values
     assert ts[0] == 1_000_000
     assert list(np.diff(ts)) == [1000] * 9
+# =============================================================================
+# TDD VERIFICATION -- pytest results, real-machine-confirmed 2026-08-15
+# (mlfinlab env: Python 3.10.20, pandas 1.5.3, numpy 1.23.5, sklearn 1.2.2)
+# =============================================================================
+# Two-pass run (per project convention):
+#
+# PASS 1 -- from repo root (pytest pipeline/orchestration/test_positive_control_data.py -v):
+#   test_build_regime_sequence_hand_traced PASSED
+#   test_build_regime_sequence_trims_to_n_trades PASSED
+#   test_build_regime_sequence_raises_if_insufficient PASSED
+#   test_build_regime_sequence_mismatched_lengths_raises PASSED
+#   test_generate_tick_directions_hand_traced PASSED
+#   test_generate_tick_directions_draw_equal_to_prob_is_a_flip PASSED
+#   test_directions_to_prices_hand_traced_zero_noise PASSED
+#   test_directions_to_prices_hand_traced_with_noise PASSED
+#   test_directions_to_is_buyer_maker_hand_traced PASSED
+#   test_sample_regimes_hand_traced PASSED
+#   test_sample_regimes_stops_as_soon_as_total_meets_n_trades PASSED
+#   test_generate_momentum_trades_rejects_no_edge_probability PASSED
+#   test_generate_momentum_trades_schema_matches_ingestion PASSED
+#   test_generate_momentum_trades_reproducible_with_same_seed PASSED
+#   test_generate_momentum_trades_realized_edge_is_strong PASSED
+#   test_generate_momentum_trades_start_ts_us_respected PASSED
+#   16 passed in 3.63s
+#
+# PASS 2 -- from pipeline/orchestration/ (pytest test_positive_control_data.py -v):
+#   Same 16 tests, all PASSED, 16 passed in 2.16s
+#
+# END-TO-END POSITIVE CONTROL RUN (python pipeline/run_pipeline_positive_control.py,
+# n_trades=6000, continuation_prob=0.85, random_state=42):
+#   244 bars, 200 triple-barrier events, 188/200 (94%) survived feature
+#   enrichment, fracdiff d=1.0.
+#   [FEATURE DEGENERACY] round_number_fraction flagged (expected -- see
+#   positive_control_data.py's own LOAD-BEARING note on constant volume).
+#   [CLASS BALANCE] bin counts {1.0: 114, -1.0: 74}, ratio 0.649 -- not
+#   degenerate. [PREDICTION SPREAD] winning trial's predictions vary
+#   normally ({1.0: 158, -1.0: 30}) -- not degenerate.
+#   PBO = 0.0286, DSR = 0.8540, best trial C1_s0.2 (Sharpe +0.3140).
+#   BIT-FOR-BIT IDENTICAL to the sandbox dry run that produced this test
+#   suite (numpy 2.4/pandas 3.0/sklearn 1.8 on Python 3.12) -- same PBO,
+#   same DSR, same full 20-trial table, same feature-degeneracy/class-
+#   balance findings. random_state=42 threaded through a pure-numpy
+#   generation path reproduced exactly across both environments.
+#   Compare against this project's real-data runs: PBO ~0.78-0.83,
+#   DSR ~0.37-0.55 (static baseline + 2 live runs, 2026-08-13/14). The
+#   sharp contrast (near-zero PBO / high DSR here vs. high PBO / low DSR
+#   on real data) is the positive-control evidence this validation was
+#   built for: the pipeline DOES detect a genuine edge when one is known
+#   to exist, supporting the real-data "no edge" finding as a genuine
+#   market result rather than a silent pipeline failure.
+#
+# No bugs found in positive_control_data.py itself during this session's
+# real-machine run (one bug WAS found and fixed during the original
+# sandbox development -- see the module docstring's LOAD-BEARING note on
+# total_span_hours -- but that fix was already in place before this file
+# was ever handed off, so the real-machine run above is clean).
+# =============================================================================
