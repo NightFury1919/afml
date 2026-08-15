@@ -12,6 +12,14 @@ re-derived live, Ch15 strategy risk at this run's own sr_hat, rebuild.py's
 PT/SL) via risk_context.py -- see that module's own docstring and the
 2026-08-14 handoff's Part 5.
 
+Phase 5 (2026-08-15): also appends an EXPERIMENTAL, NOT-FROM-AFML
+portfolio-oversight section (portfolio_oversight/oversight.py -- capital-
+based position sizing, an informational circuit-breaker flag, a single-
+run lifecycle-stage classification) as a clearly separate, clearly
+labeled block after the real AFML report. See oversight.py's own module
+docstring for why this lives in its own top-level directory and is never
+merged into report.py itself.
+
 Requires BINANCE_API_KEY (see ingestion.py's module docstring for setup).
 
 Usage
@@ -30,6 +38,7 @@ LIVE_STAGING_DIR = os.path.join(HERE, 'live_staging_data')
 LIVE_HERE_DIR = os.path.join(HERE, 'live_run_output')
 
 sys.path.insert(0, os.path.join(HERE, 'orchestration'))
+sys.path.insert(0, os.path.join(ROOT, 'portfolio_oversight'))
 
 from ingestion import pull_recent_trades              # noqa: E402
 import rebuild as rebuild_module                        # noqa: E402
@@ -44,10 +53,15 @@ from risk_context import (                              # noqa: E402
     compute_otr_finding, compute_strategy_risk, compute_pt_sl_context,
 )
 from report import build_report                          # noqa: E402
+from oversight import build_oversight_section             # noqa: E402
 
 LOOKBACK_HOURS = 720   # 30-day minimum, LIVE-CONFIRMED 2026-08-13 (see
                         # ingestion.py/rebuild.py -- shorter windows leave
                         # get_daily_vol() empty or produce too few events)
+PAPER_CAPITAL_USD = 10_000.0   # arbitrary, invented judgment call for the
+                                # portfolio_oversight/ add-on ONLY -- see
+                                # oversight.py's own module docstring.
+                                # Not an AFML parameter.
 
 
 def main():
@@ -118,6 +132,13 @@ def main():
     )
     if caveats:
         report += '\n\n' + '\n\n'.join(caveats)
+
+    oversight_section = build_oversight_section(
+        signal, eval_result, strategy_risk_result=strategy_risk_result,
+        paper_capital_usd=PAPER_CAPITAL_USD,
+    )
+    report += '\n\n' + oversight_section
+
     print(report)
 
     out_path = os.path.join(HERE, 'latest_live_report.txt')
