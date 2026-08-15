@@ -7,6 +7,11 @@ rebuild -> features -> live_staging -> Ch11's real trial construction
 chapter_11_backtest_dangers.py) -> the SAME evaluate_overfitting/
 latest_bet_signal/build_report used by the static-data pipeline.
 
+Phase 4 (2026-08-15): also computes and reports risk context (Ch13 OTR
+re-derived live, Ch15 strategy risk at this run's own sr_hat, rebuild.py's
+PT/SL) via risk_context.py -- see that module's own docstring and the
+2026-08-14 handoff's Part 5.
+
 Requires BINANCE_API_KEY (see ingestion.py's module docstring for setup).
 
 Usage
@@ -27,12 +32,16 @@ LIVE_HERE_DIR = os.path.join(HERE, 'live_run_output')
 sys.path.insert(0, os.path.join(HERE, 'orchestration'))
 
 from ingestion import pull_recent_trades              # noqa: E402
-from rebuild import build_bars_and_labels              # noqa: E402
+import rebuild as rebuild_module                        # noqa: E402
+from rebuild import build_bars_and_labels               # noqa: E402
 from features import build_enriched_events              # noqa: E402
 from live_staging import stage_live_training_tables      # noqa: E402
 from stages import (                                    # noqa: E402
     load_ch11_driver, run_live_trials, evaluate_overfitting,
     latest_bet_signal,
+)
+from risk_context import (                              # noqa: E402
+    compute_otr_finding, compute_strategy_risk, compute_pt_sl_context,
 )
 from report import build_report                          # noqa: E402
 
@@ -79,6 +88,17 @@ def main():
         eval_result['best_trial'], meta, ch11, LIVE_STAGING_DIR,
     )
 
+    print('  computing risk context (Ch13 OTR, Ch15 strategy risk, PT/SL)...')
+    otr_result = compute_otr_finding(rebuild_result)
+    print(f"    OTR: phi_hat={otr_result['phi_hat']:.4f}, "
+          f"stationary={otr_result['stationary']}")
+    strategy_risk_result = compute_strategy_risk(rebuild_result, eval_result['sr_hat'])
+    print(f"    Ch15: P[fail]={strategy_risk_result['p_fail']:.4f} "
+          f"at tSR=sr_hat={eval_result['sr_hat']:.4f}")
+    pt_sl_result = compute_pt_sl_context(rebuild_result, rebuild_module.PT_SL)
+    print(f"    PT/SL: +{pt_sl_result['implied_pt_pct']:.2%} / "
+          f"-{pt_sl_result['implied_sl_pct']:.2%}")
+
     caveats = []
     if enriched_result['fracdiff_d'] == 0:
         caveats.append(
@@ -91,7 +111,11 @@ def main():
             "any signal from this run with that caveat in mind."
         )
 
-    report = build_report(eval_result, signal, asset_label='BTC/USDT (live, Binance.US)')
+    report = build_report(
+        eval_result, signal, asset_label='BTC/USDT (live, Binance.US)',
+        otr_result=otr_result, strategy_risk_result=strategy_risk_result,
+        pt_sl_result=pt_sl_result,
+    )
     if caveats:
         report += '\n\n' + '\n\n'.join(caveats)
     print(report)

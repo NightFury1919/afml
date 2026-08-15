@@ -193,22 +193,113 @@ class TestBuildReport:
         assert 'you should sell' not in lowered
 
 
+class TestBuildReportRiskContext:
+    """Phase 4 (2026-08-15): the optional risk-context section (Ch13 OTR,
+    Ch15 strategy risk, rebuild.py's PT/SL). Uses build_report's SAME
+    _fake_eval_result helper (inherited via a local copy, since these are
+    two separate top-level classes in this file, matching this file's
+    existing per-class-fixture style) and small, hand-built risk_context
+    output dicts -- NOT re-testing risk_context.py's own computation
+    (that's test_risk_context.py's job), only report.py's presentation
+    logic over already-computed values."""
+
+    def _fake_eval_result(self):
+        return {
+            'sr_hat': 0.0388, 'prob_overfit': 0.8286, 'dsr': 0.5445,
+            'n_trials': 20, 'best_trial': 'C0.1_s0.1', 'T': 119,
+            'skew': 0.0386, 'kurtosis': 3.1186,
+        }
+
+    def _fake_pt_sl_result(self):
+        return {'pt_sl': [1, 1], 'latest_trgt': 0.015,
+                'implied_pt_pct': 0.015, 'implied_sl_pct': 0.015}
+
+    def test_no_risk_context_args_omits_section_entirely(self):
+        # Backward-compat guard: run_pipeline.py's existing static-data
+        # call doesn't pass these -- the section must not appear at all.
+        report = build_report(self._fake_eval_result(), signal=0.10,
+                               asset_label='BTC/TUSD')
+        assert 'Risk Context' not in report
+
+    def test_pt_sl_section_included_when_provided(self):
+        report = build_report(
+            self._fake_eval_result(), signal=0.10, asset_label='BTC/TUSD',
+            pt_sl_result=self._fake_pt_sl_result(),
+        )
+        assert 'Risk Context' in report
+        assert '+1.50%' in report
+        assert '-1.50%' in report
+
+    def test_otr_nonstationary_message(self):
+        otr_result = {
+            'phi_hat': 1.042, 'sigma_hat': 690.0, 'stationary': False,
+            'half_life': float('nan'), 'n_opportunities': 87, 'best_node': None,
+        }
+        report = build_report(
+            self._fake_eval_result(), signal=0.10, asset_label='BTC/TUSD',
+            otr_result=otr_result,
+        )
+        assert 'NON-STATIONARY' in report
+        assert 'random walk' in report
+        assert 'phi_hat=1.0420' in report
+
+    def test_otr_stationary_message_shows_best_node(self):
+        otr_result = {
+            'phi_hat': 0.5, 'sigma_hat': 10.0, 'stationary': True,
+            'half_life': 4.2, 'n_opportunities': 50,
+            'best_node': (5.0, 15.0, 1.2, 0.8, 1.5),
+        }
+        report = build_report(
+            self._fake_eval_result(), signal=0.10, asset_label='BTC/TUSD',
+            otr_result=otr_result,
+        )
+        assert 'STATIONARY' in report
+        assert 'NON-STATIONARY' not in report
+        assert 'Sharpe=1.5000' in report
+
+    def test_strategy_risk_flags_too_risky_above_threshold(self):
+        strategy_risk_result = {
+            'p_fail': 0.45, 'freq_real': 366.5, 'p_bar': 0.55,
+            'elapsed_years': 0.238, 'n_events': 87,
+        }
+        report = build_report(
+            self._fake_eval_result(), signal=0.10, asset_label='BTC/TUSD',
+            strategy_risk_result=strategy_risk_result,
+        )
+        assert 'TOO RISKY' in report
+
+    def test_strategy_risk_within_threshold_when_low(self):
+        strategy_risk_result = {
+            'p_fail': 0.03, 'freq_real': 366.5, 'p_bar': 0.55,
+            'elapsed_years': 0.238, 'n_events': 87,
+        }
+        report = build_report(
+            self._fake_eval_result(), signal=0.10, asset_label='BTC/TUSD',
+            strategy_risk_result=strategy_risk_result,
+        )
+        assert 'TOO RISKY' not in report
+        assert 'within the book' in report
+
+
 # ---------------------------------------------------------------------------
-# TDD results -- SANDBOX pre-check only, NOT YET real-machine confirmed.
-# Sandbox: Python 3.12.3, pytest 9.1.1, pandas 3.0.2, numpy 2.4.4,
-# scipy 1.17.1, scikit-learn 1.8.0 -- all NEWER than mlfinlab's pinned
-# versions (pandas 1.5.3, numpy 1.23.5, sklearn 1.2.2).
+# TDD results -- REAL-MACHINE CONFIRMED 2026-08-15
+# (mlfinlab env: Python 3.10.20, pandas 1.5.3, numpy 1.23.5, sklearn 1.2.2)
 #
-# PHASE 1b: reconciliation confirmed in sandbox --
+# Two-pass run (per project convention), all 23 tests in this file (17
+# pre-existing + 6 new TestBuildReportRiskContext tests added 2026-08-15):
+#   PASS 1 -- from repo root: 23 passed (part of a 32-item combined run
+#     with test_risk_context.py, 10.84s)
+#   PASS 2 -- from pipeline/orchestration/: 23 passed (part of the same
+#     32-item combined run, 7.42s)
+#
+# This resolves the earlier "sandbox pre-check only" status this block
+# used to carry -- the file (including Phase 1b's SVC-grid-dependent
+# tests, which need a real ch11 run) is now real-machine confirmed, not
+# just sandbox-verified. Original Phase 1b reconciliation numbers,
+# preserved for history:
 #   PBO = 0.8286 (established real-machine value: ~0.83)
 #   DSR = 0.5445 (down from Phase 1a's unreconciled 0.9995)
 #
-# STILL NEEDED before this is real-machine confirmed:
-#   conda activate mlfinlab
-#   cd C:\ws\AFML
-#   python -m pytest pipeline\orchestration\ -v
-#   cd pipeline\orchestration
-#   python -m pytest -v
-# and paste real results back before treating this as real-machine
-# confirmed, per project convention.
+# No bugs found in report.py/test_orchestration.py during this real-
+# machine confirmation.
 # ---------------------------------------------------------------------------
