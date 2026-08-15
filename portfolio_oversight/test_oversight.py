@@ -226,29 +226,19 @@ def test_build_oversight_section_handles_none_signal_and_no_strategy_risk():
     assert 'no current signal' in section.lower()
     assert 'not flagged' in section.lower() or 'FLAGGED' in section
 # =============================================================================
-# TDD VERIFICATION -- pytest results, SANDBOX pre-check only, NOT YET
-# real-machine confirmed.
-# Sandbox: Python 3.12.3, pytest 9.1.1 -- no numpy/pandas/sklearn
-# dependency in this file at all (pure-Python arithmetic and string
-# formatting only), so environment mismatch risk here is minimal, but
-# real-machine confirmation is still this project's standing convention.
+# TDD VERIFICATION -- pytest results, real-machine-confirmed 2026-08-15
+# (mlfinlab env: Python 3.10.20, pandas 1.5.3, numpy 1.23.5, sklearn 1.2.2)
 # =============================================================================
-# Two-pass run:
+# Two-pass run (per project convention):
 #
 # PASS 1 -- from repo root (pytest portfolio_oversight/test_oversight.py -v):
-#   All 23 tests PASSED, 23 passed in 0.14s
+#   All 23 tests PASSED, 23 passed in 0.20s
 #
 # PASS 2 -- from portfolio_oversight/ (pytest test_oversight.py -v):
-#   Same 23 tests, all PASSED, 23 passed in 0.02s
+#   Same 23 tests, all PASSED, 23 passed in 0.08s
 #
-# No bugs found during sandbox development.
-#
-# STILL NEEDED before this is real-machine confirmed:
-#   conda activate mlfinlab
-#   cd C:\ws\AFML
-#   pytest portfolio_oversight\test_oversight.py -v
-#   cd portfolio_oversight
-#   pytest test_oversight.py -v
-# and paste real results back before treating this as real-machine
-# confirmed, per project convention.
+# No bugs found in oversight.py during real-machine confirmation -- sandbox
+# and real-machine behavior matched exactly (expected: this file has no
+# numpy/pandas/sklearn dependency at all, pure-Python arithmetic and
+# string formatting only, so environment mismatch risk was always low).
 # =============================================================================
