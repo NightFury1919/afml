@@ -11,3 +11,5 @@ diff_*.txt
 pipeline/live_staging_data/
 pipeline/live_run_output/
 pipeline/latest_live_report.txt
+pipeline/positive_control_staging_data/
+pipeline/positive_control_output/
