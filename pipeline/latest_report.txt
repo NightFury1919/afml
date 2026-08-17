@@ -1,14 +1,14 @@
 AFML Pipeline Assessment -- BTC/TUSD
 ====================================
 
-Across 20 model configuration(s) tested on 119 out-of-sample (purged, embargoed) observations, the best-performing configuration was 'C0.1_s0.1', with an unannualized Sharpe ratio of 0.0388.
+Across 20 model configuration(s) tested on 26.17 out-of-sample (purged, embargoed, uniqueness-weighted) observations, the best-performing configuration was 'C0.1_s0.1', with an unannualized Sharpe ratio of 0.0388.
 
 Probability of Backtest Overfitting (PBO): 82.86%. This estimates the chance that the best in-sample configuration underperforms the median configuration out-of-sample -- i.e. that picking the 'winning' model was a matter of noise, not genuine skill.
 
-Deflated Sharpe Ratio (DSR): 0.5445. This corrects the best trial's Sharpe ratio for the fact that 20 configurations were tried and the best one was cherry-picked. DSR estimates the probability that the TRUE Sharpe ratio exceeds zero once that selection bias is accounted for. Values near 1.0 indicate strong evidence of genuine, non-overfit edge; values near 0.5 or below indicate the apparent outperformance is statistically indistinguishable from noise.
+Deflated Sharpe Ratio (DSR): 0.5206. This corrects the best trial's Sharpe ratio for the fact that 20 configurations were tried and the best one was cherry-picked. DSR estimates the probability that the TRUE Sharpe ratio exceeds zero once that selection bias is accounted for. Values near 1.0 indicate strong evidence of genuine, non-overfit edge; values near 0.5 or below indicate the apparent outperformance is statistically indistinguishable from noise.
 (Computed using the winning trial's real realized-return skew=0.0386 and kurtosis=3.1186, not a Gaussian assumption -- fatter tails or negative skew in real returns would otherwise cause DSR to overstate confidence.)
 
-** SAMPLE SIZE WARNING: only 119 observations and 20 trial configuration(s) went into this estimate. This project's own PBO test suite documents that a SINGLE PBO/DSR estimate on a small sample can range roughly 4%-99% even for a genuinely zero-edge strategy, purely from sampling noise. The specific PBO/DSR values above should NOT be read as reliable evidence of edge (or lack of it) until this is re-checked with a substantially larger out-of-sample count and more trial configurations. **
+** SAMPLE SIZE WARNING: only 26.17 observations and 20 trial configuration(s) went into this estimate. This project's own PBO test suite documents that a SINGLE PBO/DSR estimate on a small sample can range roughly 4%-99% even for a genuinely zero-edge strategy, purely from sampling noise. The specific PBO/DSR values above should NOT be read as reliable evidence of edge (or lack of it) until this is re-checked with a substantially larger out-of-sample count and more trial configurations. **
 
 Overall confidence in a real, exploitable edge: UNRELIABLE (sample too small to trust).
 

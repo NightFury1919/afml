@@ -71,6 +71,22 @@ accompanying chart/plot alongside the text output -- don't replace the
 text, add a visual next to it. Applies going forward to all chapters,
 not just retroactively to existing ones unless asked.
 
+### Diagnostics folder convention (decided 2026-08-17)
+Pipeline validation/testing/calibration scripts that aren't part of the
+core pipeline package -- one-off investigations, controlled experiments,
+calibration derivations (e.g. compare_tw_by_cusum_h.py,
+calibrate_min_reliable_T.py) -- live in `pipeline/diagnostics/`, not
+scattered at the repo root. Everything placed in this folder IS tracked
+in git -- these are real analysis artifacts (scripts, CSVs, small text
+reports), not regenerable pipeline run output.
+
+That said, bulky REGENERATED pipeline run output (an experimental run's
+own staging CSVs, PNGs, or full output directories) does NOT belong in
+this folder or in git at all -- delete it once its findings are captured
+in the diagnostic script itself and/or a session handoff, the same way
+`live_staging_data/`/`live_run_output/` are already gitignored rather
+than tracked.
+
 ### TDD workflow (always followed)
 1. Read the book's snippet/formula carefully.
 2. Implement in Python, snake_case, plain-English comments explaining

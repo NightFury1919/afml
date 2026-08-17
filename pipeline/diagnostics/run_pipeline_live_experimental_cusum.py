@@ -1,44 +1,47 @@
 """
-pipeline/run_pipeline_live.py
+run_pipeline_live_experimental_cusum.py -- ONE-OFF EXPERIMENT, not part of
+the committed pipeline.
 
-Phase 3: live-data counterpart to run_pipeline.py. Chains ingestion ->
-rebuild -> features -> live_staging -> Ch11's real trial construction
-(via stages.run_live_trials, live data monkeypatched in without touching
-chapter_11_backtest_dangers.py) -> the SAME evaluate_overfitting/
-latest_bet_signal/build_report used by the static-data pipeline.
+Runs the exact same chain as pipeline/run_pipeline_live.py (ingestion ->
+rebuild -> features -> live_staging -> Ch11 real trials -> risk_context ->
+report -> oversight), with ONE difference: rebuild_module.CUSUM_H is
+monkeypatched to a looser value for the duration of this run, then
+restored -- mirroring stages.py's own established INPUT/HERE monkeypatch-
+and-restore-in-finally pattern for ch11, rather than editing rebuild.py's
+committed CUSUM_H=500 constant.
 
-Phase 4 (2026-08-15): also computes and reports risk context (Ch13 OTR
-re-derived live, Ch15 strategy risk at this run's own sr_hat, rebuild.py's
-PT/SL) via risk_context.py -- see that module's own docstring and the
-2026-08-14 handoff's Part 5.
+Writes to SEPARATE output locations (experimental_cusum_staging_data/,
+experimental_cusum_output/, experimental_cusum_report.txt) so this never
+overwrites the real live_staging_data/live_run_output/latest_live_report.txt
+from a genuine run_pipeline_live.py call.
 
-Phase 5 (2026-08-15): also appends an EXPERIMENTAL, NOT-FROM-AFML
-portfolio-oversight section (portfolio_oversight/oversight.py -- capital-
-based position sizing, an informational circuit-breaker flag, a single-
-run lifecycle-stage classification) as a clearly separate, clearly
-labeled block after the real AFML report. See oversight.py's own module
-docstring for why this lives in its own top-level directory and is never
-merged into report.py itself.
+Purpose: see what a MUCH larger real sample (h=100 -> ~150+ raw CUSUM
+events, vs. h=500's ~45-49) does to PBO/DSR/OTR findings, before deciding
+whether a permanent CUSUM_H redesign (see rebuild.py's own KNOWN OPEN
+QUESTION) is worth the book-fidelity/event-density tradeoff discussed
+2026-08-16.
 
-Requires BINANCE_API_KEY (see ingestion.py's module docstring for setup).
+Requires BINANCE_API_KEY, same as run_pipeline_live.py.
 
 Usage
 -----
     conda activate mlfinlab
     cd C:\\ws\\AFML
     $env:BINANCE_API_KEY = 'your-key-here'
-    python pipeline\\run_pipeline_live.py
+    python run_pipeline_live_experimental_cusum.py           # h=100 default
+    python run_pipeline_live_experimental_cusum.py 75         # custom h
 """
 import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.abspath(os.path.join(HERE, '..'))
-LIVE_STAGING_DIR = os.path.join(HERE, 'live_staging_data')
-LIVE_HERE_DIR = os.path.join(HERE, 'live_run_output')
+PIPELINE_DIR = os.path.join(HERE, 'pipeline')
+EXPERIMENTAL_STAGING_DIR = os.path.join(PIPELINE_DIR, 'experimental_cusum_staging_data')
+EXPERIMENTAL_HERE_DIR = os.path.join(PIPELINE_DIR, 'experimental_cusum_output')
+EXPERIMENTAL_REPORT_PATH = os.path.join(PIPELINE_DIR, 'experimental_cusum_report.txt')
 
-sys.path.insert(0, os.path.join(HERE, 'orchestration'))
-sys.path.insert(0, os.path.join(ROOT, 'portfolio_oversight'))
+sys.path.insert(0, os.path.join(PIPELINE_DIR, 'orchestration'))
+sys.path.insert(0, os.path.join(HERE, 'portfolio_oversight'))
 
 from ingestion import pull_recent_trades              # noqa: E402
 import rebuild as rebuild_module                        # noqa: E402
@@ -55,16 +58,19 @@ from risk_context import (                              # noqa: E402
 from report import build_report                          # noqa: E402
 from oversight import build_oversight_section             # noqa: E402
 
-LOOKBACK_HOURS = 720   # 30-day minimum, LIVE-CONFIRMED 2026-08-13 (see
-                        # ingestion.py/rebuild.py -- shorter windows leave
-                        # get_daily_vol() empty or produce too few events)
-PAPER_CAPITAL_USD = 10_000.0   # arbitrary, invented judgment call for the
-                                # portfolio_oversight/ add-on ONLY -- see
-                                # oversight.py's own module docstring.
-                                # Not an AFML parameter.
+LOOKBACK_HOURS = 720
+PAPER_CAPITAL_USD = 10_000.0
+DEFAULT_EXPERIMENTAL_CUSUM_H = 100  # crosses min_reliable_T=150 in raw
+                                     # CUSUM terms per 2026-08-16 scan on
+                                     # today's staged close series (153
+                                     # events at h=100 vs 47 at h=500)
 
 
 def main():
+    experimental_h = (
+        float(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_EXPERIMENTAL_CUSUM_H
+    )
+
     api_key = os.environ.get('BINANCE_API_KEY')
     if not api_key:
         raise SystemExit(
@@ -72,11 +78,19 @@ def main():
             'docstring for how to get a free read-only key.'
         )
 
+    print(f'*** EXPERIMENTAL RUN: CUSUM_H={experimental_h} (committed '
+          f'default is {rebuild_module.CUSUM_H}) ***')
     print(f'Pulling last {LOOKBACK_HOURS}h of BTCUSDT trades from Binance.US...')
     raw_trades = pull_recent_trades('BTCUSDT', LOOKBACK_HOURS, api_key)
     print(f'  {len(raw_trades)} raw trades pulled')
 
-    rebuild_result = build_bars_and_labels(raw_trades)
+    original_cusum_h = rebuild_module.CUSUM_H
+    try:
+        rebuild_module.CUSUM_H = experimental_h
+        rebuild_result = build_bars_and_labels(raw_trades)
+    finally:
+        rebuild_module.CUSUM_H = original_cusum_h
+
     print(f"  {len(rebuild_result['bars'])} bars, "
           f"{len(rebuild_result['events'])} triple-barrier events, "
           f"threshold=${rebuild_result['threshold']:,.2f}")
@@ -89,34 +103,17 @@ def main():
           f"feature enrichment (fracdiff d={enriched_result['fracdiff_d']})")
 
     staged = stage_live_training_tables(
-        rebuild_result, enriched_result, LIVE_STAGING_DIR,
+        rebuild_result, enriched_result, EXPERIMENTAL_STAGING_DIR,
     )
     print(f"  staged {staged['n_events']} enriched events to "
           f"{staged['enriched_csv_path']}")
 
     ch11 = load_ch11_driver()
-    M, meta = run_live_trials(ch11, LIVE_STAGING_DIR, LIVE_HERE_DIR)
+    M, meta = run_live_trials(ch11, EXPERIMENTAL_STAGING_DIR, EXPERIMENTAL_HERE_DIR)
 
-    # *** LOAD-BEARING (2026-08-17): tw for the DSR uniqueness-weighting
-    # fix *** -- rebuild_result['tw'] is indexed to the PRE-enrichment
-    # event population; evaluate_overfitting() needs it aligned to the
-    # population that actually fed the trial grid (enriched_result's
-    # post-fracdiff-dropna subset). Same reindex-and-fail-loud pattern
-    # live_staging.py already uses for 'w'.
-    tw_aligned = rebuild_result['tw'].reindex(enriched_result['enriched_events'].index)
-    if tw_aligned.isna().any():
-        raise ValueError(
-            "tw has NaN after reindexing to the enriched event index -- an "
-            "enriched event has no matching rebuild.py tw value, which "
-            "should be impossible since build_enriched_events() only DROPS "
-            "rows from rebuild.py's events, never adds new ones (same "
-            "invariant live_staging.py already relies on for w). "
-            "Investigate before evaluating overfitting on it."
-        )
-
-    eval_result = evaluate_overfitting(M, meta, ch11, S=8, tw=tw_aligned)
+    eval_result = evaluate_overfitting(M, meta, ch11, S=8)
     signal = latest_bet_signal(
-        eval_result['best_trial'], meta, ch11, LIVE_STAGING_DIR,
+        eval_result['best_trial'], meta, ch11, EXPERIMENTAL_STAGING_DIR,
     )
 
     print('  computing risk context (Ch13 OTR, Ch15 strategy risk, PT/SL)...')
@@ -130,7 +127,14 @@ def main():
     print(f"    PT/SL: +{pt_sl_result['implied_pt_pct']:.2%} / "
           f"-{pt_sl_result['implied_sl_pct']:.2%}")
 
-    caveats = []
+    caveats = [
+        f"*** EXPERIMENTAL RUN (2026-08-16): CUSUM_H={experimental_h} "
+        f"(NOT the committed default of {original_cusum_h}). This report "
+        f"is a one-off diagnostic to see how findings change with a much "
+        f"larger real sample -- it is NOT the pipeline's established "
+        f"result and should not be compared apples-to-apples with prior "
+        f"handoffs' tracking tables without this caveat."
+    ]
     if enriched_result['fracdiff_d'] == 0:
         caveats.append(
             "This run's fracdiff feature used d=0 -- an UNRESOLVED, "
@@ -143,12 +147,12 @@ def main():
         )
 
     report = build_report(
-        eval_result, signal, asset_label='BTC/USDT (live, Binance.US)',
+        eval_result, signal,
+        asset_label=f'BTC/USDT (EXPERIMENTAL live, CUSUM_H={experimental_h})',
         otr_result=otr_result, strategy_risk_result=strategy_risk_result,
         pt_sl_result=pt_sl_result,
     )
-    if caveats:
-        report += '\n\n' + '\n\n'.join(caveats)
+    report += '\n\n' + '\n\n'.join(caveats)
 
     oversight_section = build_oversight_section(
         signal, eval_result, strategy_risk_result=strategy_risk_result,
@@ -158,10 +162,10 @@ def main():
 
     print(report)
 
-    out_path = os.path.join(HERE, 'latest_live_report.txt')
-    with open(out_path, 'w') as f:
+    with open(EXPERIMENTAL_REPORT_PATH, 'w') as f:
         f.write(report)
-    print(f'\n[live report written to {out_path}]')
+    print(f'\n[EXPERIMENTAL live report written to {EXPERIMENTAL_REPORT_PATH}]')
+    print(f'[real latest_live_report.txt was NOT touched by this run]')
 
 
 if __name__ == '__main__':

@@ -113,7 +113,7 @@ def _risk_context_section(otr_result, strategy_risk_result, pt_sl_result):
 
 
 def build_report(eval_result, signal, asset_label='this asset',
-                  min_reliable_T=150, min_reliable_trials=10,
+                  min_reliable_T=30, min_reliable_trials=10,
                   otr_result=None, strategy_risk_result=None,
                   pt_sl_result=None):
     """
@@ -122,14 +122,30 @@ def build_report(eval_result, signal, asset_label='this asset',
     eval_result : dict, output of stages.evaluate_overfitting
     signal : float or None, output of stages.latest_bet_signal
     asset_label : str, human-readable asset name for the writeup
-    min_reliable_T : int, below this nonzero-bet count, PBO/DSR are flagged
-        as statistically less reliable. Lowered from Phase 1a's 250 to 150
-        now that T is a real nonzero-bet count bounded by this dataset's
-        ~238-bar ceiling (Phase 1a's 250 threshold could never be met by
-        this dataset at all, which defeated the point of the check) -- see
-        this project's own ch11/backtest_dangers/pbo.py TDD notes on
-        estimator imprecision for why any threshold here is a heuristic,
-        not a statistically derived cutoff
+    min_reliable_T : int, below this UNIQUENESS-WEIGHTED effective T
+        (see stages.py's 2026-08-17 LOAD-BEARING note -- T is no longer a
+        raw bar count), PBO/DSR are flagged as statistically less
+        reliable.
+
+        *** LOAD-BEARING (2026-08-17): simulation-derived, not a guess ***
+        Replaces the old min_reliable_T=150, which was picked to "feel
+        right" against a ~238-bar dataset ceiling -- a leftover from when
+        T meant something else entirely (a raw bar count). 30 is derived
+        from calibrate_min_reliable_T.py's null-hypothesis Monte Carlo
+        (N=20 trials, matching this project's real C_GRID x STEP_GRID,
+        20,000 reps per T, genuinely zero true edge): DSR's own multiple-
+        testing correction is ALREADY well-calibrated at any T tested
+        (P[DSR>0.5]~=50%, P[DSR>0.95]~=0% under the null, uniformly across
+        T=5..200) -- the sqrt(T-1) term in the PSR formula dampens
+        confidence exactly as it should at small T, so small T does not
+        produce falsely confident DSR readings. What DOES degrade at
+        small T is PRECISION: a single DSR draw's std deviation under the
+        null starts at 0.204 (T=5) and only flattens to within ~1-2% of
+        its T=1000 asymptotic floor (0.157) by around T=75; T=30 sits at
+        0.162 (~3.4% above the floor) -- past the steepest part of the
+        curve, comfortably closer to the precision floor than to the old
+        threshold's implicit assumption. See calibrate_min_reliable_T.py
+        for the full curve and methodology.
     min_reliable_trials : int, below this trial count, DSR's multiple-
         testing correction has too little information to be meaningful.
         Phase 1b's real trial count is 20 (vs Phase 1a's 3)
@@ -160,10 +176,11 @@ def build_report(eval_result, signal, asset_label='this asset',
     lines.append("=" * len(header))
     lines.append("")
     lines.append(
-        f"Across {n_trials} model configuration(s) tested on {T} "
-        f"out-of-sample (purged, embargoed) observations, the "
-        f"best-performing configuration was '{best_trial}', with an "
-        f"unannualized Sharpe ratio of {sr_hat:.4f}."
+        f"Across {n_trials} model configuration(s) tested on {T:.2f} "
+        f"out-of-sample (purged, embargoed, uniqueness-weighted) "
+        f"observations, the best-performing configuration was "
+        f"'{best_trial}', with an unannualized Sharpe ratio of "
+        f"{sr_hat:.4f}."
     )
     lines.append("")
     lines.append(
@@ -196,7 +213,7 @@ def build_report(eval_result, signal, asset_label='this asset',
     if small_sample:
         confidence = "UNRELIABLE (sample too small to trust)"
         lines.append(
-            f"** SAMPLE SIZE WARNING: only {T} observations and {n_trials} "
+            f"** SAMPLE SIZE WARNING: only {T:.2f} observations and {n_trials} "
             f"trial configuration(s) went into this estimate. This "
             "project's own PBO test suite documents that a SINGLE PBO/DSR "
             "estimate on a small sample can range roughly 4%-99% even for "

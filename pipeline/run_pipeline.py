@@ -13,6 +13,14 @@ report layer against EXISTING static real data. Phase 2 will replace the
 static-artifact load with a live Binance pull feeding the SAME downstream
 bar/feature/label pipeline.
 
+*** LOAD-BEARING (2026-08-17): loads and aligns tw for the DSR fix ***
+evaluate_overfitting() now REQUIRES a uniqueness-weighted tw (see
+stages.py's own LOAD-BEARING note on this). This script owns sourcing it
+for the static pipeline: ch04_weights.csv's real 'tw' column, reindexed to
+ch07_training_table_enriched.csv's real event population (the same
+population Ch11's part_c_build_trials() trains the 20-trial grid on) --
+mirrors live_staging.py's existing reindex-and-fail-loud pattern for 'w'.
+
 Usage
 -----
     conda activate mlfinlab
@@ -21,6 +29,8 @@ Usage
 """
 import os
 import sys
+
+import pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..'))
@@ -35,11 +45,36 @@ from stages import (                       # noqa: E402
 from report import build_report            # noqa: E402
 
 
+def load_aligned_tw(input_data_dir):
+    """Real Ch04 average uniqueness, cached in ch04_weights.csv, reindexed
+    to the enriched training table's real event population. Raises loudly
+    on NaN after reindexing (same convention live_staging.py already uses
+    for 'w') -- an unaligned tw would silently corrupt the DSR fix."""
+    weights = pd.read_csv(
+        os.path.join(input_data_dir, 'ch04_weights.csv'),
+        index_col=0, parse_dates=True,
+    )
+    enriched_index = pd.read_csv(
+        os.path.join(input_data_dir, 'ch07_training_table_enriched.csv'),
+        index_col=0, parse_dates=True,
+    ).index
+    tw = weights['tw'].reindex(enriched_index)
+    if tw.isna().any():
+        raise ValueError(
+            "tw has NaN after reindexing to the enriched training table's "
+            "event index -- ch04_weights.csv may be stale relative to "
+            "ch07_training_table_enriched.csv. Investigate before running "
+            "the pipeline."
+        )
+    return tw
+
+
 def main():
     ch11 = load_ch11_driver()
     M, meta = run_real_trials(ch11)
+    tw = load_aligned_tw(INPUT_DATA)
 
-    eval_result = evaluate_overfitting(M, meta, ch11, S=8)
+    eval_result = evaluate_overfitting(M, meta, ch11, S=8, tw=tw)
     signal = latest_bet_signal(eval_result['best_trial'], meta, ch11, INPUT_DATA)
 
     report = build_report(eval_result, signal, asset_label='BTC/TUSD')

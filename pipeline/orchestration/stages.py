@@ -81,11 +81,50 @@ def run_real_trials(ch11):
     return M, meta
 
 
-def evaluate_overfitting(M, meta, ch11, S=8):
+def evaluate_overfitting(M, meta, ch11, S=8, *, tw):
     """Wraps Ch11's real pbo() and Ch14's real deflated_sharpe_ratio(),
-    now with real skew/kurtosis computed from the winning trial's actual
+    with real skew/kurtosis computed from the winning trial's actual
     nonzero-bet return distribution (Ch14's own convention -- pandas'
     kurtosis() is EXCESS kurtosis, +3 converts to the book's raw gamma_4).
+
+    *** LOAD-BEARING (2026-08-17): DSR's T is uniqueness-weighted, not a
+    raw bar count ***
+    Bug found in the 2026-08-16 session's CUSUM investigation: T used to be
+    len(bet_ret) -- the count of nonzero-PnL bars in the winning trial's
+    bar-level mark-to-market series -- fed straight into
+    deflated_sharpe_ratio() as if every bar were an independent
+    observation. It is not: triple-barrier events overlap heavily under
+    this pipeline's fixed VERTICAL_BARRIER_NUM_DAYS=3, which is exactly
+    what Ch04's average uniqueness (tw) measures. A controlled real-data
+    experiment (compare_tw_by_cusum_h.py, 2026-08-16) confirmed this
+    precisely: tripling the raw CUSUM event count (45->140, via
+    CUSUM_H=500->100) left the uniqueness-weighted effective sample size
+    essentially flat (19.0->19.6), because the extra events were almost
+    entirely overlapping restatements of the same underlying price moves,
+    not new independent information.
+
+    `tw` is therefore now a REQUIRED, keyword-only argument -- there is no
+    default, so no caller can silently regress to the old, inflated-T
+    behavior by forgetting to pass it. T_effective = T_raw * tw.mean().
+
+    KNOWN SIMPLIFICATION (documented, not hidden): tw.mean() is the
+    average uniqueness across the WHOLE event population feeding the
+    trial grid, not filtered down to the specific bars/events behind the
+    winning trial's own signal (Ch11's driver -- deliberately never
+    edited directly, see this module's own header -- doesn't expose
+    per-trial event indices). This matches the population-level approach
+    the 2026-08-16 diagnostic itself used.
+
+    Parameters
+    ----------
+    tw : pd.Series, Ch04's average-uniqueness output
+        (get_average_uniqueness()), already reindexed by the CALLER to the
+        event population that fed this run's trial grid (static:
+        input_data/ch04_weights.csv's 'tw' column reindexed to
+        ch07_training_table_enriched.csv's index; live: rebuild_result[
+        'tw'] reindexed to enriched_result['enriched_events'].index --
+        same reindex pattern live_staging.py already uses for 'w'). Must
+        contain no NaNs and must be non-empty.
     """
     prob_overfit, cscv_df = ch11.pbo(M, S=S)
 
@@ -94,18 +133,36 @@ def evaluate_overfitting(M, meta, ch11, S=8):
     sr_hat = trial_sharpes[best_trial]
 
     bet_ret = M[best_trial][M[best_trial] != 0]
-    T = len(bet_ret)
-    if T > 2:
+    T_raw = len(bet_ret)
+    if T_raw > 2:
         skew = float(bet_ret.skew())
         kurtosis = float(bet_ret.kurtosis()) + 3.0
     else:
         skew, kurtosis = 0.0, 3.0  # too few realized bets to estimate; fall
                                     # back to the Gaussian assumption rather
                                     # than a division-by-near-zero estimate
+                                    # -- gated on T_raw, a DATA-SUFFICIENCY
+                                    # question, deliberately NOT T_effective
+
+    if len(tw) == 0:
+        raise ValueError(
+            'tw is empty -- cannot compute a uniqueness-weighted T. Check '
+            'the caller\'s reindexing of tw to the trial-grid event '
+            'population.'
+        )
+    if tw.isna().any():
+        raise ValueError(
+            'tw contains NaN -- an event in the trial-grid population has '
+            'no matching uniqueness value. This should be impossible if '
+            'tw was reindexed correctly by the caller; investigate before '
+            'evaluating overfitting on it.'
+        )
+    tw_mean = float(tw.mean())
+    T_effective = T_raw * tw_mean
 
     n_trials = M.shape[1]
     var_sr_trials = float(trial_sharpes.var(ddof=1))
-    dsr = deflated_sharpe_ratio(sr_hat, var_sr_trials, n_trials, T, skew, kurtosis)
+    dsr = deflated_sharpe_ratio(sr_hat, var_sr_trials, n_trials, T_effective, skew, kurtosis)
 
     return {
         'trial_sharpes': trial_sharpes,
@@ -115,7 +172,9 @@ def evaluate_overfitting(M, meta, ch11, S=8):
         'cscv_df': cscv_df,
         'n_trials': n_trials,
         'var_sr_trials': var_sr_trials,
-        'T': T,
+        'T': T_effective,
+        'T_raw': T_raw,
+        'tw_mean': tw_mean,
         'skew': skew,
         'kurtosis': kurtosis,
         'dsr': dsr,
@@ -178,3 +237,19 @@ def run_live_trials(ch11, live_input_dir, live_here_dir):
         ch11.INPUT = original_input
         ch11.HERE = original_here
     return M, meta
+
+# ---------------------------------------------------------------------------
+# TDD results -- real machine (mlfinlab env), 2026-08-17
+# (see pipeline/orchestration/test_stages.py for the full suite and its
+# own embedded pytest output; summarized here per this project's .py
+# TDD-embed convention)
+#
+# (mlfinlab) PS C:\ws\AFML> python -m pytest pipeline\orchestration\test_stages.py -v
+# ============================== 11 passed in 4.48s ==============================
+# Two-pass (from inside pipeline/orchestration/): 11 passed in 2.33s
+#
+# Confirmed against real data via pipeline\run_pipeline.py immediately
+# after: T (uniqueness-weighted, was a raw bar count) = 26.166490233278697,
+# DSR = 0.5206 -- still squarely "no reliable edge," consistent with every
+# other diagnostic this project has run on this dataset (Ch11-15).
+# ---------------------------------------------------------------------------

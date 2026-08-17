@@ -1,0 +1,40 @@
+AFML Pipeline Assessment -- BTC/USDT (EXPERIMENTAL live, CUSUM_H=100)
+=====================================================================
+
+Across 20 model configuration(s) tested on 200 out-of-sample (purged, embargoed) observations, the best-performing configuration was 'C10_s0.1', with an unannualized Sharpe ratio of 0.1211.
+
+Probability of Backtest Overfitting (PBO): 80.00%. This estimates the chance that the best in-sample configuration underperforms the median configuration out-of-sample -- i.e. that picking the 'winning' model was a matter of noise, not genuine skill.
+
+Deflated Sharpe Ratio (DSR): 0.8858. This corrects the best trial's Sharpe ratio for the fact that 20 configurations were tried and the best one was cherry-picked. DSR estimates the probability that the TRUE Sharpe ratio exceeds zero once that selection bias is accounted for. Values near 1.0 indicate strong evidence of genuine, non-overfit edge; values near 0.5 or below indicate the apparent outperformance is statistically indistinguishable from noise.
+(Computed using the winning trial's real realized-return skew=0.6425 and kurtosis=5.6914, not a Gaussian assumption -- fatter tails or negative skew in real returns would otherwise cause DSR to overstate confidence.)
+
+Overall confidence in a real, exploitable edge: moderate.
+
+Most recent model-implied position size: +0.00 (flat) on a [-1, 1] scale, discretized per Ch10's getSignal. This is a statistically-derived position size, NOT investment advice or a directive to trade -- it reflects this specific model's confidence given real historical purged-CV performance, nothing more.
+
+Risk Context (Portfolio-Oversight-adjacent, from real AFML content)
+--------------------------------------------------------------------
+
+Stop-loss / take-profit (Ch3 triple-barrier, PT_SL=[1, 1]): this run's most recent triple-barrier event implies a profit-take at +0.83% and a stop-loss at -0.83% from entry, scaled to current volatility (this is the SAME barrier width already driving every triple-barrier label in this pipeline -- not a new calculation, just surfaced explicitly here for the reader).
+
+Optimal Trading Rule (Ch13): this run's price behavior came back STATIONARY (phi_hat=0.9807, half-life=35.6 bars) -- a genuine change from every prior run on this pipeline. A fittable synthetic-backtested rule was found: profit-take=248.98, stop-loss=456.46 (real price units), Sharpe=0.0457 across 140 real opportunities. Worth investigating further given this is not the established finding.
+
+Probability of strategy failure (Ch15): at this run's own best-trial Sharpe as the target, P[true precision too low to sustain it] = 0.5222 -- TOO RISKY per the book's own >.05 rule of thumb. Realized precision on this run's 140 real bets was 47.14%, annualized to ~1865 bets/year over 0.075 years of real data (short-window annualization -- treat as a genuine but heavily-extrapolated estimate, not a full-year track record).
+
+IMPORTANT: This report reflects rigorous statistical testing, not a guarantee of future performance. Prior real-data runs on this same BTC/TUSD dataset found convergent evidence of NO exploitable signal across five independent methods (Ch11-15 of this project) -- a genuine, honestly-reported null result. A low PBO/DSR score here is not a bug; it may be the correct, honest answer, and should be treated as such rather than re-run until a better number appears.
+
+*** EXPERIMENTAL RUN (2026-08-16): CUSUM_H=100 (NOT the committed default of 500). This report is a one-off diagnostic to see how findings change with a much larger real sample -- it is NOT the pipeline's established result and should not be compared apples-to-apples with prior handoffs' tracking tables without this caveat.
+
+==========================================================================
+EXPERIMENTAL -- NOT FROM AFML (portfolio_oversight/, added 2026-08-15)
+==========================================================================
+AFML Ch1 names a 'Portfolio Oversight' station (embargo -> paper trading -> graduation -> re-allocation -> decommission) but never gives it an algorithm. Everything in this section is this project's OWN invented heuristic filling that gap -- informational only, no real capital, no real order execution anywhere in this repo. Treat this section with LESS confidence than everything above it, which is real, book-fidelity AFML content.
+
+Suggested paper-capital allocation: $0.00 (flat) on a $10,000.00 paper capital base, capped at 10% of capital at full signal confidence. This is a suggested FIGURE, NOT investment advice or a directive to allocate capital.
+
+Lifecycle stage (this run only, no persisted history): PAPER_TRADING.
+  DSR 0.8858 is promising (>= 0.5) but below the graduation bar of 0.95 -- would need real-time monitoring before real capital.
+
+Circuit breaker: FLAGGED (informational only -- nothing is actually halted).
+  - PBO 80.00% exceeds the 50.00% threshold -- the winning configuration is more likely than not to be noise.
+  - Ch15 P[fail] 52.22% exceeds the 50.00% threshold -- realized precision is unlikely to sustain this run's own claimed Sharpe.
