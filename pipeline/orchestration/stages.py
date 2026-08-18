@@ -81,7 +81,18 @@ def run_real_trials(ch11):
     return M, meta
 
 
-def evaluate_overfitting(M, meta, ch11, S=8, *, tw):
+# *** LOAD-BEARING (2026-08-18): S default corrected 8 -> 12 ***
+# calibrate_pbo_precision.py's null-hypothesis Monte Carlo (T=237, N=20,
+# matching this pipeline's real scale) found PBO's single-draw precision
+# improves meaningfully from S=8 (std_pbo=0.2174) to S=12 (std_pbo=0.2051)
+# at a real cost of ~1.3s/call -- trivial next to a live run's own model-
+# training time. Diminishing returns set in by S=10-12 (std_pbo barely
+# moves S=10->12), and S=16 was ruled out on runtime grounds (see that
+# script's own LOAD-BEARING note) -- S=12 is the best-precision point
+# actually characterized, not a proven optimum. Unlike DSR's T bug, this
+# is not a bias correction (PBO is unbiased in expectation at every S
+# tested) -- purely a precision improvement.
+def evaluate_overfitting(M, meta, ch11, S=12, *, tw):
     """Wraps Ch11's real pbo() and Ch14's real deflated_sharpe_ratio(),
     with real skew/kurtosis computed from the winning trial's actual
     nonzero-bet return distribution (Ch14's own convention -- pandas'
@@ -170,6 +181,10 @@ def evaluate_overfitting(M, meta, ch11, S=8, *, tw):
         'sr_hat': sr_hat,
         'prob_overfit': prob_overfit,
         'cscv_df': cscv_df,
+        'S': S,  # 2026-08-18: added so report.py can reference the actual
+                 # S used dynamically instead of hardcoding a value that
+                 # could silently drift -- the exact failure mode found
+                 # and fixed in oversight.py's min_reliable_T today.
         'n_trials': n_trials,
         'var_sr_trials': var_sr_trials,
         'T': T_effective,

@@ -114,7 +114,7 @@ def main():
             "Investigate before evaluating overfitting on it."
         )
 
-    eval_result = evaluate_overfitting(M, meta, ch11, S=8, tw=tw_aligned)
+    eval_result = evaluate_overfitting(M, meta, ch11, S=12, tw=tw_aligned)  # S=12 per calibrate_pbo_precision.py, 2026-08-18
     signal = latest_bet_signal(
         eval_result['best_trial'], meta, ch11, LIVE_STAGING_DIR,
     )

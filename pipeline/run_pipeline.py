@@ -74,7 +74,7 @@ def main():
     M, meta = run_real_trials(ch11)
     tw = load_aligned_tw(INPUT_DATA)
 
-    eval_result = evaluate_overfitting(M, meta, ch11, S=8, tw=tw)
+    eval_result = evaluate_overfitting(M, meta, ch11, S=12, tw=tw)  # S=12 per calibrate_pbo_precision.py, 2026-08-18
     signal = latest_bet_signal(eval_result['best_trial'], meta, ch11, INPUT_DATA)
 
     report = build_report(eval_result, signal, asset_label='BTC/TUSD')
