@@ -149,7 +149,20 @@ def check_circuit_breaker(eval_result, strategy_risk_result=None,
     return {'triggered': len(reasons) > 0, 'reasons': reasons, 'pbo': pbo, 'p_fail': p_fail}
 
 
-def classify_lifecycle_stage(eval_result, min_reliable_T=150, min_reliable_trials=10,
+# *** LOAD-BEARING (2026-08-18): min_reliable_T corrected 150 -> 30 ***
+# This default had drifted out of sync with report.py's build_report(),
+# whose min_reliable_T was changed 150->30 on 2026-08-17 (see stages.py's
+# DSR uniqueness-weighting fix and calibrate_min_reliable_T.py). This
+# function's own docstring already claimed the two were "kept in sync
+# deliberately" -- they were not, until this fix. build_oversight_section()
+# calls this with no explicit min_reliable_T, so the DEFAULT is what
+# actually governs EMBARGO/PAPER_TRADING/GRADUATION_CANDIDATE
+# classification -- the stale default silently overrode the corrected
+# report.py threshold for every live run since 2026-08-17. No shared
+# constant exists to import (report.py's 30 is a bare function default,
+# not a module-level constant) -- if report.py's threshold changes again,
+# this default must be updated manually, same as it should have been then.
+def classify_lifecycle_stage(eval_result, min_reliable_T=30, min_reliable_trials=10,
                                paper_trading_dsr=0.5, graduation_dsr=0.95):
     """Single-run, heuristic, NEW (not book-derived) classification into
     one of AFML Ch1 Sec 1.3.1.6's named-but-unalgorithmized lifecycle

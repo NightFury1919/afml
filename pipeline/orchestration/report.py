@@ -66,16 +66,29 @@ def _risk_context_section(otr_result, strategy_risk_result, pt_sl_result):
         phi = otr_result['phi_hat']
         if otr_result['stationary']:
             pt, sl, mean, std, sharpe = otr_result['best_node']
+            # *** LOAD-BEARING (2026-08-18): removed the "genuine change
+            # from every prior run" claim *** -- this pipeline is single-
+            # run/stateless (no persisted history across live runs, see
+            # portfolio_oversight/oversight.py's own docstring), so this
+            # text can't actually verify novelty/rarity across runs. By
+            # 2026-08-18, multiple consecutive live runs had in fact come
+            # back stationary, making the old claim actively false, not
+            # just unverifiable. Replaced with a comparison this function
+            # CAN honestly make: against the project's documented static-
+            # dataset finding (Ch13 non-stationary, matching book Sec
+            # 13.6.1's random-walk-like prediction).
             lines.append(
                 f"Optimal Trading Rule (Ch13): this run's price behavior "
                 f"came back STATIONARY (phi_hat={phi:.4f}, half-life="
-                f"{otr_result['half_life']:.1f} bars) -- a genuine change "
-                "from every prior run on this pipeline. A fittable "
+                f"{otr_result['half_life']:.1f} bars). A fittable "
                 f"synthetic-backtested rule was found: profit-take="
                 f"{pt:.2f}, stop-loss={sl:.2f} (real price units), Sharpe="
                 f"{sharpe:.4f} across {otr_result['n_opportunities']} "
-                "real opportunities. Worth investigating further given "
-                "this is not the established finding."
+                "real opportunities. This differs from this project's "
+                "established static-dataset finding (Ch13's phi_hat "
+                "non-stationary, per book Sec 13.6.1's random-walk-like "
+                "prediction) -- worth continued tracking across live runs "
+                "before treating as a stable pattern."
             )
         else:
             lines.append(
@@ -166,6 +179,10 @@ def build_report(eval_result, signal, asset_label='this asset',
     n_trials = eval_result['n_trials']
     best_trial = eval_result['best_trial']
     T = eval_result['T']
+    S = eval_result.get('S', 12)  # 2026-08-18: read dynamically so this
+                                    # text can't drift from the S actually
+                                    # used -- same lesson as oversight.py's
+                                    # min_reliable_T bug found today
     skew = eval_result.get('skew')
     kurtosis = eval_result.get('kurtosis')
     small_sample = T < min_reliable_T or n_trials < min_reliable_trials
@@ -189,6 +206,18 @@ def build_report(eval_result, signal, asset_label='this asset',
         "underperforms the median configuration out-of-sample -- i.e. that "
         "picking the 'winning' model was a matter of noise, not genuine "
         "skill."
+    )
+    lines.append(
+        f"(PBO carries substantial sampling noise at this pipeline's scale "
+        f"REGARDLESS of sample size T -- unlike DSR, whose precision "
+        f"improves with T, PBO's precision is governed by S (currently "
+        f"{S}) and the number of trials. calibrate_pbo_precision.py's "
+        f"null-hypothesis Monte Carlo (2026-08-18, this pipeline's real "
+        f"T=237/N=20 scale) found a genuinely zero-edge strategy at S={S} "
+        f"produces a single PBO draw with a 5th-95th percentile width of "
+        f"~0.6-0.7. Treat PBO differences between runs smaller than that "
+        f"as inconclusive, not evidence the underlying strategy or "
+        f"pipeline constants changed.)"
     )
     lines.append("")
     lines.append(
@@ -214,14 +243,14 @@ def build_report(eval_result, signal, asset_label='this asset',
         confidence = "UNRELIABLE (sample too small to trust)"
         lines.append(
             f"** SAMPLE SIZE WARNING: only {T:.2f} observations and {n_trials} "
-            f"trial configuration(s) went into this estimate. This "
-            "project's own PBO test suite documents that a SINGLE PBO/DSR "
-            "estimate on a small sample can range roughly 4%-99% even for "
-            "a genuinely zero-edge strategy, purely from sampling noise. "
-            "The specific PBO/DSR values above should NOT be read as "
-            "reliable evidence of edge (or lack of it) until this is "
-            "re-checked with a substantially larger out-of-sample count "
-            "and more trial configurations. **"
+            f"trial configuration(s) went into this estimate. DSR's own "
+            "precision degrades at small T (calibrate_min_reliable_T.py, "
+            "2026-08-17) -- below this pipeline's min_reliable_T threshold, "
+            "DSR should NOT be read as reliable evidence of edge (or lack "
+            "of it) until re-checked with a substantially larger out-of-"
+            "sample count. (PBO's own precision caveat above applies "
+            "separately and REGARDLESS of this warning -- PBO's noise "
+            "does not shrink with T the way DSR's does.) **"
         )
         lines.append("")
     else:
