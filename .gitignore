@@ -13,3 +13,7 @@ pipeline/live_run_output/
 pipeline/latest_live_report.txt
 pipeline/positive_control_staging_data/
 pipeline/positive_control_output/
+pipeline/diagnostics/sensitivity_snapshot_*/*.parquet
+pipeline/diagnostics/sensitivity_snapshot_*/threshold.txt
+pipeline/diagnostics/sensitivity_snapshot_*/sweep_staging/
+pipeline/diagnostics/sensitivity_snapshot_*/sweep_plots/
