@@ -1,28 +1,28 @@
-# Calibration Audit — Set Constants Across the Live Pipeline
+# Calibration Audit â€” Set Constants Across the Live Pipeline
 **Compiled:** 2026-08-16, from the real committed source (not from memory)
 
 ## Purpose
 
 A catalog of every hardcoded/calibrated constant feeding the live pipeline's
 headline numbers (PBO, DSR, OTR stationarity, signal), sorted by **how much
-epistemic weight each one can bear**. The goal is not to "fix" every entry —
+epistemic weight each one can bear**. The goal is not to "fix" every entry â€”
 some are legitimate modeling choices with no correct answer to find. The
 goal is to know, for each one, *why* it has the value it has, and whether
 that's ever been checked against real sensitivity.
 
 ## Tier definitions
 
-- **Tier 1 — Book-sourced.** The book's own literal snippet default or most
+- **Tier 1 â€” Book-sourced.** The book's own literal snippet default or most
   common worked-example value. Faithful by construction; NOT independently
   validated for BTC/USDT.
-- **Tier 2 — Empirically anchored.** Derived from real data via a stated,
+- **Tier 2 â€” Empirically anchored.** Derived from real data via a stated,
   re-checkable procedure.
-- **Tier 3 — Trial-and-error / undocumented provenance.** No book citation,
+- **Tier 3 â€” Trial-and-error / undocumented provenance.** No book citation,
   no data-anchored derivation on record.
-- **Tier 4 — Explicitly invented, self-labeled as such in the code already.**
-  The healthiest tier — nobody is pretending these are more than judgment
+- **Tier 4 â€” Explicitly invented, self-labeled as such in the code already.**
+  The healthiest tier â€” nobody is pretending these are more than judgment
   calls.
-- **Modeling choice (MC)** — not a calibration question at all. Changing the
+- **Modeling choice (MC)** â€” not a calibration question at all. Changing the
   value tests a *different strategy*, it doesn't get you "closer to truth."
 
 ## The audit
@@ -32,37 +32,37 @@ that's ever been checked against real sensitivity.
 | `cv` (PurgedKFold splits) | 3 | ch09 `clfHyperFit` (Snippet 9.3) | 1 | Book's own literal default |
 | `pctEmbargo` default | 0. | ch07 `PurgedKFold.__init__` | 1 | Book's own literal default (opt-in) |
 | `pt_sl` | `[1, 1]` | `rebuild.py` `PT_SL` | 1 / MC | Book's most common worked example; also a real strategy-horizon choice, not just a calibration |
-| `target_bars` | 250 | `rebuild.py` `compute_dynamic_threshold` | 2 | Explicitly matched to static dataset's real measured density (249 bars / ~9,205 trades) — re-checkable |
-| `CUSUM_H` | 500 (fixed $) | `rebuild.py` | 3 | **Confirmed trial-and-error** (2026-08-16 conversation). Sensitivity-tested 2026-08-16: swinging 500→100 didn't change the "no edge" finding, but DID nearly triple raw event count while barely moving *effective* (uniqueness-weighted) sample size — see DSR note below |
-| `MIN_RET` | 0.005 | `rebuild.py` | 3 / MC | No documented derivation found. Book leaves this to the user (transaction-cost dependent) — likely a genuine MC, not a calibration gap |
-| `VERTICAL_BARRIER_NUM_DAYS` | 3 | `rebuild.py` | MC | Defines the holding-period being tested. Not "wrong" at 3 — it's a choice. **But this is the mechanism behind the DSR/uniqueness problem below — worth revisiting jointly with CUSUM_H, not in isolation** |
+| `target_bars` | 250 | `rebuild.py` `compute_dynamic_threshold` | 2 | Explicitly matched to static dataset's real measured density (249 bars / ~9,205 trades) â€” re-checkable |
+| `CUSUM_H` | 500 (fixed $) | `rebuild.py` | 3 | **Confirmed trial-and-error** (2026-08-16 conversation). Sensitivity-tested 2026-08-16: swinging 500â†’100 didn't change the "no edge" finding, but DID nearly triple raw event count while barely moving *effective* (uniqueness-weighted) sample size â€” see DSR note below |
+| `MIN_RET` | 0.005 | `rebuild.py` | 3 / MC | No documented derivation found. Book leaves this to the user (transaction-cost dependent) â€” likely a genuine MC, not a calibration gap |
+| `VERTICAL_BARRIER_NUM_DAYS` | 3 | `rebuild.py` | MC | Defines the holding-period being tested. Not "wrong" at 3 â€” it's a choice. **But this is the mechanism behind the DSR/uniqueness problem below â€” worth revisiting jointly with CUSUM_H, not in isolation** |
 | `DAILY_VOL_SPAN0` | 100 | `rebuild.py` | 1 | Matches Ch03's own Snippet 3.1 example span |
-| `ROLL_WINDOW` | 20 | `features.py` | 3 | "Carried over unchanged from Ch19's established calibration" — no derivation on record |
+| `ROLL_WINDOW` | 20 | `features.py` | 3 | "Carried over unchanged from Ch19's established calibration" â€” no derivation on record |
 | `VPIN_WINDOW` | 10 | `features.py` | 3 | Same as above |
-| `FFD_THRES` | 0.01 | `features.py` | 1 | **Corrected 2026-08-18**: matches the book's own Snippet 5.4 worked example (`fracDiff_FFD(df1,d,thres=.01)` in `plotMinFFD()`), which produced Fig 5.5's ES1 stationarity result at d=0.35. Snippet 5.3's function signature default is a different value (`1e-5`) — that's not what the book's worked example actually used. |
-| `mesh_n_iter` / `mesh_points` | 2000 / 8 | `risk_context.py` `compute_otr_finding` | 1 | "Mirror chapter_13_otr.py's real Part C exactly" — inherited from an established chapter default |
+| `FFD_THRES` | 0.01 | `features.py` | 1 | **Corrected 2026-08-18**: matches the book's own Snippet 5.4 worked example (`fracDiff_FFD(df1,d,thres=.01)` in `plotMinFFD()`), which produced Fig 5.5's ES1 stationarity result at d=0.35. Snippet 5.3's function signature default is a different value (`1e-5`) â€” that's not what the book's worked example actually used. |
+| `mesh_n_iter` / `mesh_points` | 2000 / 8 | `risk_context.py` `compute_otr_finding` | 1 | "Mirror chapter_13_otr.py's real Part C exactly" â€” inherited from an established chapter default |
 | `random_state` (OTR mesh) | 7 | `risk_context.py` | 4 | Arbitrary seed, doesn't affect the finding's validity, only reproducibility |
 | `S` (CSCV splits for PBO) | 12 (was 8) | `stages.py` `evaluate_overfitting` default | **2 (2026-08-18)** | **Corrected 2026-08-18**: empirically derived via calibrate_pbo_precision.py's null-hypothesis Monte Carlo -- std_pbo improves 0.2174->0.2051 at S=8->12 (real T=237/N=20 scale), diminishing returns past S~10-12, real cost ~1.3s/call. See "PBO Precision Calibration Findings" section below. |
-| **DSR's `T`** | raw `n_events` (not uniqueness-weighted) | `stages.py` `evaluate_overfitting` | **3 — flagged as a likely bug, not just an uncalibrated constant** | **2026-08-16 finding: `rebuild_result['tw']` (Ch04's real average uniqueness) is computed but never fed into `deflated_sharpe_ratio()`. Confirmed via controlled same-pull comparison: raw T went 45→140 (CUSUM_H 500→100) while uniqueness-weighted effective T stayed ~19.0→19.6. DSR swung 0.59→0.89 on data that carried almost no additional real information.** |
+| **DSR's `T`** | raw `n_events` (not uniqueness-weighted) | `stages.py` `evaluate_overfitting` | **3 â€” flagged as a likely bug, not just an uncalibrated constant** | **2026-08-16 finding: `rebuild_result['tw']` (Ch04's real average uniqueness) is computed but never fed into `deflated_sharpe_ratio()`. Confirmed via controlled same-pull comparison: raw T went 45â†’140 (CUSUM_H 500â†’100) while uniqueness-weighted effective T stayed ~19.0â†’19.6. DSR swung 0.59â†’0.89 on data that carried almost no additional real information.** |
 | `min_reliable_T` | 150 | `report.py` `build_report` | 4 | Already self-documented: "a heuristic, not a statistically derived cutoff" |
-| `min_reliable_trials` | 10 | `report.py` `build_report` | 4 | Same — explicit heuristic |
+| `min_reliable_trials` | 10 | `report.py` `build_report` | 4 | Same â€” explicit heuristic |
 | DSR confidence bands | 0.5 / 0.95 | `report.py` `_confidence_band` | 4 | Round numbers, not book-derived |
 | `DEFAULT_MAX_POSITION_FRACTION` | 0.10 | `oversight.py` | 4 | Self-labeled "arbitrary, invented judgment call" |
 | Circuit breaker thresholds | PBO>0.5, P[fail]>0.5 | `oversight.py` | 4 | Self-labeled "simple, round, and arbitrary" |
 | `PAPER_CAPITAL_USD` | $10,000 | `run_pipeline_live.py` | 4 | Self-labeled arbitrary |
-| `LOOKBACK_HOURS` | 720 | `run_pipeline_live.py` | 2 | Live-confirmed minimum for `get_daily_vol()` to have prior bars — empirically anchored, not arbitrary |
+| `LOOKBACK_HOURS` | 720 | `run_pipeline_live.py` | 2 | Live-confirmed minimum for `get_daily_vol()` to have prior bars â€” empirically anchored, not arbitrary |
 
 ## What this tells us, honestly
 
-- **Most Tier-1/Tier-2 entries are fine as-is** — they're either the book's
+- **Most Tier-1/Tier-2 entries are fine as-is** â€” they're either the book's
   own stated defaults or have a real, checkable derivation. Not the priority.
 - **The DSR uniqueness gap is the highest-priority finding of this whole
-  audit** — it's not "we don't know if 500 is right," it's "the DSR formula
+  audit** â€” it's not "we don't know if 500 is right," it's "the DSR formula
   is being fed a number (T) that's provably wrong given data this project
   already computes." This affects every DSR value ever reported by this
   pipeline, not just today's experiment.
 - **Tier 3 entries that never got sensitivity-tested** (`ROLL_WINDOW`,
-  `VPIN_WINDOW`, `S`) are the next-priority audit targets — not because
+  `VPIN_WINDOW`, `S`) are the next-priority audit targets â€” not because
   they're necessarily wrong, but because nobody has checked whether the
   findings are robust to them, the way we just checked CUSUM_H.
   `FFD_THRES` was reclassified to Tier 1 on 2026-08-18 (it matches the
@@ -71,79 +71,24 @@ that's ever been checked against real sensitivity.
   are separate questions -- book-sourced doesn't mean untested on THIS
   dataset.
 - **`MIN_RET` and `VERTICAL_BARRIER_NUM_DAYS` are probably modeling choices,
-  not calibration gaps** — but `VERTICAL_BARRIER_NUM_DAYS` is directly
+  not calibration gaps** â€” but `VERTICAL_BARRIER_NUM_DAYS` is directly
   implicated in the DSR/uniqueness mechanism, so it can't be cleanly
   separated from that fix.
 
 ## Suggested next-session priority order
 
 1. **Fix DSR's `T`** to be uniqueness-weighted (or at minimum, report both
-   raw and effective T so the reader can judge) — `stages.py`'s
+   raw and effective T so the reader can judge) â€” `stages.py`'s
    `evaluate_overfitting`, with its own TDD suite given how load-bearing
    DSR is.
 2. Re-run the existing live pipeline once fixed, to see whether prior
-   reported DSR values (0.37–0.55 range) move, and by how much.
+   reported DSR values (0.37â€“0.55 range) move, and by how much.
 3. Sensitivity-scan `ROLL_WINDOW`, `VPIN_WINDOW`, `FFD_THRES`, `S` the same
-   way CUSUM_H was scanned 2026-08-16 — cheap, reuses the same
+   way CUSUM_H was scanned 2026-08-16 â€” cheap, reuses the same
    monkeypatch-and-compare pattern already built.
 4. Revisit `VERTICAL_BARRIER_NUM_DAYS` jointly with the DSR fix, since it's
    the mechanism (not CUSUM_H) actually driving the overlap problem.
 
-
-## Sensitivity Sweep Findings (2026-08-18)
-
-Full sweep of the Tier-3 constants flagged in the "Suggested next-session
-priority order" above (`ROLL_WINDOW`, `VPIN_WINDOW`, `FFD_THRES`, `S`),
-run against ONE frozen live-data snapshot (99,365 raw trades, 238 bars,
-41 events -- see `pipeline/diagnostics/sensitivity_snapshot_2026-08-18/`
-and `sensitivity_scan.csv` for the full artifacts) so every comparison is
-against the same underlying market data, not confounded by live drift.
-
-| Constant | Value | T_eff | DSR | PBO | n_events |
-|---|---|---|---|---|---|
-| baseline | default | 50.13 | 0.5308 | 0.1571 | 40 |
-| S | 4 | 50.13 | 0.5308 | 0.3333 | 40 |
-| S | 8 (=baseline) | 50.13 | 0.5308 | 0.1571 | 40 |
-| ROLL_WINDOW | 10 | 21.87 | 0.4663 | 0.5000 | 41 |
-| ROLL_WINDOW | 40 | 40.34 | 0.6274 | 0.7429 | 38 |
-| VPIN_WINDOW | 5 | 62.10 | 0.5254 | 0.7571 | 40 |
-| VPIN_WINDOW | 20 | 49.00 | 0.5191 | 0.5143 | 40 |
-| FFD_THRES | 1e-5 | -- | -- | FAILED (see note below) | -- |
-| FFD_THRES | 0.05 | 46.76 | 0.5366 | 0.2000 | 40 |
-
-**DSR stayed stable, PBO did not.** Across every constant and value
-tested, DSR stayed in a narrow band (0.4663-0.6274) -- never leaving "no
-reliable edge" territory. PBO ranged from 0.1571 to 0.7571, a ~5x swing,
-purely from Tier-3 constants that were never previously validated.
-`S=4` vs `S=8` alone -- same trained models, nothing else changed -- moved
-PBO from 0.157 to 0.333, consistent with CSCV's combinatorial split count
-(`C(4,2)=6` vs `C(8,4)=70`) making PBO noisier at lower `S`. `ROLL_WINDOW`/
-`VPIN_WINDOW` swings also shrink `n_events` (38-41 vs baseline 40),
-suggesting part of PBO's instability is the same small-sample fragility
-DSR had before the 2026-08-17 uniqueness-weighting fix -- except PBO has
-never received an equivalent correction. **Flagged as a candidate for
-next-session priority: is PBO's own estimator reliable at this pipeline's
-sample sizes, the same question DSR already had to answer.**
-
-**FFD_THRES=1e-5 failure is a genuine finding, not a script bug.**
-`get_weights_ffd(d=0.1, thres=1e-5)` requires ~4,075 weights before the
-series crosses that threshold; `get_weights_ffd(d=0.1, thres=0.01)` only
-needs ~7. Against this pipeline's ~238-bar live series, a window of 4,075
-leaves ZERO valid output rows once `frac_diff_ffd()` drops the warmup
-period, so `adfuller()` receives an empty array. This is not a bug in
-Ch05's `find_min_ffd.py`/`frac_diff_ffd.py` (both real-machine-confirmed,
-TDD-tested chapter deliverables) -- it's a real constraint: `FFD_THRES`'s
-practical floor is data-length-dependent, and `1e-5` (the function's own
-literal signature default, never actually used in the book's own Snippet
-5.4 worked example) is well past that floor for a series this short. This
-reinforces the FFD_THRES Tier reclassification above: `0.01` isn't just
-what the book's own worked example used, it's close to necessary for a
-live pull of this size.
-
-**Caveat:** all of the above is from ONE frozen snapshot on ONE day's
-live pull (41 events). Real, but small-sample -- worth treating as a
-first data point, not a settled conclusion, especially for the PBO
-volatility finding.
 
 ## Sensitivity Sweep Findings (2026-08-18)
 
