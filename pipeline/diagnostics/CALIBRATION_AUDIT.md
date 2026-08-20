@@ -213,3 +213,134 @@ longer conflates PBO's S/N-driven noise with DSR's T-driven noise.
 **Caveat:** S grid capped at 12 for runtime reasons; whether further
 runtime investment (larger S, more reps, possibly overnight) would show
 continued improvement or a genuine plateau is not yet known.
+
+## Detection Power Calibration Findings (2026-08-19)
+
+Resolves a real question Ethan raised directly this session: this pipeline's
+live runs keep reading "no exploitable edge" (DSR sub-0.5 on every run so
+far, PBO/CPCV/O-U all pointing the same direction per the standing
+cross-method finding above) -- is that because there genuinely is no edge,
+or because a real-but-small edge would be invisible at this pipeline's
+actual sample size regardless? This is a different question from anything
+answered so far: 2026-08-17's fix confirmed DSR's `T` is now computed
+correctly (uniqueness-weighted); 2026-08-18's `calibrate_min_reliable_T.py`
+confirmed DSR is *unbiased* under the null at this pipeline's T range.
+Neither of those addresses whether DSR would actually detect a real edge if
+one existed at this scale.
+
+Method: `pipeline/diagnostics/calibrate_detection_power.py`, using the REAL
+`ch14.backtest_statistics.deflated_sharpe_ratio()` -- not a re-derivation.
+N=20 simulated trials (matching this project's real C_GRID x STEP_GRID),
+one given a real injected population Sharpe (`true_sharpe` in {0, 0.05,
+0.10, 0.15, 0.20, 0.30}), the rest genuine zero-edge, at T in this
+project's real observed live range (50-80) plus canonical reference points
+up to T=1000. 20,000 reps per (T, true_sharpe, regime) cell. Two regimes:
+Part 1 Gaussian (cross-checks clean against `calibrate_min_reliable_T.py`'s
+null: P[DSR>0.5]~0.47 at true_sharpe=0 across all T, see table below);
+Part 2 fat-tailed (Bernoulli-jump mixture tuned to the neighborhood of
+2026-08-19's real observed live skew/kurtosis -- documented as an
+approximate match in the script's own docstring, not exact). Real observed
+runtime: ~1 hour on real hardware (Part 2's heavier per-rep skew/kurtosis
+calls) -- see script docstring for the full note.
+
+### Finding 1: DSR is measurably miscalibrated under fat tails -- via a real, verified mechanism
+
+Real computed null-hypothesis false-positive rate (P[DSR>0.5 | true edge=0])
+at this pipeline's actual T range:
+
+| T | Gaussian null | Fat-tailed null |
+|---|---|---|
+| 30 | 0.483 | 0.803 |
+| 50 | 0.472 | 0.742 |
+| 55 | 0.473 | 0.731 |
+| 60 | 0.472 | 0.714 |
+| 66 | 0.472 | 0.705 |
+| 70 | 0.471 | 0.697 |
+| 80 | 0.470 | 0.693 |
+| 100 | 0.471 | 0.657 |
+| 200 | 0.471 | 0.598 |
+| 1000 | 0.469 | 0.499 |
+
+Under the Gaussian regime, DSR is correctly calibrated at every T (~0.47-0.48,
+matching `calibrate_min_reliable_T.py`'s prior finding). Under the
+fat-tailed regime -- the one that actually resembles this project's real
+live returns -- DSR is biased **toward false positives** at this pipeline's
+real T range (0.69-0.80 vs the correct ~0.50), converging back to correct
+calibration only around T=1000.
+
+**Mechanism, directly verified (not assumed):** DSR selects the best-of-20
+trial by realized Sharpe, then feeds that *same selected trial's own*
+realized skew/kurtosis back into the deflation formula -- exactly mirroring
+`stages.py`'s real convention. Under jump-risk conditions, selecting for
+the best realized Sharpe implicitly selects for trials that, by chance,
+avoided the jump/tail events in their own finite sample. Confirmed directly
+in the script's own diagnostics: at T=66, the selected trial averaged ~1.1
+jump events against an unconditional expectation of ~3.3. Since DSR is fed
+that trial's own (understated) sample tail risk, its own selection-bias
+correction is distorted by the very selection process it exists to correct
+for -- specifically under fat-tailed/jump conditions.
+
+**Practical read for this project:** every real live DSR reading so far
+has come in below 0.5 (see live_run_log.csv, six real runs 2026-08-19:
+0.4193, 0.4703, 0.4503, 0.2136, plus prior sessions) despite this measured
+upward bias. A metric biased toward saying yes, still consistently saying
+no, is a *stronger* null result than an unbiased metric saying no would be
+-- this strengthens, not weakens, the standing "no exploitable edge"
+finding.
+
+### Finding 2: detection power is genuinely weak at this project's real sample size
+
+Real computed gap between the (inflated) fat-tailed null baseline and each
+true_sharpe column, at this project's real T range:
+
+| T | gap @ true_sharpe=0.05 | gap @ 0.15 | gap @ 0.30 |
+|---|---|---|---|
+| 50 | 0.014 | 0.049 | 0.125 |
+| 55 | 0.016 | 0.053 | 0.139 |
+| 60 | 0.017 | 0.058 | 0.160 |
+| 66 | 0.016 | 0.067 | 0.174 |
+| 70 | 0.016 | 0.070 | 0.186 |
+| 80 | 0.019 | 0.075 | 0.203 |
+| 100 | 0.021 | 0.100 | 0.261 |
+| 200 | 0.036 | 0.194 | 0.385 |
+| 1000 | 0.146 | 0.496 | 0.501 |
+
+This project's real live best-trial Sharpes have run 0.03-0.07 (see
+live_run_log.csv) -- squarely in the `true_sharpe=0.05` column. At this
+project's actual T range (50-80), the detection gap there is essentially
+nothing (0.014-0.019) -- DSR's readout would look almost identical whether
+a real edge of this size existed or not. Even a hypothetical edge 2-4x
+larger (true_sharpe=0.15) only opens a gap of 0.05-0.08 at this same T
+range. Meaningful discrimination only emerges around **T=200-1000 -- 3 to
+20x more independent (uniqueness-weighted) observations than this pipeline
+currently gets per live pull.**
+
+### What this changes about the standing "no exploitable edge" finding
+
+Not overturned -- the cross-method convergence documented above (PBO,
+CPCV, O-U non-stationarity, DSR all independently pointing the same
+direction) remains real and, per Finding 1, arguably understated its own
+strength. But the finding needs a more honest frame going forward: this
+is not "we ruled out an edge of the size actually observed in live
+trading" -- it's "no method available at this project's current sample
+size could reliably rule an edge of that size in or out, and every method
+tried still came back negative anyway." Report/handoff language describing
+the null result should reflect this distinction rather than implying a
+stronger detection claim than the pipeline's real sample size supports.
+
+### Suggested next-session priority addition
+
+5. **Raise T_effective toward the 200+ range** where detection power
+   becomes meaningful, per Finding 2 above. Candidate levers, none yet
+   explored: longer `LOOKBACK_HOURS`, `CUSUM_H` recalibration (more events
+   per pull, at the cost of more overlap/lower `tw` -- the same tradeoff
+   already documented under `CUSUM_H`'s Tier-3 entry above), or
+   accumulating multiple live pulls into a combined historical dataset
+   over time (`live_run_log.csv`'s accumulating structure could eventually
+   support this).
+
+**Caveat:** the fat-tailed regime is a documented approximate match to
+2026-08-19's observed live skew/kurtosis, not an exact distributional fit
+(see script docstring) -- worth revisiting if live skew/kurtosis drifts
+further from that observed range. Full 132-row (66 cells x 2 regimes)
+result grid in `detection_power_calibration.csv`.
