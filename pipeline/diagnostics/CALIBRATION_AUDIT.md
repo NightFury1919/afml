@@ -344,3 +344,117 @@ stronger detection claim than the pipeline's real sample size supports.
 (see script docstring) -- worth revisiting if live skew/kurtosis drifts
 further from that observed range. Full 132-row (66 cells x 2 regimes)
 result grid in `detection_power_calibration.csv`.
+## T_effective Lever Sweep Findings (2026-08-20)
+
+Real follow-on to the prior section's 5th priority item: which candidate
+lever(s) actually raise T_effective toward the 200-1000 range where
+DSR's detection power becomes meaningful?
+
+Method: `pipeline/diagnostics/calibrate_t_effective_levers.py`, run
+against ONE frozen raw-trades snapshot (`t_effective_snapshot_2026-08-20`,
+102,994 raw trades) so every config is compared against the same
+underlying market data, not confounded by live drift -- same discipline
+as the 2026-08-18 Tier-3 sweep. Unlike that sweep, all three levers here
+(`target_bars`, `CUSUM_H`, `VERTICAL_BARRIER_NUM_DAYS`) sit upstream of
+`build_bars_and_labels()`, so each config re-ran the FULL chain (rebuild
+-> enrich -> stage -> Ch11's real 20-configuration SVC grid -> evaluate),
+not just a downstream patch. `target_bars` was passed directly (a real
+function parameter); `CUSUM_H`/`VERTICAL_BARRIER_NUM_DAYS` were
+monkeypatched-and-restored as `rebuild.py` module globals -- confirmed
+safe to do this way (unlike `features.py`'s ROLL_WINDOW/VPIN_WINDOW/
+FFD_THRES gotcha) by reading the real source: both are referenced as bare
+module-global names inside `build_bars_and_labels()`'s body, evaluated at
+call time, not bound as default-argument values at def time.
+
+MECHANISM CORRECTION to the prior section's lever list: `LOOKBACK_HOURS`
+was NOT included in this sweep. Tracing the real source shows
+`run_pipeline_live.py` always calls `build_bars_and_labels(raw_trades)`
+with `target_bars`'s default (250) -- `compute_dynamic_threshold()`
+rescales the dollar-bar threshold to hit ~`target_bars` bars regardless
+of how much history was pulled. A longer live pull would NOT increase
+bar count (and therefore not `T_raw`) under the pipeline's current
+design. `target_bars` is the real, direct lever for "more bars";
+`LOOKBACK_HOURS` was a red herring for this specific question (it
+remains genuinely load-bearing elsewhere -- see its own Tier-2 entry
+above -- for having enough prior history for `get_daily_vol()`).
+
+### Results
+
+| config | T_raw | tw_mean | T_effective | vs baseline | DSR | PBO |
+|---|---|---|---|---|---|---|
+| baseline | 198 | 0.3791 | 75.07 | -- | 0.5158 | 0.3950 |
+| target_bars=500 | 361 | 0.3682 | 132.90 | **+77%** | 0.6692 | 0.3885 |
+| CUSUM_H=250 | 197 | 0.2086 | 41.10 | **-45%** | 0.5871 | 0.2294 |
+| vertical_barrier=1 day | 124 | 0.5234 | 64.90 | **-14%** | 0.3174 | 0.5195 |
+
+Full sweep output (n_bars, n_events, n_events_enriched, best_sharpe, all
+four configs) in `pipeline/diagnostics/t_effective_lever_sweep.csv`.
+
+### Finding: only `target_bars` raises T_effective -- the other two backfire, each for a real, distinct reason
+
+**`target_bars=500` (250->500) is the one working lever tested,** raising
+T_effective 75.07->132.90 (+77%) -- real, meaningful progress toward the
+200+ range. Both `T_raw` (198->361) and `tw_mean` (0.3791->0.3682, only a
+small decline) moved favorably: doubling the bar-count target roughly
+doubled the number of realized bet opportunities without proportionally
+increasing label overlap.
+
+**`CUSUM_H=250` (500->250) makes T_effective WORSE (-45%), not neutral.**
+Raw triple-barrier events nearly doubled (48->97) exactly as expected
+from a lower threshold -- but `tw_mean` collapsed 45% (0.3791->0.2086):
+packing more events into the same bar window means far more overlapping
+labels. The uniqueness collapse overwhelms the event-count gain. This
+CONFIRMS and SHARPENS 2026-08-16's original CUSUM_H finding (which only
+tested the extreme case, 500->100, and found effective T "barely moved")
+-- at this more moderate perturbation, the net effect is clearly
+negative, not merely flat. **CUSUM_H reduction should be considered a
+net-negative lever for T_effective, not a candidate worth pursuing
+further.**
+
+**`VERTICAL_BARRIER_NUM_DAYS=1` (3->1) makes T_effective WORSE (-14%),
+despite its own predicted mechanism working exactly as expected.**
+`tw_mean` rose 38% (0.3791->0.5234) -- a shorter holding period really
+does reduce triple-barrier label overlap, confirming the mechanism this
+lever was chosen to test. But `T_raw` dropped even more (198->124): a
+shorter horizon gives the winning trial's signal fewer bars with an open
+position to realize a bet on in the first place. The mechanism was real;
+the net effect on T_effective was still negative because the drop in bet
+opportunities outweighed the uniqueness gain. **Shortening the vertical
+barrier is not a viable T_effective lever on its own** -- though this
+doesn't rule out combining a shorter horizon with something that
+independently increases bet frequency (untested here).
+
+### Caution on the target_bars=500 config's DSR reading
+
+DSR rose 0.5158->0.6692 in the target_bars=500 config -- worth being
+explicit that this should NOT be read as "found an edge." Interpolating
+this session's own `detection_power_calibration.csv` (fat-tailed null,
+T=100 -> 0.6566, T=150 -> 0.61615) puts the null-hypothesis false-positive
+baseline at T=132.90 around **~0.630**. DSR=0.6692 is only ~0.04 above
+that inflated null baseline -- consistent with noise at this T, not
+evidence of a real signal emerging. The value of `target_bars=500` here
+is purely about raising T_effective toward the range where detection
+power eventually becomes meaningful (200-1000, per the prior section) --
+not as a standalone result suggesting an edge was found.
+
+### Suggested next-session priority addition
+
+6. **Push `target_bars` further** (e.g. 750, 1000) on a fresh frozen
+   snapshot, since it's the only lever confirmed to help, to see whether
+   the ~1.8x T_effective gain from 250->500 continues scaling roughly
+   linearly or starts to plateau (more bars per pull also means a smaller
+   dynamic dollar-bar threshold -- worth checking bar quality/degeneracy
+   doesn't break down at higher target_bars values). Also worth testing
+   whether combining a higher `target_bars` with the untested
+   `VERTICAL_BARRIER_NUM_DAYS` recovers that lever's real uniqueness gain
+   without its T_raw cost.
+
+**Caveat:** single frozen snapshot (one day's pull, 102,994 raw trades) --
+real, but small-sample, same caveat as every prior sensitivity sweep in
+this document. Each config here is ALSO a real, single SVC trial-grid
+run (not a Monte-Carlo-averaged result the way the detection-power
+calibration was) -- some of the observed DSR/PBO movement could reflect
+which specific 20-trial grid happened to win under each config, not a
+stable underlying effect. Worth treating this table as a real first data
+point on the T_effective mechanism, not a final answer on DSR/PBO's
+response to it.
