@@ -58,6 +58,13 @@ sensitivity to "meaningfully fat-tailed and negatively skewed," not
 reproducing this project's exact empirical distribution, which changes
 run to run anyway.
 
+Real observed runtime: ~1 hour on Ethan's machine (Part 2's 66 cells x
+20,000 reps each, with per-rep scipy.stats.skew/kurtosis calls --
+meaningfully heavier than prior calibration scripts like
+calibrate_min_reliable_T.py). A pre-run sandbox estimate under-predicted
+this significantly (~20-25 min) -- budget generously for anything at
+this compute scale.
+
 Run:
     conda activate mlfinlab
     cd C:\\ws\\AFML\\pipeline\\diagnostics
