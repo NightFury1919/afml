@@ -20,6 +20,16 @@ labeled block after the real AFML report. See oversight.py's own module
 docstring for why this lives in its own top-level directory and is never
 merged into report.py itself.
 
+Phase 6 (2026-08-19): every run now auto-appends one row to
+pipeline/diagnostics/live_run_log.csv (see live_run_logger.py) -- same
+tidy schema convention as this project's other diagnostics/*.csv files.
+Pass --snapshot to ALSO write a narrative README + copy the staged
+training table into pipeline/live_run_examples/YYYY-MM-DD/, matching the
+existing hand-written 2026-08-14 example's style -- this stays opt-in
+per that folder's standing "occasional frozen artifact" convention (see
+live_run_logger.py's own module docstring for why the two outputs are
+kept separate).
+
 Requires BINANCE_API_KEY (see ingestion.py's module docstring for setup).
 
 Usage
@@ -27,10 +37,12 @@ Usage
     conda activate mlfinlab
     cd C:\\ws\\AFML
     $env:BINANCE_API_KEY = 'your-key-here'
-    python pipeline\\run_pipeline_live.py
+    python pipeline\\run_pipeline_live.py               # logs CSV row only
+    python pipeline\\run_pipeline_live.py --snapshot     # also writes README snapshot
 """
 import os
 import sys
+from datetime import date
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..'))
@@ -39,6 +51,7 @@ LIVE_HERE_DIR = os.path.join(HERE, 'live_run_output')
 
 sys.path.insert(0, os.path.join(HERE, 'orchestration'))
 sys.path.insert(0, os.path.join(ROOT, 'portfolio_oversight'))
+sys.path.insert(0, os.path.join(HERE, 'diagnostics'))
 
 from ingestion import pull_recent_trades              # noqa: E402
 import rebuild as rebuild_module                        # noqa: E402
@@ -53,7 +66,8 @@ from risk_context import (                              # noqa: E402
     compute_otr_finding, compute_strategy_risk, compute_pt_sl_context,
 )
 from report import build_report                          # noqa: E402
-from oversight import build_oversight_section             # noqa: E402
+from oversight import build_oversight_section, classify_lifecycle_stage  # noqa: E402
+from live_run_logger import log_live_run, write_snapshot_readme  # noqa: E402
 
 LOOKBACK_HOURS = 720   # 30-day minimum, LIVE-CONFIRMED 2026-08-13 (see
                         # ingestion.py/rebuild.py -- shorter windows leave
@@ -64,7 +78,7 @@ PAPER_CAPITAL_USD = 10_000.0   # arbitrary, invented judgment call for the
                                 # Not an AFML parameter.
 
 
-def main():
+def main(write_snapshot=False):
     api_key = os.environ.get('BINANCE_API_KEY')
     if not api_key:
         raise SystemExit(
@@ -156,6 +170,57 @@ def main():
     )
     report += '\n\n' + oversight_section
 
+    # *** Phase 6 (2026-08-19): auto-log this run *** -- classify_lifecycle_stage
+    # is called again here (build_oversight_section already called it
+    # internally to build oversight_section's text) since it's a pure
+    # function of eval_result and its return dict isn't otherwise exposed
+    # to this scope. Cheap, no side effects, safe to call twice.
+    lifecycle = classify_lifecycle_stage(eval_result)
+    row = {
+        'run_date': date.today().isoformat(),
+        'n_raw_trades': len(raw_trades),
+        'n_bars': len(rebuild_result['bars']),
+        'n_events': len(rebuild_result['events']),
+        'n_events_enriched': enriched_result['n_events_after'],
+        'fracdiff_d': enriched_result['fracdiff_d'],
+        'S': eval_result['S'],
+        'n_trials': eval_result['n_trials'],
+        'T_raw': eval_result['T_raw'],
+        'tw_mean': eval_result['tw_mean'],
+        'T_effective': eval_result['T'],
+        'best_trial': eval_result['best_trial'],
+        'best_sharpe': eval_result['sr_hat'],
+        'pbo': eval_result['prob_overfit'],
+        'dsr': eval_result['dsr'],
+        'skew': eval_result['skew'],
+        'kurtosis': eval_result['kurtosis'],
+        'phi_hat': otr_result['phi_hat'],
+        'phi_stationary': otr_result['stationary'],
+        'half_life': otr_result.get('half_life'),
+        'p_fail': strategy_risk_result['p_fail'],
+        'realized_precision': strategy_risk_result['p_bar'],
+        'freq_real': strategy_risk_result['freq_real'],
+        'lifecycle_stage': lifecycle['stage'],
+        'position_size': signal if signal is not None else 0.0,
+        'notes': '; '.join(caveats) if caveats else '',
+    }
+    log_live_run(os.path.join(HERE, 'diagnostics', 'live_run_log.csv'), row)
+
+    if write_snapshot:
+        import shutil
+        snapshot_dir = os.path.join(HERE, 'live_run_examples', row['run_date'])
+        os.makedirs(snapshot_dir, exist_ok=True)
+        files_written = []
+        enriched_dst = os.path.join(snapshot_dir, 'ch07_training_table_enriched.csv')
+        shutil.copy(staged['enriched_csv_path'], enriched_dst)
+        files_written.append((
+            'ch07_training_table_enriched.csv',
+            'staged live training table (12 real features + fracdiff, '
+            't1/bin/w -- trgt/ret deliberately excluded)',
+        ))
+        write_snapshot_readme(snapshot_dir, row, files_written)
+        print(f'[snapshot written to {snapshot_dir}]')
+
     print(report)
 
     out_path = os.path.join(HERE, 'latest_live_report.txt')
@@ -165,4 +230,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main(write_snapshot='--snapshot' in sys.argv)
