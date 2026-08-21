@@ -755,3 +755,75 @@ as every T_effective sweep in this document. target_bars=1000 (the other
 value flagged in the deferred "push further" item) remains untested --
 whether the plateau observed here (500->750) continues, flattens further,
 or the retained-fraction trend reverses again is unknown past this point.
+## target_bars=1000 -- Plateau Confirmed, Retained-Fraction Trend Reversed (2026-08-21)
+
+Closes both open items the prior section's caveat flagged. Same method,
+same snapshot (`t_effective_snapshot_2026-08-21`), same
+`_run_one_config()` reuse -- `pipeline/diagnostics/calibrate_target_bars_1000.py`.
+
+### Results (complete four-point picture)
+
+| target_bars | T_raw (alone) | T_effective (alone) | T_raw (combined, h=313) | T_effective (combined) | fraction retained |
+|---|---|---|---|---|---|
+| 250 (baseline) | 199 | 62.14 | 200 | 40.47 | 65.1% |
+| 500 | 416 | 131.05 | 419 | 87.57 | 66.8% |
+| 750 | 563 | 180.48 | 527 | 105.07 | 58.2% |
+| **1000** | 536 | **182.86** | 704 | **145.52** | **79.6%** |
+
+Full sweep output in `pipeline/diagnostics/target_bars_1000_calibration.csv`.
+
+### Finding 1 (confirmed, strengthened): target_bars alone has genuinely plateaued, not just decelerating
+
+750->1000 (1.33x target_bars) produced essentially ZERO T_effective gain
+(180.48->182.86, +1.3%) -- the flattest step yet, well past "decelerating"
+into "converged." `target_bars=1000` alone still doesn't clear the ~200
+threshold; it's plateaued at roughly the same ceiling as 750, not still
+climbing toward it. Pushing target_bars beyond 1000 on this snapshot looks
+unlikely to help further, though that itself is untested past this point.
+
+### Finding 2 (REVERSED, not extended): the "retained fraction worsens with scale" read from the prior section does not hold at 1000 -- explicitly correcting that framing
+
+The prior section's two-point read (500->750: 66.8%->58.2%) is NOT a
+stable trend -- the third point reverses it (750->1000: 58.2%->79.6%,
+the HIGHEST of all three). This is a real methodological lesson worth
+stating plainly: two points suggested a monotonic decline; a third point
+broke it. The prior section's own framing ("bigger target_bars base makes
+the correction relatively more costly") should be read as describing what
+happened at exactly two tested values, not a general mechanism -- it does
+NOT extrapolate to 1000.
+
+The actual driver, on inspection: retained fraction depends heavily on the
+RATIO of raw event counts between the combined and alone configs at each
+target_bars level, and that ratio is not stable across target_bars values
+-- roughly even at 500 (T_raw 419 vs 416), lower for combined at 750
+(527 vs 563), then notably HIGHER for combined at 1000 (704 vs 536 --
+h=313 produced 176 raw triple-barrier events vs baseline h=500's 103 at
+this particular bar count/threshold). This ratio appears to depend on how
+CUSUM event timing interacts with the specific dollar-bar structure at
+each target_bars level -- a regime-dependent interaction, not a clean
+function of target_bars itself. No stable predictive rule for this ratio
+is established here; it should be treated as noisy across target_bars
+values, not modeled as a trend.
+
+### Practical result: the combined config keeps improving even though the alone config has flattened
+
+Combined T_effective climbs cleanly across all three points tested
+(87.57 -> 105.07 -> **145.52**), unlike the alone config's plateau after
+750. **target_bars=1000 + CUSUM_H=313 is the strongest T_effective result
+(combined or alone-with-staleness-correction) found in this entire day's
+work.** If the practical goal is the best available T_effective WITH the
+staleness correction in place (rather than target_bars alone, which
+plateaus and never incorporates the correction), this is the candidate
+config this session's evidence points to.
+
+DSR/PBO at tb=1000 alone (0.5029 / 0.7294) are the weakest of the three
+target_bars-alone points -- DSR near the pure-null 0.5 mark, PBO high --
+but per this document's standing caveats, T_effective=182.86 is still
+below the ~200 reliability threshold, so this reads as more noise, not a
+meaningful signal shift.
+
+**No further target_bars values tested.** This closes the target_bars
+scaling question as scoped (250/500/750/1000, alone and combined) for
+today's session. Whether target_bars=1000+h=313 should become the
+pipeline's actual default remains an explicit next-session decision, same
+status as the prior section's combined-config candidate.
