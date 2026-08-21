@@ -344,6 +344,85 @@ stronger detection claim than the pipeline's real sample size supports.
 (see script docstring) -- worth revisiting if live skew/kurtosis drifts
 further from that observed range. Full 132-row (66 cells x 2 regimes)
 result grid in `detection_power_calibration.csv`.
+## CUSUM_H Staleness Audit (2026-08-21)
+
+First real measurement of the long-deferred cross-asset staleness question
+(open since the pivot from the static March 2026 BTC/TUSD dataset to live
+BTC/USDT data): is `CUSUM_H=500` -- a flat DOLLAR threshold, self-flagged
+in `rebuild.py`'s own docstring as an unresolved open question -- still
+calibrated to the current data, and in which direction is it off?
+
+Method: `pipeline/diagnostics/audit_cusum_h_staleness.py`. Runs the real
+March static baseline AND one fresh 720h (30-day) live BTCUSDT pull
+through the SAME real `rebuild.build_bars_and_labels(target_bars=250)`
+and `ch02_filters.cusum_filter()` -- not a raw-trade-level proxy --
+measuring the bar-to-bar CLOSE price diff distribution `CUSUM_H` is
+actually applied against, on both.
+
+### Results
+
+| | March static | Live (30-day pull, 2026-08-21) | Ratio |
+|---|---|---|---|
+| n_bars | 230 | 241 | ~1.0x |
+| bar close price mean | $69,670.50 | $67,000.14 | -3.8% |
+| bar close price std (window dispersion) | $2,692.81 | $4,785.18 | 1.78x |
+| bar-to-bar close diff std (what CUSUM_H accumulates) | $674.59 | $422.01 | **0.626x** |
+| CUSUM events at h=500 | 98 (42.6% of bars) | 73 (30.3% of bars) | -- |
+
+### Finding: `target_bars` self-correction is confirmed working; `CUSUM_H=500` is measurably too HIGH for the current regime, not too low
+
+`target_bars=250`'s dynamic threshold produced bar counts within 5% of
+each other (230 vs 241) despite the live pull having ~12x the raw trade
+count of the March static data (113,367 vs 9,205) -- direct real-data
+confirmation that this lever is genuinely self-correcting, as the 2026-08-17
+staleness categorization predicted from reading the source alone.
+
+The counterintuitive part: the live window's mean price level is barely
+different from March's (-3.8%), and its overall price DISPERSION is much
+larger (1.78x -- this 30-day window caught the current rally off a lower
+base). A naive "price is higher/more volatile now, so a fixed $ threshold
+fires more easily" story would predict a HIGHER CUSUM event rate today.
+The opposite happened: bar-to-bar move size (the quantity `CUSUM_H`
+actually accumulates against) is SMALLER now (0.626x), and the event rate
+dropped from 42.6% to 30.3% of bars. Window-level dispersion and
+adjacent-bar move size are not the same thing, and only the latter is what
+`CUSUM_H` sees -- this is the real mechanism, not a data artifact.
+
+**`h~313` would restore March's relative firing rate on today's data** (a
+MEASUREMENT, not a new calibration decision -- see script's own closing
+caveat). `CUSUM_H=500` is running ~38% higher than that today, meaning the
+live pipeline is generating FEWER CUSUM events, and therefore fewer
+triple-barrier bets, than the March calibration intended for a
+comparably-sized bar series.
+
+### Caveats
+
+- **Single pull, single day.** This measures one 30-day live window as of
+  2026-08-21, not a distribution across multiple pulls. BTC has been
+  unusually volatile this specific week (real, independently-verified:
+  ~+24% in the week leading up to this measurement) -- `h~313` should be
+  treated as a rough current estimate, not a stable target, until repeated
+  on a later day shows whether it holds or was itself a product of this
+  week's unusual regime.
+- This does NOT change the standing "no exploitable edge" finding --
+  CUSUM_H's effect on event count/uniqueness was already shown (2026-08-16,
+  2026-08-20) to be a T_effective/DSR consideration, not a signal-quality
+  one. This section only establishes that the flat h=500 IS measurably
+  stale, and in which direction, closing the "is it stale" half of the
+  question this project has deferred since 2026-08-16's original CUSUM
+  investigation. The "what should replace it" half (an h-per-day-volatility
+  redesign, per `rebuild.py`'s own KNOWN OPEN QUESTION) remains a genuine,
+  undesigned next step -- not attempted here.
+- Interacts directly with the 2026-08-20 T_effective lever sweep's finding
+  that LOWERING `CUSUM_H` (500->250) made T_effective WORSE (-45%, via
+  `tw_mean` collapse from label overlap). That sweep tested a lower h for a
+  different reason (more raw events) and found it net-negative for
+  T_effective. This section's `h~313` is a much smaller reduction than that
+  sweep's h=250, in a different direction of reasoning (staleness
+  correction, not event-count maximization) -- whether a modest reduction
+  toward ~313 avoids the uniqueness-collapse mechanism that made h=250 net
+  negative is untested and should be checked before treating h~313 as
+  actionable, not just descriptive.
 ## T_effective Lever Sweep Findings (2026-08-20)
 
 Real follow-on to the prior section's 5th priority item: which candidate
