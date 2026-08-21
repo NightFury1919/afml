@@ -680,3 +680,78 @@ config as a real, available candidate; deciding whether to adopt it as the
 pipeline's new default (vs. keeping target_bars=500 alone, vs. keeping the
 current baseline pending the more principled h-per-day-volatility redesign)
 is a genuine next-session decision, not made in this diagnostic session.
+## target_bars=750 Scaling and Combined-Lever Interaction (2026-08-21)
+
+Direct follow-on to two threads converging today: the still-open "push
+target_bars further (750, 1000)" item (deferred since 2026-08-20), and the
+prior section's Combined Lever finding at target_bars=500. Tests
+target_bars=750 both alone (does the target_bars->T_effective relationship
+keep scaling past 500, or plateau?) and combined with CUSUM_H=313 (does a
+bigger target_bars base absorb the staleness correction's cost more
+easily than target_bars=500 did?).
+
+Method: `pipeline/diagnostics/calibrate_target_bars_750.py`, same
+`_run_one_config()` reuse, same snapshot (`t_effective_snapshot_2026-08-21`)
+as every other CUSUM_H/target_bars result today.
+
+### Results
+
+| config | target_bars | T_raw | tw_mean | T_effective |
+|---|---|---|---|---|
+| baseline (tb=250) | 250 | 199 | 0.3122 | 62.14 |
+| target_bars=500 alone | 500 | 416 | 0.3150 | 131.05 |
+| **target_bars=750 alone** | 750 | 563 | 0.3206 | **180.48** |
+| combined tb=500 + h=313 | 500 | 419 | 0.2090 | 87.57 |
+| combined tb=750 + h=313 | 750 | 527 | 0.1994 | 105.07 |
+
+Full sweep output in `pipeline/diagnostics/target_bars_750_calibration.csv`.
+
+### Finding 1: target_bars scaling is starting to plateau past 500, not still linear
+
+250->500 (2.0x target_bars) produced a slightly SUPER-linear T_effective
+gain (2.11x: 62.14->131.05). 500->750 (1.5x target_bars) produced a clearly
+SUB-linear gain (1.38x: 131.05->180.48). `tw_mean` stayed essentially flat
+across all three (0.3122/0.3150/0.3206 -- no real degradation), so the
+plateau isn't a uniqueness-collapse story the way CUSUM_H reduction was --
+`T_raw`'s own growth rate is slowing (199->416 is +109%, but 416->563 is
+only +35% despite the same +50% step in target_bars this time vs. the
+prior step's +100%), consistent with the pulled window's raw trade count
+(113,497) starting to become a binding constraint on how many additional
+bars a larger target_bars can extract. **target_bars=750 alone reaches
+T_effective=180.48 -- the closest this project has come to the ~200
+threshold** where the Detection Power Findings section says DSR's
+detection power starts to become meaningful.
+
+### Finding 2: the combined config's RETAINED FRACTION after adding h=313 got WORSE at tb=750, not better -- opposite of the pre-registered hypothesis
+
+|  | combined T_eff | alone T_eff | fraction retained |
+|---|---|---|---|
+| tb=500 + h=313 | 87.57 | 131.05 | 66.8% |
+| tb=750 + h=313 | 105.07 | 180.48 | **58.2%** |
+
+Going in, the natural guess was that a bigger target_bars base would
+absorb CUSUM_H=313's uniqueness cost more easily (more raw events to
+"cushion" the collapse). The opposite happened: `tw_mean` UNDER the h=313
+correction stays essentially flat as target_bars rises (0.2024 ->
+0.2090 -> 0.1994 -- no real trend, note the 750 value is even slightly
+LOWER than the 500 value), while `tw_mean` WITHOUT the correction keeps a
+slight upward drift (0.3122 -> 0.3150 -> 0.3206). The correction's
+uniqueness cost doesn't shrink relative to target_bars; if anything the
+uncorrected config's uniqueness holds up marginally better at scale,
+widening the relative gap rather than closing it.
+
+**What still holds, in absolute terms:** tb=750+h=313 (105.07) beats
+tb=500+h=313 (87.57) -- pushing target_bars further continues to help the
+combined config in absolute T_effective, just at a worse retained-fraction
+rate than the 500 step showed. Anyone treating "retained fraction" as the
+metric to optimize would conclude bigger target_bars makes the staleness
+correction relatively MORE costly, not less -- but anyone tracking the
+combined config's raw T_effective would still want to push target_bars
+higher. Which framing matters depends on what's actually being optimized
+for; this section reports both rather than picking one.
+
+**Caveat:** same single-snapshot, single-SVC-grid-per-config limitations
+as every T_effective sweep in this document. target_bars=1000 (the other
+value flagged in the deferred "push further" item) remains untested --
+whether the plateau observed here (500->750) continues, flattens further,
+or the retained-fraction trend reverses again is unknown past this point.
