@@ -613,3 +613,70 @@ of h in this range, is fairly stable day-to-day), but it means this
 section's h=375/313 rows are not from the exact same underlying data as
 the 08-20 sweep's h=250/baseline rows -- a same-day four-way comparison
 would be a cleaner test if this needs to be revisited.
+## Combined Lever: target_bars=500 + CUSUM_H=313 (2026-08-21)
+
+Closes the exact open question the prior section flagged as untested: does
+combining `target_bars=500` (the one lever independently shown to HELP
+T_effective, +77% on 2026-08-20) with `CUSUM_H=313` (the staleness-
+corrected value, which alone COSTS T_effective -34.9%) net out ahead of
+baseline?
+
+Method: `pipeline/diagnostics/calibrate_combined_lever.py`, reusing
+`calibrate_t_effective_levers.py`'s real `_run_one_config()` directly.
+Run against the SAME snapshot as the prior section
+(`t_effective_snapshot_2026-08-21`, 113,497 raw trades) -- deliberately
+avoiding the cross-day confound that section's own caveat flagged. Two new
+configs (`target_bars_500` alone on today's data, and the combined config)
+plus the baseline/`cusum_h_313`-alone rows already real-machine-confirmed
+today in `cusum_h_correction_calibration.csv`, giving a clean same-snapshot
+four-way comparison.
+
+### Results
+
+| config | T_raw | tw_mean | T_effective | vs baseline | DSR | PBO |
+|---|---|---|---|---|---|---|
+| baseline (tb=250, h=500) | 199 | 0.3122 | 62.14 | -- | 0.9617 | 0.5952 |
+| cusum_h_313 alone | 200 | 0.2024 | 40.47 | -34.9% | 0.7370 | 0.7175 |
+| target_bars=500 alone | 416 | 0.3150 | 131.05 | **+111%** | 0.7733 | 0.2846 |
+| **combined (tb=500 + h=313)** | 419 | 0.2090 | **87.57** | **+40.9%** | 0.8316 | 0.2825 |
+
+Full sweep output in `pipeline/diagnostics/combined_lever_calibration.csv`.
+
+### Finding: YES -- the combination nets out ahead of baseline; both goals are satisfiable together, with a real (not free) trade-off
+
+`target_bars=500`'s ~2.1x T_raw gain (199->416) is large enough to absorb
+`CUSUM_H=313`'s proportional tw_mean collapse (0.3150->0.2090, -33.7% --
+nearly identical to the -35.1% collapse h=313 caused alone, 0.3122->0.2024)
+and still land at T_effective=87.57, a real +40.9% gain over baseline.
+**Staleness-correcting CUSUM_H and raising T_effective ARE jointly
+achievable via this combined config** -- the prior section's stated
+tension is resolvable, not fundamental, once `target_bars` is raised
+alongside the CUSUM_H correction rather than left at 250.
+
+Honest caveat on the trade-off: relative to `target_bars=500` ALONE
+(131.05), adding the staleness correction gives back roughly a third of
+that gain (87.57, -33.2%). This is not "both maximized simultaneously" --
+it's a real, quantified cost of also correcting CUSUM_H's staleness, not
+a free combination. Whether that trade is worth taking depends on how much
+weight the staleness finding itself deserves versus maximizing T_effective
+alone; this section only establishes that the combination is a real,
+available option, not which config should ultimately be adopted.
+
+Incidental cross-day replication: `target_bars=500` alone landed at
+T_effective=131.05 today vs 132.90 on 2026-08-20 (different snapshot,
+different day, same config) -- within 1.4% of each other, a real (if
+small-sample) sign that this specific config's effect is stable day to
+day, not a one-off artifact of either day's particular market data.
+
+DSR/PBO for the combined config (0.8316 / 0.2825) sit closer to the
+target_bars=500-alone row's values than to cusum_h_313-alone's -- but per
+this document's standing caveats, none of these are individually reliable
+at T_effective=88-131 (still well below the ~200 threshold where DSR's
+detection power becomes meaningful), so this is noted for completeness,
+not as an edge signal.
+
+**No further action taken here** -- this section establishes the combined
+config as a real, available candidate; deciding whether to adopt it as the
+pipeline's new default (vs. keeping target_bars=500 alone, vs. keeping the
+current baseline pending the more principled h-per-day-volatility redesign)
+is a genuine next-session decision, not made in this diagnostic session.
