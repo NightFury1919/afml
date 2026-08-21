@@ -90,7 +90,19 @@ def main(write_snapshot=False):
     raw_trades = pull_recent_trades('BTCUSDT', LOOKBACK_HOURS, api_key)
     print(f'  {len(raw_trades)} raw trades pulled')
 
-    rebuild_result = build_bars_and_labels(raw_trades)
+    # *** LOAD-BEARING (2026-08-21): target_bars 250 -> 1000 *** -- adopted
+    # together with rebuild.py's CUSUM_H 500->313 staleness correction (see
+    # that module's own LOAD-BEARING note). CUSUM_H=313 alone COSTS
+    # T_effective (-34.9% at the prior target_bars=250 default --
+    # CALIBRATION_AUDIT.md's "CUSUM_H Staleness Correction vs. T_effective"
+    # section). target_bars=1000 was the strongest tested combination
+    # absorbing that cost and then some: T_effective 62.14 -> 145.52 vs.
+    # the pre-2026-08-21 baseline (+134%, CALIBRATION_AUDIT.md's
+    # "target_bars=1000" section). target_bars ALONE was separately shown
+    # to plateau at this level (750->1000 was ~0% further gain on its own)
+    # -- this is not expected to keep improving with a still-higher value
+    # without further investigation.
+    rebuild_result = build_bars_and_labels(raw_trades, target_bars=1000)
     print(f"  {len(rebuild_result['bars'])} bars, "
           f"{len(rebuild_result['events'])} triple-barrier events, "
           f"threshold=${rebuild_result['threshold']:,.2f}")

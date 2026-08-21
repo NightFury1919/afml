@@ -15,18 +15,36 @@ Real modules reused:
   - ch04/sample_weights/uniqueness.py       (get_average_uniqueness)
   - ch04/sample_weights/return_attribution.py (get_sample_weights)
 
-Calibration constants (CUSUM h=500, get_daily_vol span0=100, pt_sl=[1,1],
-min_ret=0.005, num_days=3) are carried over UNCHANGED from this project's
-established real calibration on the March 2026 static dataset (see
+Calibration constants (get_daily_vol span0=100, pt_sl=[1,1], min_ret=0.005,
+num_days=3) are carried over UNCHANGED from this project's established real
+calibration on the March 2026 static dataset (see
 ch03/examples_chapter_3_labeling.py). These are real, already-validated
 choices for this asset -- reusing them here, rather than re-deriving new
-ones, is deliberate. KNOWN OPEN QUESTION (documented, not resolved): CUSUM's
-h=500 is a flat DOLLAR threshold, calibrated when BTC was trading near
-$65,000 in March 2026. If a live pull happens at a meaningfully different
-BTC price level, h=500 may fire CUSUM events too often or too rarely
-relative to the original calibration's intent (an h-per-day-volatility
-scaling would be more defensible but is a new design decision this project
-hasn't made yet -- flagged here rather than silently invented).
+ones, is deliberate.
+
+*** LOAD-BEARING (2026-08-21): CUSUM_H changed 500 -> 313 -- a measured
+staleness correction, not a re-derivation from scratch *** The original
+h=500 was a flat DOLLAR threshold calibrated when BTC was trading near
+$65,000 in March 2026 (this module's own KNOWN OPEN QUESTION, first flagged
+2026-08-13, now resolved by real measurement rather than left open).
+`pipeline/diagnostics/audit_cusum_h_staleness.py` ran both the March static
+baseline and a fresh 720h live BTCUSDT pull through this exact
+build_bars_and_labels() chain: h=500 fired on 30.3% of live bars vs.
+March's 42.6% (CALIBRATION_AUDIT.md's "CUSUM_H Staleness Audit" section)
+-- the threshold had drifted too HIGH for current data, not too low, and
+h=313 was the measured value restoring March's relative firing rate.
+CAVEAT carried forward: a single-day measurement, not a multi-day average
+-- may need revisiting if a later measurement shows further drift. The
+deliberate h-per-day-volatility redesign the original KNOWN OPEN QUESTION
+called for remains undesigned; this is a measured point-fix, not that
+redesign.
+
+Adopting h=313 ALONE was shown to cost T_effective (-34.9% at the prior
+target_bars=250 default -- CALIBRATION_AUDIT.md's "CUSUM_H Staleness
+Correction vs. T_effective" section, via a tw_mean uniqueness collapse).
+This is why target_bars' production default changed too -- see
+run_pipeline_live.py's own LOAD-BEARING note on target_bars=250->1000,
+adopted together with this change specifically to absorb that cost.
 
 The DOLLAR-BAR THRESHOLD, unlike the constants above, is NOT carried over
 fixed at $10,000 -- Phase 2 scope explicitly calls for it to scale with
@@ -57,8 +75,12 @@ from ch03.labeling import triple_barrier              # real module
 from ch04.sample_weights import uniqueness            # real module
 from ch04.sample_weights import return_attribution    # real module
 
+# Reused from ingestion.py, not reimplemented -- see preprocess_raw_trades'
+# own LOAD-BEARING note (2026-08-21) for why this is needed here too.
+from ingestion import _disambiguate_timestamps
+
 # Established real calibration, carried over unchanged (see module docstring)
-CUSUM_H = 500
+CUSUM_H = 313  # LOAD-BEARING (2026-08-21): was 500 -- see module docstring
 DAILY_VOL_SPAN0 = 100
 PT_SL = [1, 1]
 MIN_RET = 0.005
@@ -85,8 +107,33 @@ def preprocess_raw_trades(raw_trades):
     Timestamp (microseconds) to a Date column, derive tick-rule Label from
     IsBuyerMaker, compute Dollar value, run ch02's real delta() (needed by
     downstream tick-rule-based features, not used directly here but kept
-    for parity with the established real pipeline shape)."""
-    raw = raw_trades.copy()
+    for parity with the established real pipeline shape).
+
+    *** LOAD-BEARING (2026-08-21): disambiguates Timestamp FIRST, reusing
+    ingestion.py's real _disambiguate_timestamps() *** -- ingestion.py's
+    own LOAD-BEARING note documents that live pulls can have trades sharing
+    an identical millisecond, disambiguated there via consecutive
+    microsecond offsets. That fix only ran inside pull_recent_trades()
+    itself, leaving any OTHER raw_trades source (the static March CSV, any
+    future test fixture) unprotected. Real, confirmed bug found 2026-08-21
+    while testing target_bars=1000 on the static dataset for adoption as
+    this pipeline's live default: the static CSV has 561 duplicate raw
+    timestamps out of 9,205 (~6%); at a fine enough bar granularity, these
+    occasionally land on a bar-close boundary, producing two bars sharing
+    one Date index value, which crashes triple_barrier.get_daily_vol()
+    with a real ValueError (shape mismatch in its .loc lookup -- Ch03's own
+    Snippet 3.1 code is correct; the bug is upstream data hygiene, not a
+    book bug). Confirmed the fix resolves target_bars=1000 on the static
+    dataset (789 bars, 171 events, no crash) with ZERO change to the
+    already-passing target_bars=250/500 results -- safe, non-disruptive.
+    Calling this here makes preprocess_raw_trades() -- and therefore
+    build_bars_and_labels() -- genuinely data-source agnostic, matching
+    this module's own test file's stated intent, rather than relying on
+    every caller having already gone through ingestion.py. Idempotent on
+    already-disambiguated live data (already-unique timestamps get a zero
+    offset, confirmed by inspection of _disambiguate_timestamps' groupby-
+    cumcount logic)."""
+    raw = _disambiguate_timestamps(raw_trades)
     raw['Date'] = pd.to_datetime(raw['Timestamp'], unit='us')
     raw['Label'] = raw['IsBuyerMaker'].apply(lambda x: -1 if x else 1)
 

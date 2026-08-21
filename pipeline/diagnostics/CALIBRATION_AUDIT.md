@@ -827,3 +827,104 @@ scaling question as scoped (250/500/750/1000, alone and combined) for
 today's session. Whether target_bars=1000+h=313 should become the
 pipeline's actual default remains an explicit next-session decision, same
 status as the prior section's combined-config candidate.
+## Adopted as Production Default: CUSUM_H=313, target_bars=1000 (2026-08-21)
+
+Closes the day's full arc: `rebuild.py`'s `CUSUM_H` changed 500->313 and
+`run_pipeline_live.py`'s `build_bars_and_labels()` call changed
+target_bars 250->1000, both with LOAD-BEARING comments citing the relevant
+sections above. This is a real, committed production change, not another
+diagnostic override.
+
+### A real bug was found and fixed along the way
+
+Testing `target_bars=1000` on the static March dataset (as a regression
+test, before committing the production change) surfaced a real,
+previously-undiscovered bug: it crashed with `ValueError: operands could
+not be broadcast together with shapes (757,) (753,)` inside
+`triple_barrier.get_daily_vol()`. Root-caused by direct inspection: the
+static CSV has 561 duplicate raw Timestamp values out of 9,205 (~6%) --
+the same issue class `ingestion.py`'s own LOAD-BEARING note already
+documents and fixes for live pulls (`_disambiguate_timestamps()`), but
+that fix only ever ran inside `pull_recent_trades()`, leaving any OTHER
+raw_trades source unprotected. At `target_bars=1000`'s finer bar
+granularity, duplicate-timestamp trades occasionally land on a bar-close
+boundary, producing two bars sharing one Date index value, which breaks
+`get_daily_vol()`'s `.loc` lookup (real Ch03 Snippet 3.1 code, correct as
+written -- the bug is upstream data hygiene, not a book bug).
+
+**The live pipeline itself was never at risk from this specific bug** --
+`ingestion.py` already disambiguates live pulls, which is exactly why
+today's diagnostic runs at `target_bars=1000` (CALIBRATION_AUDIT.md's
+"target_bars=1000" section) worked cleanly on live data despite this gap.
+But shipping `target_bars=1000` as the production default while this
+crash risk sat latent for any other raw_trades source -- including
+`rebuild.py`'s own test suite, which is supposed to exercise the static
+dataset as a stand-in -- was a real gap worth closing before, not after,
+adopting the change.
+
+**Fix:** reused `ingestion.py`'s already-tested `_disambiguate_timestamps()`
+inside `rebuild.py`'s `preprocess_raw_trades()`, so any raw_trades source
+gets the same protection live pulls already had -- no reimplementation,
+matching this project's established reuse convention. Confirmed in sandbox
+and then real-machine: resolves `target_bars=1000` on the static dataset
+(789 bars, 171 events, no crash) with ZERO change to the already-passing
+`target_bars=250/500` results.
+
+### Real-machine confirmed, two-pass pytest, plus a fresh live run
+
+Two new regression tests added to `test_rebuild.py`
+(`test_disambiguates_duplicate_timestamps`,
+`test_target_bars_1000_does_not_crash`) plus a third locking the new
+`CUSUM_H` value (`test_cusum_h_is_staleness_corrected_value`). Two-pass
+pytest, both directions, both 14/14 passed on the real `mlfinlab`
+environment (Python 3.10.20, pandas 1.5.3, numpy 1.23.5) -- matched the
+sandbox pre-check exactly.
+
+Then a fresh live run under the new defaults, for real, end-to-end:
+
+| | this run (2026-08-21, new defaults) |
+|---|---|
+| raw trades pulled | 114,116 |
+| bars | 855 |
+| triple-barrier events | 182 (182/182 survived enrichment -- 100%) |
+| T_effective | 137.24 |
+| DSR | 0.5784 |
+| PBO | 3.57% |
+| lifecycle stage | **PAPER_TRADING** (first time ever -- previously always EMBARGO) |
+
+T_effective=137.24 is in the same ballpark as today's frozen-snapshot
+diagnostic result for this exact config (145.52) -- a different live pull,
+consistent real-world behavior, confirms the production change performs
+as measured rather than as a diagnostic-only artifact.
+
+**On the PAPER_TRADING milestone: read this cautiously, not as a
+signal-quality finding.** DSR crossed 0.5784, clearing the >0.5 threshold
+`oversight.py`'s lifecycle classifier uses for PAPER_TRADING -- but this
+document's own Detection Power Findings section established DSR's
+reliability threshold at T~200 (this run: T_effective=137.24, still
+below it) and found DSR biased toward false positives in fat-tailed
+regimes at exactly this T range. The honest read: today's changes moved
+the pipeline into a regime CLOSER to where DSR could eventually mean
+something, not into a regime where this specific 0.5784 reading is
+trustworthy evidence of edge. The report's own standing null-result
+framing (five independent methods, Ch11-15, all converging on no
+exploitable edge on the prior feature set) is unchanged by one run
+crossing a threshold that itself carries this much uncertainty at this T.
+
+### Files changed
+
+- `pipeline/orchestration/rebuild.py` -- CUSUM_H 500->313,
+  preprocess_raw_trades() timestamp disambiguation fix, updated module
+  docstring
+- `pipeline/orchestration/test_rebuild.py` -- 3 new regression tests,
+  updated TDD comment block (sandbox + real-machine confirmed)
+- `pipeline/run_pipeline_live.py` -- target_bars 250->1000 at the
+  build_bars_and_labels() call site
+- `pipeline/live_run_examples/2026-08-21/` -- real live run snapshot under
+  the new defaults (via --snapshot flag)
+
+**This closes today's full arc.** The cross-asset staleness audit --
+deferred every session since 2026-08-16 -- is now not just measured and
+resolved on paper, but actually shipped as the pipeline's real production
+configuration, real-machine confirmed end-to-end, with a genuine bug found
+and fixed along the way rather than papered over.
