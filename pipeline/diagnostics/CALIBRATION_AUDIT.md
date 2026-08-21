@@ -537,3 +537,79 @@ which specific 20-trial grid happened to win under each config, not a
 stable underlying effect. Worth treating this table as a real first data
 point on the T_effective mechanism, not a final answer on DSR/PBO's
 response to it.
+## CUSUM_H Staleness Correction vs. T_effective (2026-08-21)
+
+Direct follow-on closing the open question this same day's "CUSUM_H
+Staleness Audit" section flagged in its own caveats: does the
+staleness-motivated correction (h~313, a much smaller reduction than the
+2026-08-20 sweep's h=250) avoid the tw_mean/uniqueness-collapse mechanism
+that made h=250 net-negative for T_effective, or does any reduction below
+500 trigger it?
+
+Method: `pipeline/diagnostics/calibrate_cusum_h_correction.py`, reusing
+`calibrate_t_effective_levers.py`'s real `_run_one_config()` directly (same
+monkeypatch-and-restore pattern, same full rebuild -> enrich -> stage ->
+Ch11 trials -> evaluate chain -- no reimplementation). Run against ONE
+freshly frozen snapshot (`t_effective_snapshot_2026-08-21`, 113,497 raw
+trades -- NOT the deleted 2026-08-20 snapshot, to avoid silently mixing
+today's staleness finding with three-day-old market data). Three configs:
+baseline (h=500), h=313 (this session's staleness-corrected value), and
+h=375 (a bracketing midpoint, to see whether the effect is graded or a
+step change specific to the extreme h=250 case already tested).
+
+### Results
+
+| config | n_events | T_raw | tw_mean | T_effective | vs baseline | DSR | PBO |
+|---|---|---|---|---|---|---|---|
+| baseline (h=500) | 61 | 199 | 0.3122 | 62.14 | -- | 0.9617 | 0.5952 |
+| h=375 (bracket) | 84 | 192 | 0.2350 | 45.11 | **-27.4%** | 0.7711 | 0.0974 |
+| h=313 (staleness-corrected) | 97 | 200 | 0.2024 | 40.47 | **-34.9%** | 0.7370 | 0.7175 |
+
+Full sweep output in `pipeline/diagnostics/cusum_h_correction_calibration.csv`.
+
+### Finding: NO -- the uniqueness-collapse mechanism is graded across the whole range, not specific to the extreme h=250 case
+
+`T_raw` stays essentially flat across ALL FOUR values now tested (500, 375,
+313, 250 -- 199/192/200/197 respectively, from this section plus the
+2026-08-20 sweep), while `tw_mean` falls monotonically as `h` decreases
+(0.3122 -> 0.2350 -> 0.2024, continuing the same trend that reached 0.2086
+at h=250). More events packed into the same bar window collapses average
+uniqueness at EVERY reduction tested, not just the extreme one -- this
+answers the open question directly: **h~313 does NOT avoid the mechanism.
+Any CUSUM_H reduction in the 250-375 range tested so far costs T_effective,
+roughly in proportion to how far h drops from 500.**
+
+This creates a real, stated tension rather than a clean fix: the staleness
+audit (a real price-regime measurement, independent of T_effective) says
+CUSUM_H should come down toward ~313 to match March's calibration intent
+on current data. But every reduction tested actively works against this
+project's separate, higher-priority goal (per the Detection Power Findings)
+of RAISING T_effective toward 200-1000. **Staleness-correcting CUSUM_H
+downward and raising T_effective cannot both be solved by moving this one
+lever -- they pull in opposite directions.** Addressing the staleness
+finding without a T_effective cost would require either the deliberate
+h-per-day-volatility redesign rebuild.py's own docstring already flags
+(not a simple new fixed number), or combining a CUSUM_H reduction with the
+one lever independently shown to help T_effective (target_bars=500, 08-20
+finding, +77%) to see whether the combined net effect clears the cost --
+untested, a real next step if this thread continues.
+
+DSR/PBO swung substantially across all three configs here (DSR
+0.96->0.77->0.74, PBO 0.60->0.10->0.72) -- per this document's own
+Detection Power and PBO Precision findings, neither is reliable at
+T_effective=40-62 (DSR detection power is weak below T~200; PBO's noise
+floor doesn't shrink with T), so none of this movement should be read as
+evidence of edge one way or the other, consistent with every other finding
+in this document.
+
+**Caveat:** single frozen snapshot, single SVC trial-grid per config --
+same caveats as the 2026-08-20 sweep this extends. `T_raw` values across
+all four h values compared here come from two DIFFERENT snapshots taken on
+different days (102,994 raw trades on 08-20 vs 113,497 on 08-21) -- the
+near-identical T_raw values (197-200) across both days and all four h
+values is itself informative (suggests target_bars=250's bar count, and
+therefore roughly how many CUSUM events survive per bar-window regardless
+of h in this range, is fairly stable day-to-day), but it means this
+section's h=375/313 rows are not from the exact same underlying data as
+the 08-20 sweep's h=250/baseline rows -- a same-day four-way comparison
+would be a cleaner test if this needs to be revisited.
