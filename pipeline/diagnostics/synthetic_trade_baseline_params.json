@@ -1,0 +1,12 @@
+{
+  "n_trades": 9205,
+  "span_hours": 743.4286968438888,
+  "tick_density_per_sec": 0.015139184973499009,
+  "median_inter_trade_sec": 66.053754,
+  "price_diff_std": 111.05121984716983,
+  "price_start": 67068.88,
+  "price_end": 68357.29,
+  "avg_trade_size": 0.0042597099402498645,
+  "baseline_imbalance": 0.49788158609451383,
+  "source": "static"
+}
