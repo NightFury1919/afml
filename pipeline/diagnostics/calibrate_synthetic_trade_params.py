@@ -84,12 +84,36 @@ def load_live_trades():
     """Pull a fresh live BTCUSDT window via the pipeline's own, already-
     tested ingestion module -- reuses pull_recent_trades(), no
     reimplementation. Uses the read-only Binance.US API key already set
-    as a session-scoped env var."""
+    as a session-scoped env var (BINANCE_API_KEY), same pattern as
+    run_pipeline_live.py.
+
+    LOAD-BEARING (2026-08-22): corrected to the REAL pull_recent_trades()
+    signature (symbol, lookback_hours, api_key, ...) after an initial
+    version guessed `hours=` and crashed with a TypeError on the real
+    machine. Confirmed by reading the actual ingestion.py source from
+    GitHub rather than continuing to guess.
+    """
+    import os
     from orchestration import ingestion  # real module, real function
-    # LOAD-BEARING (2026-08-22): 720h window matches the window size used
-    # in the 2026-08-21 CUSUM_H staleness audit, for rough comparability
-    # with that session's diff-std numbers if useful later.
-    df = ingestion.pull_recent_trades(symbol='BTCUSDT', hours=720)
+    api_key = os.environ.get('BINANCE_API_KEY')
+    if not api_key:
+        raise SystemExit(
+            'BINANCE_API_KEY is not set. See ingestion.py\'s module '
+            'docstring for how to get a free read-only key.'
+        )
+    # LOAD-BEARING (2026-08-22): 720h window matches LOOKBACK_HOURS in
+    # run_pipeline_live.py and the window size used in the 2026-08-21
+    # CUSUM_H staleness audit, for direct comparability with production.
+    df = ingestion.pull_recent_trades('BTCUSDT', 720, api_key)
+    # LOAD-BEARING (2026-08-22): explicit unit='us' conversion here, NOT
+    # left to compute_baseline_stats(). ingestion.py returns Timestamp as
+    # raw int64 microseconds-since-epoch. pd.to_datetime() with no unit
+    # specified defaults to nanoseconds for integer input -- it would NOT
+    # crash, it would silently produce ~1970-epoch dates and corrupt every
+    # downstream stat (density, span) with no error to catch it. Caught
+    # before running on the real machine by re-reading ingestion.py's
+    # actual Timestamp convention rather than assuming.
+    df['Timestamp'] = pd.to_datetime(df['Timestamp'], unit='us')
     return df
 
 
@@ -111,12 +135,23 @@ def compute_baseline_stats(df: pd.DataFrame) -> dict:
     All computed directly from the real trade file, no assumptions.
     """
     df = df.copy()
-    # Normalize expected column names -- static CSV and live pull may
-    # differ slightly; adjust here if the real column names don't match
-    # (Ethan: please confirm actual column names when you run this --
-    # I'm assuming Price/Volume/Timestamp/IsBuyerMaker per the agreed
-    # design, matching Binance trade schema convention).
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+    # LOAD-BEARING (2026-08-22): both loaders (static and live) now
+    # return Timestamp already converted to proper datetime64 with an
+    # explicit unit='us' -- do NOT blindly re-call pd.to_datetime() here
+    # with no unit specified. If Timestamp somehow arrives as raw int64
+    # (a future loader forgetting the conversion), pd.to_datetime() with
+    # no unit defaults to NANOSECONDS for integer input, silently
+    # producing garbage ~1970-epoch dates with no error. Guard explicitly
+    # instead of trusting the caller.
+    if not pd.api.types.is_datetime64_any_dtype(df['Timestamp']):
+        raise TypeError(
+            "df['Timestamp'] must already be datetime64 (converted with "
+            "an explicit unit) before calling compute_baseline_stats() -- "
+            "got dtype "
+            f"{df['Timestamp'].dtype}. Re-parsing it here without a "
+            "known unit risks silently wrong dates (nanosecond-default "
+            "misinterpretation of microsecond epoch values)."
+        )
     df = df.sort_values('Timestamp').reset_index(drop=True)
 
     time_diffs_sec = df['Timestamp'].diff().dt.total_seconds().dropna()
