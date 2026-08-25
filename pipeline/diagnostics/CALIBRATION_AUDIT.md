@@ -928,3 +928,59 @@ deferred every session since 2026-08-16 -- is now not just measured and
 resolved on paper, but actually shipped as the pipeline's real production
 configuration, real-machine confirmed end-to-end, with a genuine bug found
 and fixed along the way rather than papered over.
+
+
+## Momentum Edge-Sweep Null Reclassified: Chronological-CV Regime-Shift Artifact, Not Confirmed Non-Detection (2026-08-25)
+
+**Status change:** the 2026-08-24 momentum sweep (`momentum_edge_sweep_50seeds.csv`, 400 combos, DSR flat 0.508-0.538, correlation with signal strength 0.031, 0/400 runs reaching DSR>=0.95) was written up in the 2026-08-24 handoff as **"a robust null, converging with the 2026-08-23 OFI null"** -- real evidence, alongside OFI, for a pipeline-wide detection ceiling rather than an OFI-specific blind spot.
+
+**That conclusion is downgraded to inconclusive as of today.** A same-day, real-machine trace (below) found a specific, confirmed mechanism that can produce exactly this flat-DSR pattern on its own, independent of whether the pipeline can detect a realistic edge. The momentum sweep needs to be re-run with a redesigned generator (see "Next steps" below) before its null can be trusted at face value. **The OFI null (2026-08-23) is unaffected** -- it uses a structurally different signal-injection method and was not implicated by anything found today.
+
+### What triggered this (2026-08-25 session)
+
+Ethan's own observation: "our tests found the model can't find a reliable edge on *synthetic* data" (i.e. a positive control, not real BTC) -- "the model in the book didn't seem to be meant to be a model that looks for an unrealistic edge... i think our parameters are wrong somewhere, or the model isnt right somewhere." That's a materially different and more specific claim than "no edge in BTC," and it prompted a direct trace of one strong-signal sweep combo through the full pipeline chain rather than trusting the sweep's own aggregate numbers.
+
+### Trace 1 (`trace_momentum_signal_leakage.py`): ruled out "no momentum-carrying feature exists"
+
+Ran `continuation_prob=0.7` (raw price `bar_lag1_autocorr=0.679`, well above the sweep grid's null-calibrated top of 0.566) through the exact chain `run_momentum_edge_sweep.py` uses, checking at each stage whether the injected signal survives:
+
+- **Bar-level** feature-vs-next-return correlations were weak (|r| <= 0.08 for all 10 real features -- 9 Ch19 microstructural + Ch05 fracdiff).
+- **Event-level** feature-vs-label correlations were NOT weak: `parkinson_vol_20bar` r=+0.22, `amihud_lambda_20bar` r=+0.22, `fracdiff` r=-0.21, `kyle_lambda` r=-0.20, `becker_parkinson_sigma` r=+0.15 against `bin` (similar magnitudes against realized `ret`). The injected signal clearly does reach the feature table the classifier trains on -- the "feature set has no channel for momentum" hypothesis, the leading theory going into this trace, was not supported.
+- The winning trial's real out-of-sample directional accuracy was **0.445 -- below a coin flip** -- and all 20 trials in the grid had negative Sharpe (-0.0298 to -0.0798), despite the real feature correlations above. `StandardScaler` is already in the SVC pipeline (`ch11/chapter_11_backtest_dangers.py`'s `out_of_sample_probs`, added 2026-07-21 for exactly this class of bug) -- ruled out as the cause.
+
+### Trace 2 (`trace_cv_fold_class_balance.py`): confirmed the mechanism
+
+Same generated data, same staged event table, ran Ch07's real `PurgedKFold(n_splits=4, pctEmbargo=0.12)` directly (the exact constants `ch11`'s real trial grid uses) and measured, per fold, what a **trivial "always predict train's majority class"** baseline would score -- isolating the fold-split structure from the classifier entirely.
+
+| Fold | train majority class / % | test majority class / % | trivial-baseline accuracy |
+|---|---|---|---|
+| 1 | -1 / 53.4% | +1 / 76.4% | 0.2360 |
+| 2 | -1 / 51.0% | +1 / 68.6% | 0.3137 |
+| 3 | +1 / 58.0% | +1 / 52.2% | 0.5223 |
+| 4 | +1 / 67.0% | -1 / 75.4% | 0.2460 |
+
+**Mean trivial-baseline accuracy across all 4 folds: 0.3295** -- well below chance, with the majority class flipping direction between train and test in 3 of 4 folds. The real SVC's 0.445 accuracy is actually *higher* than this trivial baseline, meaning the classifier IS extracting real signal from the features (consistent with Trace 1's correlations) -- it's just fighting a fold structure that's stacked against it.
+
+**Mechanism:** `continuation_prob=0.7` produces a long, sustained single-direction regime (autocorr 0.679 is far beyond anything in real BTC). Chronological `PurgedKFold` on a persistently-trending series puts one direction's data in a training block and the opposite direction in the adjacent test block -- a real, structural mismatch between what this generator produces and what chronological CV assumes, not a bug in `PurgedKFold`, `StandardScaler`, the SVC, `GAMMA=0.1`, or DSR. Every one of those was checked directly and ruled out or shown to be working as intended.
+
+### Why this doesn't touch the real-BTC null
+
+This is a property of the **synthetic generator's** persistence colliding with CV methodology, not a property of the pipeline applied to real BTC. Ch13's own established finding (`phi_hat~1.03`, consistent with a random walk) says real BTC does not exhibit this kind of sustained directional persistence -- the regime-shift artifact found today has no real-data analogue to trigger it. **The five-method convergent null on real BTC (PBO~0.83, CPCV all-negative, OTR non-stationary, Ch14 DSR 0/5 survive, P[fail]~0.45-0.47) is unaffected by today's finding.**
+
+### What this means for the momentum sanity-check specifically
+
+The momentum sweep's entire 8-point `continuation_prob` grid used a single sustained regime per run, for the full 360k-trade/30-day span, at every signal strength tested -- so this same fold-shift confound plausibly affected the ENTIRE grid, not just the `cp=0.7` point traced today. That would independently explain the sweep's headline anomaly (mean DSR flat ~0.50-0.54, correlation with signal strength only 0.031) without needing to invoke a pipeline-wide detection ceiling at all: if fold-level class-shift scrambles the classifier's OOS signal at every point on the grid, DSR would look flat regardless of true signal strength, simply because the classifier never gets a fair test.
+
+**The momentum null is therefore inconclusive, not confirmed**, pending a re-run with a generator that doesn't produce single-sustained-regime persistence (e.g. short alternating-direction blocks, so chronological folds see comparable class balance in train and test). That redesign is nontrivial and is being deferred, not attempted under this week's time pressure (see standing deferred-sections rule) -- flagged here explicitly so it isn't silently forgotten or, worse, silently miscounted as supporting evidence in a future write-up.
+
+### Files added (diagnostic-only, not yet committed)
+
+- `pipeline/diagnostics/trace_momentum_signal_leakage.py`
+- `pipeline/diagnostics/trace_cv_fold_class_balance.py`
+- `pipeline/diagnostics/cv_fold_class_balance_trace.csv` (Trace 2's per-fold output)
+
+### Next steps
+
+1. Redesign `positive_control_data.generate_momentum_trades()` (or add a variant) to produce short, alternating-direction persistence blocks rather than one sustained regime per run, so realized class balance stays comparable across chronological CV folds at every tested signal strength.
+2. Re-run the momentum sweep under the redesigned generator before treating either outcome (detection or null) as evidence about this pipeline's momentum-detection capability.
+3. Correct the 2026-08-24 handoff's "converges with OFI" framing wherever it's referenced going forward (this document, README, any future summary) to "OFI null stands; momentum null is inconclusive pending regenerator redesign" until step 2 is done.
