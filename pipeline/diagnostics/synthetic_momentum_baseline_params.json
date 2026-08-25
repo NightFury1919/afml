@@ -1,0 +1,17 @@
+{
+  "n_trades": 360000,
+  "target_bars": 3000,
+  "seed": 0,
+  "base_tick_bp": 0.0005,
+  "base_noise_std": 0.0003,
+  "k": 0.2790955481629236,
+  "calibrated_tick_bp": 0.0001395477740814618,
+  "calibrated_noise_std": 8.372866444887707e-05,
+  "real_diff_std": 147.47004041863764,
+  "real_firing_rate": 0.14660633484162897,
+  "synthetic_diff_std_at_k1": 528.3854987631374,
+  "synthetic_firing_rate_at_k1": 0.597924338801473,
+  "confirm_diff_std": 124.13072983826038,
+  "confirm_firing_rate": 0.1452962838968865,
+  "residual_diff_std_gap": 0.15826476017855337
+}
