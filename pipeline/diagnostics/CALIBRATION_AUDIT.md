@@ -984,3 +984,79 @@ The momentum sweep's entire 8-point `continuation_prob` grid used a single susta
 1. Redesign `positive_control_data.generate_momentum_trades()` (or add a variant) to produce short, alternating-direction persistence blocks rather than one sustained regime per run, so realized class balance stays comparable across chronological CV folds at every tested signal strength.
 2. Re-run the momentum sweep under the redesigned generator before treating either outcome (detection or null) as evidence about this pipeline's momentum-detection capability.
 3. Correct the 2026-08-24 handoff's "converges with OFI" framing wherever it's referenced going forward (this document, README, any future summary) to "OFI null stands; momentum null is inconclusive pending regenerator redesign" until step 2 is done.
+
+## OFI Null Confirmed Real (Not a CV Artifact); Lookback Extension Reaches T_effective>200 But Surfaces a New Single-Window Regime-Dependency Problem (2026-08-25, continued)
+
+Direct continuation of this same day's momentum-null reclassification (see prior section). Two more real-machine traces, run the same day.
+
+### OFI trace (`trace_ofi_signal_leakage.py`): the OFI null is real, not the momentum artifact
+
+Before assuming the 2026-08-23 OFI null (`bar_aligned_scaled_50seeds.csv`, 400 combos, DSR 0.508-0.526, correlation with signal strength 0.016) shared the same chronological-CV regime-shift confound just found in momentum, the generator's source was inspected directly: `generate_bar_aligned_trades.py` draws a FRESH, INDEPENDENT `z ~ N(0,1)` for every bar window, with no persistence mechanism between bars -- structurally nothing like momentum's `continuation_prob` Markov chain. No a priori reason to expect the same artifact.
+
+Ran `edge_strength=1.0` (this generator's strongest tested signal, reaching `raw_signal_corr=0.42`) through the full chain plus the same PurgedKFold fold-balance isolation test used on momentum:
+
+- **Every one of the 20 trials had a POSITIVE Sharpe** (0.017-0.045) -- the opposite of momentum's uniformly negative grid.
+- Winning trial's real out-of-sample directional accuracy: **0.575**, clearly above chance. `corr(prob, true_label) = +0.284`, clearly positive. The classifier genuinely extracts real predictive skill from the injected OFI signal.
+- PurgedKFold fold-by-fold class balance stayed broadly consistent between train and test in 3 of 4 folds (only fold 2 flipped) -- nothing like momentum's near-total flip every fold.
+- The trivial "predict train's majority class" baseline (0.693) beat the real classifier (0.575) -- but this is explained by ordinary class imbalance in this one 299-event draw (69%/31%), not a fold-structure artifact, and doesn't change the fact that the classifier demonstrably beats a coin flip with positive prob/label correlation on top of that imbalance.
+
+**Conclusion: the OFI null is NOT explained by the momentum-style CV artifact.** It's a real, structurally different finding. DSR at this run (T_effective=97.10) came in at 0.6079 -- only ~0.03 above the fat-tailed-regime null baseline that 2026-08-19's Detection Power Calibration Findings already predicted for this T (~0.573, interpolated at T=100). **This is DSR behaving exactly as its own prior calibration said it would at this sample size** -- not a bug, not an artifact, and not evidence the classifier can't detect the edge (it demonstrably can, per the OOS accuracy/probability-correlation numbers above). It's confirmation that this pipeline's real bottleneck is T_effective, precisely the finding the Detection Power Calibration section already made -- this trace just demonstrates it concretely, on a real injected edge, rather than only in the abstract Monte Carlo.
+
+### Lookback-extension sweep (`capture_lookback_extension_snapshot.py` / `calibrate_lookback_extension.py`): T_effective>200 reached, but at a real cost
+
+Direct follow-on to the above: if T_effective is the real bottleneck, does extending `LOOKBACK_HOURS` past the pipeline's current 720h help? The 2026-08-19 T_effective Lever Sweep found `LOOKBACK_HOURS` was a "red herring" for this question, but that finding held `target_bars` fixed while varying lookback alone -- and `target_bars` alone was separately found to plateau at ~180 on a 720h pull because "the pulled window's raw trade count... starting to become a binding constraint." Untested until today: whether raising BOTH lookback and target_bars together breaks that plateau by removing its actual binding constraint.
+
+One frozen 2160h (90-day) pull (343,038 raw trades), sliced into 720h/1440h/2160h windows (avoiding a cross-pull drift confound -- same discipline as every other frozen-snapshot sweep in this document), crossed with `target_bars` in {1000, 1500, 2000}:
+
+| lookback_hours | target_bars=1000 | target_bars=1500 | target_bars=2000 |
+|---|---|---|---|
+| 720 | 103.72 | 164.28 | 210.95 |
+| 1440 | 147.61 | 205.82 | 240.18 |
+| **2160** | 109.39 | 163.12 | **255.80** |
+
+Full sweep output (12 columns incl. tw_mean, DSR, PBO, n_events) in `pipeline/diagnostics/lookback_extension_calibration.csv`.
+
+**Finding 1 (confirmed): the plateau's real cause was raw trade count, not target_bars itself.** T_effective climbs well past the ~180 ceiling target_bars alone hit on a 720h pull -- `lb2160_tb2000` reaches **255.80**, the highest T_effective this project has ever produced, and the first result to clear the ~200 threshold where 2026-08-19's Detection Power Calibration says DSR's discrimination starts to mean something.
+
+**Finding 2 (unplanned, and the more important one): the 2160h window itself is dominated by a bad regime.** At `lookback_hours=2160`, ALL 60 trials across all three target_bars values (20 trials x 3 configs) had NEGATIVE Sharpe -- a complete reversal from every 720h/1440h config, where all 60 of THOSE trials were positive. DSR at 2160h correspondingly crashed to 0.26-0.34 (vs. 0.70-0.81 at the shorter windows). This is not a bug -- something in the earlier portion of this specific 90-day pull was bad enough, across all 20 independently-configured strategies, to drag the whole window's Sharpe negative.
+
+**This makes `lb2160_tb2000`'s DSR=0.26 simultaneously the most well-powered AND the most single-window-fragile result this pipeline has ever produced.** Trusting it at face value as "the pipeline now reliably detects no edge" would be a mistake for the same reason flagged below.
+
+### What the book actually says about this (checked before drawing any conclusion)
+
+Ch14 (Backtest Statistics), General Characteristics: "The period used to test the strategy should be sufficiently long to include a comprehensive number of regimes" (citing Bailey and López de Prado 2012) -- and separately, a skewed long/short ratio may mean "the backtested period may be too short and unrepresentative of future market conditions." This supports today's instinct that 720h was too short.
+
+But Ch12 (Backtesting Through Cross-Validation) argues against the natural next move (just make the single window longer) just as directly. The chapter's own motivating example: a Walk-Forward backtest starting January 2007 trains mostly on the 2008 crash; one starting 2017 trains mostly on a long rally -- "the performance would be very different had we played the information backwards." CPCV exists specifically because "the test is not the result of a particular (historical) scenario. In fact, CV tests k alternative scenarios, of which only one corresponds with the historical sequence." **A single long chronological window is still one particular historical sequence** -- exactly what `lb2160`'s all-negative-Sharpe result demonstrates concretely: one 90-day draw happened to contain a regime bad enough to dominate the whole reading.
+
+Ch17 (Structural Breaks) provides a direct, checkable way to test where inside a window a regime shift occurs (CUSUM / SADF tests) rather than treating "all 20 trials went negative" as an unexplained black box.
+
+### Recommendation (not yet implemented -- flagged as a design decision per this project's standing convention)
+
+Decouple window LENGTH from window EVALUATION METHOD, rather than conflating them:
+1. Use a longer pull (today's evidence points toward ~60-90 days) for the reason validated today -- enough raw trades to let `target_bars` reach the T_effective range where DSR has real power.
+2. But evaluate that window with Ch12's real, already-implemented CPCV (used elsewhere in this project's static-dataset five-method null) instead of a single Ch11 20-trial grid + one DSR reading -- so the result reflects a distribution across resampled paths, not whichever regime happened to dominate one chronological draw.
+3. Use Ch17's CUSUM/SADF tests as a diagnostic on any chosen window, to identify where regime shifts actually occur rather than treating an all-negative trial grid as unexplained.
+
+**Explicitly not acted on today** -- this changes what the pipeline's live headline number means (single-window Ch11 DSR vs. CPCV-across-paths), which is a real design decision warranting deliberate confirmation, not something to slide into under the same session that surfaced the need for it.
+
+### Open question, unresolved: is Binance.US itself the real constraint?
+
+Separately raised this session: Binance.US's own daily spot volume (~$20-25M) is roughly three orders of magnitude below Binance's global platform (~$30B+/day) -- and even below other US-compliant venues (Coinbase, Kraken). More raw trades per hour, from a denser venue, would help EVERY lever tested today (target_bars scaling, T_effective, all of it) without needing a longer -- and therefore more regime-fragile -- calendar window. Binance's global platform is NOT a real option (not legally available to US residents in many states). Coinbase and Kraken both have public trade-history APIs and are worth a real density comparison. Perpetual futures venues (Binance Futures, Bybit, OKX) trade at even higher volume but are a different instrument entirely (funding rates, leverage-driven flow) -- a bigger, separate design question, not a data-density fix.
+
+**Also not acted on today** -- flagged as an open option for a future session's explicit design decision, same status as the CPCV recommendation above.
+
+### Files added (diagnostic-only, not yet committed)
+
+- `pipeline/diagnostics/trace_ofi_signal_leakage.py`
+- `pipeline/diagnostics/ofi_cv_fold_class_balance_trace.csv`
+- `pipeline/diagnostics/capture_lookback_extension_snapshot.py`
+- `pipeline/diagnostics/calibrate_lookback_extension.py`
+- `pipeline/diagnostics/lookback_extension_calibration.csv`
+- `pipeline/diagnostics/lookback_extension_snapshot_2026-08-25/raw_trades.parquet` (343,038 raw trades, frozen 90-day pull -- large; confirm before committing whether this belongs in git or should stay local/regenerable)
+
+### Next steps
+
+1. Decide (explicit design decision, not implementation-by-default): adopt the CPCV-on-longer-window evaluation approach outlined above for live pipeline runs, replacing or supplementing the current single Ch11-grid-per-run design.
+2. Run Ch17's CUSUM/SADF structural break tests on the 2160h snapshot to identify where the regime shift that drove `lb2160`'s all-negative trial grid actually occurred.
+3. Evaluate Coinbase/Kraken trade density as a real alternative or supplement to Binance.US, independent of the window-length question -- a denser venue helps every lever already documented in this file without trading off regime-fragility the way a longer single window does.
+4. Both the momentum-generator redesign (prior section) and this section's CPCV/data-source questions are now open in parallel -- prioritize jointly next session rather than assuming either blocks the other.
