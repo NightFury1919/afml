@@ -1,0 +1,21 @@
+target_bars,n_bars,n_events,n_events_enriched,T_raw,tw_mean,T_effective,best_sharpe,pbo,dsr,skew,kurtosis,notes
+1000,,,,,,,,,,,,ValueError: index must be monotonic increasing or decreasing
+2000,,,,,,,,,,,,ValueError: index must be monotonic increasing or decreasing
+3000,,,,,,,,,,,,"ValueError: operands could not be broadcast together with shapes (2825,) (2821,) "
+4000,,,,,,,,,,,,"ValueError: operands could not be broadcast together with shapes (3728,) (3726,) "
+5000,,,,,,,,,,,,"ValueError: operands could not be broadcast together with shapes (4631,) (4615,) "
+1000,,,,,,,,,,,,ValueError: frac_diff_ffd requires a series with a UNIQUE index. Found 9 duplicate index labels (e.g. multiple ticks sharing the same timestamp). Deduplicate or reset to a positional index before calling -- e.g. series.reset_index(drop=True).
+2000,,,,,,,,,,,,ValueError: frac_diff_ffd requires a series with a UNIQUE index. Found 45 duplicate index labels (e.g. multiple ticks sharing the same timestamp). Deduplicate or reset to a positional index before calling -- e.g. series.reset_index(drop=True).
+3000,,,,,,,,,,,,ValueError: frac_diff_ffd requires a series with a UNIQUE index. Found 94 duplicate index labels (e.g. multiple ticks sharing the same timestamp). Deduplicate or reset to a positional index before calling -- e.g. series.reset_index(drop=True).
+4000,,,,,,,,,,,,ValueError: frac_diff_ffd requires a series with a UNIQUE index. Found 142 duplicate index labels (e.g. multiple ticks sharing the same timestamp). Deduplicate or reset to a positional index before calling -- e.g. series.reset_index(drop=True).
+5000,,,,,,,,,,,,ValueError: frac_diff_ffd requires a series with a UNIQUE index. Found 212 duplicate index labels (e.g. multiple ticks sharing the same timestamp). Deduplicate or reset to a positional index before calling -- e.g. series.reset_index(drop=True).
+1000,,,,,,,,,,,,ValueError: frac_diff_ffd requires a series with a UNIQUE index. Found 9 duplicate index labels (e.g. multiple ticks sharing the same timestamp). Deduplicate or reset to a positional index before calling -- e.g. series.reset_index(drop=True).
+2000,,,,,,,,,,,,ValueError: frac_diff_ffd requires a series with a UNIQUE index. Found 45 duplicate index labels (e.g. multiple ticks sharing the same timestamp). Deduplicate or reset to a positional index before calling -- e.g. series.reset_index(drop=True).
+3000,,,,,,,,,,,,ValueError: frac_diff_ffd requires a series with a UNIQUE index. Found 94 duplicate index labels (e.g. multiple ticks sharing the same timestamp). Deduplicate or reset to a positional index before calling -- e.g. series.reset_index(drop=True).
+4000,,,,,,,,,,,,ValueError: frac_diff_ffd requires a series with a UNIQUE index. Found 142 duplicate index labels (e.g. multiple ticks sharing the same timestamp). Deduplicate or reset to a positional index before calling -- e.g. series.reset_index(drop=True).
+5000,,,,,,,,,,,,ValueError: frac_diff_ffd requires a series with a UNIQUE index. Found 212 duplicate index labels (e.g. multiple ticks sharing the same timestamp). Deduplicate or reset to a positional index before calling -- e.g. series.reset_index(drop=True).
+1000,987,265,263,883,0.13972286614558063,123.3752908065477,0.04683335754408712,0.22077922077922077,0.6591093508619077,-0.26296858309900845,5.157421366340424,
+2000,1950,373,372,1692,0.16390904937815456,277.3341115478375,0.037178654942936554,0.003246753246753247,0.6747356564160875,-0.025453887321219497,6.575270880363184,
+3000,2892,429,421,2176,0.18494933102324626,402.44974430658385,0.02425313486915525,0.4577922077922078,0.6562973732493897,0.012638258107525316,5.85189018946514,
+4000,3822,449,445,2840,0.20720562038568063,588.463961895333,0.010690640417955316,0.3463203463203463,0.5499909974160966,0.02544350443411546,5.902958533483743,
+5000,4739,461,455,3420,0.22169332414373258,758.1911685715654,0.012794630960160149,0.5021645021645021,0.5945283547991613,0.2434777492900732,11.56451848383016,

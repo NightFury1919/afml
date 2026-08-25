@@ -1060,3 +1060,89 @@ Separately raised this session: Binance.US's own daily spot volume (~$20-25M) is
 2. Run Ch17's CUSUM/SADF structural break tests on the 2160h snapshot to identify where the regime shift that drove `lb2160`'s all-negative trial grid actually occurred.
 3. Evaluate Coinbase/Kraken trade density as a real alternative or supplement to Binance.US, independent of the window-length question -- a denser venue helps every lever already documented in this file without trading off regime-fragility the way a longer single window does.
 4. Both the momentum-generator redesign (prior section) and this section's CPCV/data-source questions are now open in parallel -- prioritize jointly next session rather than assuming either blocks the other.
+
+## Kraken Evaluated as a Higher-Density Data Source: Three Real Bugs Found and Fixed, Strongest T_effective Result Yet, Full Switch Deferred Pending Detection-Power Recalibration (2026-08-25, continued)
+
+Direct continuation of this same day's "OFI Null Confirmed Real..." section, which flagged Binance.US's own low daily volume (~$20-25M) as an open item and Coinbase/Kraken as candidate denser venues, not yet acted on. This section covers acting on it.
+
+### Scouting: BTCUSD settled quickly, Kraken emerged as the real candidate
+
+`compare_btcusd_vs_btcusdt_density.py`: BTCUSD is actually THINNER than BTCUSDT on Binance.US (365.2 vs. 512.2 trades/hour, 24h pull) -- settles the 2026-08-13 pair choice cleanly; no reason to revisit it.
+
+`compare_exchange_density.py`: a short scouting pull found Kraken running meaningfully denser than Binance.US (3,676 trades/hour vs. Binance.US's 512), while Coinbase's Advanced Trade public endpoint returned an inconclusive result (its `ticker` endpoint appears to be a lightweight snapshot, not built for deep historical pagination -- capped at 100 trades regardless of requested limit, spanning only 7.5 seconds). Kraken became the real candidate; Coinbase was not pursued further today.
+
+### Real-machine verification, incrementally scaled (2h -> 24h)
+
+`ingestion_kraken.py` (new module, separate from `ingestion.py` -- Binance.US's flow is completely untouched) and `verify_kraken_pull.py` confirmed, at increasing scale:
+- Pagination correctness (exact requested window covered, most recent trade within seconds of "now")
+- A plausible buy/sell split (53/47 at both 2h and 24h) -- indirect but consistent evidence the `IsBuyerMaker` mapping (Kraken's taker-side `buy/sell` flag inverted to match Binance's maker-side convention -- see that module's own LOAD-BEARING note) is correct. **Not yet independently confirmed against Kraken's own trade history UI -- still an open item.**
+- TradeID uniqueness (Kraken's current API includes a real 7th tuple field, a genuine sequential trade ID)
+- Real compatibility with `rebuild.py`'s actual `preprocess_raw_trades()`/`compute_dynamic_threshold()`
+
+24h real-machine confirmed rate: **4,104.7 trades/hour** -- 8x Binance.US's 512.
+
+### Bug 1 (found and fixed): trade-timestamp disambiguation collision
+
+The 720h capture (`capture_kraken_snapshot.py`) initially crashed downstream with the same error class as the 2026-08-21 duplicate-timestamp bug. Root cause, confirmed via direct reproduction: `ingestion.py`'s `_disambiguate_timestamps()` adds `+0,+1,+2,...` microsecond offsets to duplicate-timestamp groups, which is only collision-safe when every DISTINCT timestamp is guaranteed >=1000us from its neighbor -- true for Binance's native millisecond-resolution data (multiplied by 1000 to reach microseconds), but NOT true for a naive direct `round(seconds * 1e6)` conversion of Kraken's sub-millisecond-precision timestamps, where two genuinely distinct trades can land 1-2 microseconds apart. **Fix:** round Kraken timestamps to millisecond precision FIRST, then multiply by 1000 -- reproducing Binance's exact grid property. Confirmed via isolated reproduction (both the bug and the fix) before trusting it on real data; real-machine 720h re-pull succeeded cleanly (1,678,105 trades, actual rate 2,330.7/hour -- notably lower than the 24h check's 4,104.7/hour, a real reminder that a single recent window isn't automatically representative of a longer one).
+
+### Bug 2 (found and fixed): live_staging.py accidentally overwritten
+
+Unrelated to Kraken's data itself -- `live_staging.py`'s real content (`stage_live_training_tables()`) was found overwritten with `ingestion_kraken.py`'s content, almost certainly a copy-paste-into-the-wrong-open-file mistake during today's file juggling. Confirmed via direct file inspection, restored from the verified repo copy, confirmed clean via a broader sanity pass across every file touched today (`ingestion_kraken.py`, `trade_archive.py`, `rebuild.py` all intact). No data lost -- the correct content was recoverable from the last commit. **Operational lesson for future sessions with many similarly-named files in flight: verify file identity (e.g. `Select-String -Pattern "^def "`) after any manual copy, not just after downloads land somewhere unexpected.**
+
+### Bug 3 (found and fixed): a GENERAL, not Kraken-specific, latent bug in features.py
+
+The `calibrate_kraken_target_bars.py` sweep then hit a DIFFERENT duplicate-index crash, this time inside `compute_fracdiff_feature()`, with duplicate count climbing 9->45->94->142->212 as `target_bars` rose 1000->5000. Root cause, confirmed via direct reproduction: `features.py`'s `build_enriched_events()` receives raw_trades DIRECTLY from the caller -- NOT the disambiguated copy `rebuild.py`'s `preprocess_raw_trades()` computes internally, which never propagates back to the caller's original DataFrame. `_retag_trades_with_bar_id()` therefore builds bar_ids directly off raw, duplicate-containing timestamps. When a burst of trades sharing one exact timestamp straddles a dollar-bar boundary, the last trade of bar N and the last trade of bar N+1 can share that timestamp, producing two bars with an identical `Date` -- confirmed via isolated reproduction of exactly this scenario.
+
+**This is NOT Kraken-specific.** The 2026-08-21 fix only patched `rebuild.py`'s own internal path; `features.py`'s independent raw-timestamp-consuming path was never covered, and could in principle affect Binance.US data too under the right (untested) `target_bars`/`CUSUM_H` combination -- it simply took Kraken's much higher density, pushed to `target_bars` values far beyond anything tried on Binance, to actually trigger it. **Fix:** `_retag_trades_with_bar_id()` now calls the same real `_disambiguate_timestamps()` `rebuild.py` already uses (reused, not reimplemented -- one new import). This is project-specific reimplementation code (the module's own docstring already says so), not book snippet code, so this fix does not touch anything book-fidelity-sensitive.
+
+### Real result: strongest T_effective this project has produced, on a single clean 720h window
+
+| target_bars | n_bars | n_events | T_raw | tw_mean | T_effective | DSR | PBO |
+|---|---|---|---|---|---|---|---|
+| 1000 | 987 | 263 | 883 | 0.140 | 123.4 | 0.659 | 0.221 |
+| 2000 | 1950 | 372 | 1692 | 0.164 | 277.3 | 0.675 | 0.003 |
+| 3000 | 2892 | 421 | 2176 | 0.185 | 402.4 | 0.656 | 0.458 |
+| 4000 | 3822 | 445 | 2840 | 0.207 | 588.5 | 0.550 | 0.346 |
+| 5000 | 4739 | 455 | 3420 | 0.222 | 758.2 | 0.595 | 0.502 |
+
+Full output in `pipeline/diagnostics/kraken_target_bars_calibration.csv`.
+
+**T_effective climbs cleanly through all five points with NO plateau reached** -- Binance.US's own `target_bars` scaling (same 720h calendar window) plateaued at ~180. `tw_mean` actually IMPROVES as `target_bars` rises here (0.140->0.222), the opposite of the cost pattern CUSUM_H reduction showed on Binance data. This is a single 30-day window, not the 90-day pull that surfaced the earlier regime-fragility problem -- that specific concern does not apply to this result.
+
+**DSR/PBO are NOT yet interpretable, and should not be read as either a detection or a null.** Readings sit in an ambiguous 0.55-0.68 band -- above the ~0.5 "clean null" region, well below the 0.95 "detected" bar, and in a T_effective range (123-758) where the 2026-08-19 Detection Power Calibration Findings (built entirely on Binance.US's own observed fat-tailed return characteristics) predicted the null-hypothesis false-positive baseline itself sits somewhere around 0.55-0.60 depending on T. Whether these Kraken readings are sitting AT that null baseline (nothing) or modestly ABOVE it (something real) cannot be determined without redoing that same detection-power calibration specifically for Kraken's own return distribution -- untested. PBO's non-monotonic swing (0.221->0.003->0.458->0.346->0.502) is consistent with its already-documented low precision at this project's scale, not informative on its own.
+
+### Why full production replacement is deferred, not done tonight
+
+The density result is real and substantial. But three real bugs were found and fixed in roughly one hour of testing, and several real open items remain before Kraken data can be trusted the way Binance.US's now-mature pipeline is:
+1. `CUSUM_H=313`, `VERTICAL_BARRIER_NUM_DAYS=3`, `MIN_RET=0.005` are Binance.US-calibrated constants, reused unvalidated on Kraken data throughout today's work.
+2. The buy/sell -> `IsBuyerMaker` mapping has only indirect (balanced-split) supporting evidence, not a direct confirmation against Kraken's own trade history.
+3. Detection-power calibration (2026-08-19's work) was built entirely on Binance.US's observed return characteristics and has not been redone for Kraken -- without it, today's DSR readings cannot be honestly interpreted.
+4. `ingestion_kraken.py` is not wired into `run_pipeline_live.py` or any production flow -- deliberately, pending the above.
+
+**Recommendation, not yet acted on:** treat Kraken as a strong, real candidate worth properly finishing -- re-derive `CUSUM_H`/`MIN_RET` for Kraken specifically (mirroring the original Binance.US staleness-audit methodology), redo detection-power calibration for Kraken's return distribution, then decide on production integration as an explicit, deliberate step. Not a same-session decision.
+
+### Also still open from earlier today, unrelated to Kraken
+
+`trade_archive.py`/`test_trade_archive.py`/`accumulate_live_trades.py` (the live-pull accumulation mechanism, deprioritized mid-session) have only a SANDBOX-confirmed TDD pass (9/9, non-mlfinlab environment) -- the real-machine pytest run was never completed before the session moved on to the Kraken thread. Flagged here so it isn't silently assumed closed.
+
+### Files added/modified today (Kraken thread), NOT yet committed
+
+- `pipeline/orchestration/ingestion_kraken.py` (new, includes the timestamp-disambiguation fix)
+- `pipeline/orchestration/features.py` (MODIFIED -- Bug 3's fix; real, in-repo file, not a new diagnostic)
+- `pipeline/diagnostics/compare_btcusd_vs_btcusdt_density.py`
+- `pipeline/diagnostics/compare_exchange_density.py`
+- `pipeline/diagnostics/verify_kraken_pull.py`
+- `pipeline/diagnostics/capture_kraken_snapshot.py`
+- `pipeline/diagnostics/diagnose_kraken_duplicate_bar_dates.py`
+- `pipeline/diagnostics/calibrate_kraken_target_bars.py`
+- `pipeline/diagnostics/kraken_target_bars_calibration.csv` (the real sweep result)
+- `pipeline/diagnostics/kraken_snapshot_720h_2026-08-25/raw_trades.parquet` (1,678,105 raw trades -- large; per this project's regenerable-snapshot convention, recommend leaving untracked, same as every other frozen snapshot directory)
+- `pipeline/orchestration/trade_archive.py`, `test_trade_archive.py`, `pipeline/diagnostics/accumulate_live_trades.py` (deprioritized, still uncommitted from earlier today)
+
+### Next steps
+
+1. Commit today's Kraken-thread files (explicit `git add` by filename, verify via codeload) -- `features.py`'s bug fix especially should not sit uncommitted, since it's a real correctness fix to production-path code, not a diagnostic.
+2. Complete `trade_archive.py`'s real-machine TDD pass (deferred mid-session, not yet done).
+3. If continuing the Kraken evaluation: re-derive `CUSUM_H`/`MIN_RET` for Kraken specifically, then redo detection-power calibration for Kraken's own return distribution before treating any DSR reading on this data as meaningful.
+4. Independently confirm the buy/sell -> `IsBuyerMaker` mapping against Kraken's own trade history/chart UI (currently only indirectly supported by a plausible balanced split).
+5. Still separately open from earlier today: the momentum-generator redesign (see prior section) and the CPCV-on-longer-window design decision (see the section before that) -- both remain queued, independent of the Kraken thread.

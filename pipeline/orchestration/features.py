@@ -80,6 +80,13 @@ from find_min_ffd import find_min_ffd, find_minimum_d   # real module
 from frac_diff_ffd import frac_diff_ffd                 # real module
 from get_weights_ffd import get_weights_ffd              # real module
 
+# Reused from ingestion.py, not reimplemented -- same precedent
+# rebuild.py's preprocess_raw_trades() already established (2026-08-21)
+# for this exact bug class. Bare import: ingestion.py lives alongside
+# this module in pipeline/orchestration/, which every caller already
+# adds to sys.path before importing features.py.
+from ingestion import _disambiguate_timestamps           # noqa: E402
+
 ROLL_WINDOW = 20        # carried over unchanged from Ch19 (see LOAD-BEARING note)
 FFD_THRES = 0.01        # carried over unchanged from Ch05's established calibration
 VPIN_WINDOW = 10         # carried over unchanged from Ch19's established calibration
@@ -92,13 +99,44 @@ def _retag_trades_with_bar_id(raw_trades, threshold):
     bar it belongs to. Drops the trailing incomplete bar, matching Ch19's
     own driver and build_enriched_training_table.py's convention.
 
+    *** LOAD-BEARING (2026-08-25): disambiguates Timestamp FIRST, same
+    fix rebuild.py's preprocess_raw_trades() already applies -- reused
+    here for the first time, NOT previously needed ***
+    Real bug found via the Kraken target_bars sweep (calibrate_kraken_
+    target_bars.py): this function receives raw_trades DIRECTLY from
+    the caller (see build_enriched_events()'s own docstring -- "EXACT
+    same object passed to rebuild.py's build_bars_and_labels()"), NOT
+    the disambiguated copy rebuild.py's preprocess_raw_trades() computes
+    internally -- that disambiguation never propagates back to the
+    caller's original DataFrame. When multiple trades share an exact
+    raw timestamp (routine, not a Kraken-only phenomenon -- any burst of
+    trades within one millisecond) AND a dollar-bar boundary happens to
+    fall in the middle of that burst, the LAST trade of bar N and the
+    LAST trade of bar N+1 can share that identical raw timestamp --
+    _build_bars_with_volume()'s groupby(...).agg(Date=('Date','last'))
+    then produces two bars with the SAME Date, which crashes
+    compute_fracdiff_feature() downstream with a duplicate-index
+    ValueError. Real-machine confirmed (2026-08-25): duplicate count
+    rose 9->45->94->142->212 as target_bars rose 1000->5000 on a 720h
+    Kraken snapshot -- smaller thresholds put bar boundaries in the
+    middle of a shared-timestamp burst more often, exactly the predicted
+    mechanism. This is a GENERAL gap, not Kraken-specific -- the
+    2026-08-21 fix only patched rebuild.py's own internal path; this
+    second, independent raw-timestamp-consuming path was never covered.
+    It surfaced now because Kraken's higher density made pushing
+    target_bars much higher than anything tried on Binance.US both
+    possible and informative. Reuses ingestion.py's real
+    _disambiguate_timestamps() -- same established precedent, not a new
+    approach -- so both raw-trade-consuming paths in this pipeline now
+    get the same protection.
+
     Returns
     -------
     trades : pd.DataFrame, columns Date/Price/Volume/Label/bar_id, one
         row per trade in the completed bars (incomplete trailing bar's
         trades dropped)
     """
-    raw = raw_trades.copy()
+    raw = _disambiguate_timestamps(raw_trades)
     raw['Date'] = pd.to_datetime(raw['Timestamp'], unit='us')
     raw['Label'] = raw['IsBuyerMaker'].apply(lambda x: -1 if x else 1)
     trades = raw[['Date', 'Price', 'Volume', 'Label']].copy()
