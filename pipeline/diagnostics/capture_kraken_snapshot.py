@@ -23,12 +23,23 @@ Same frozen-snapshot discipline as capture_lookback_extension_snapshot.py
 -- one pull, saved once, reused by whatever calibration/sweep work comes
 next, rather than re-pulling live data mid-analysis.
 
+*** WIDENED (2026-08-25, later same session): --pair argument added ***
+Originally BTC-only (PAIR hardcoded to 'XBTUSD'). Ethan's cross-asset
+scouting (scout_alternative_kraken_assets.py) found XRP/SOL/ETH all
+showing meaningfully negative lag-1 autocorrelation at reasonable
+density, held up across a 6h and a 24h pull -- worth building the real
+pipeline for, starting with XRP (strongest, most consistent signal +
+best density). --pair defaults to 'XBTUSD' so every existing call site
+(and every command in tonight's own handoff notes) still works
+unchanged.
+
 Usage
 -----
     conda activate mlfinlab
     cd C:\\ws\\AFML
     python pipeline\\diagnostics\\capture_kraken_snapshot.py
     python pipeline\\diagnostics\\capture_kraken_snapshot.py --hours 720
+    python pipeline\\diagnostics\\capture_kraken_snapshot.py --pair XRPUSD --hours 720
 """
 import argparse
 import os
@@ -41,9 +52,19 @@ sys.path.insert(0, ORCH)
 
 from ingestion_kraken import pull_recent_trades_kraken   # noqa: E402
 
-PAIR = 'XBTUSD'
-RATE_TRADES_PER_HOUR = 4105  # real-machine confirmed 2026-08-25, see
-                              # verify_kraken_pull.py's 24h output (4,104.7)
+DEFAULT_PAIR = 'XBTUSD'
+# Real-machine-confirmed rates, 2026-08-25 -- used ONLY to produce a
+# rough pre-pull time/call estimate for the user (see main()); actual
+# max_calls always includes a real safety margin on top of whichever
+# rate applies, so an inaccurate estimate for a non-BTC pair costs
+# nothing beyond a less-precise printed guess.
+KNOWN_RATES_PER_HOUR = {
+    'XBTUSD': 4105,    # verify_kraken_pull.py's 24h output
+    'ETHUSD': 1145,    # scout_alternative_kraken_assets.py's 24h output
+    'SOLUSD': 1415,    # scout_alternative_kraken_assets.py's 24h output
+    'XRPUSD': 1619,    # scout_alternative_kraken_assets.py's 24h output
+}
+FALLBACK_RATE_PER_HOUR = 1000  # conservative guess for any other pair
 
 
 def main():
@@ -55,16 +76,31 @@ def main():
              'the full 720h target. Re-run with --hours 720 once this '
              'completes cleanly.',
     )
+    parser.add_argument(
+        '--pair', type=str, default=DEFAULT_PAIR,
+        help=f'Kraken pair alias, e.g. XBTUSD (default), XRPUSD, SOLUSD, '
+             f'ETHUSD. Snapshot directory name includes the pair so '
+             f'different assets\' snapshots never collide.',
+    )
     args = parser.parse_args()
+    pair = args.pair
 
-    est_trades = RATE_TRADES_PER_HOUR * args.hours
+    rate_per_hour = KNOWN_RATES_PER_HOUR.get(pair, FALLBACK_RATE_PER_HOUR)
+    if pair not in KNOWN_RATES_PER_HOUR:
+        print(f'NOTE: no real-machine-confirmed rate on file for {pair!r} -- '
+              f'using a conservative fallback estimate ({FALLBACK_RATE_PER_HOUR}'
+              f'/hour) for the pre-pull time estimate below. This only '
+              f'affects the ESTIMATE printed before pulling, not correctness '
+              f'-- max_calls still includes a real safety margin.')
+
+    est_trades = rate_per_hour * args.hours
     est_calls = int(est_trades / 1000) + 10  # +10 buffer for safety
     max_calls = max(est_calls * 2, 600)  # 2x safety margin over the estimate
 
     est_minutes = (est_calls * 1.0) / 60.0  # sleep_seconds=1.0 default
 
     print('=' * 70)
-    print(f'CAPTURING Kraken snapshot: pair={PAIR}, hours={args.hours}')
+    print(f'CAPTURING Kraken snapshot: pair={pair}, hours={args.hours}')
     print('=' * 70)
     print(f'  Estimated trades: ~{est_trades:,.0f}')
     print(f'  Estimated calls: ~{est_calls:,} (max_calls set to {max_calls:,})')
@@ -83,7 +119,7 @@ def main():
         return
 
     snapshot_dir = os.path.join(
-        HERE, f'kraken_snapshot_{int(args.hours)}h_{date.today().isoformat()}'
+        HERE, f'kraken_snapshot_{pair.lower()}_{int(args.hours)}h_{date.today().isoformat()}'
     )
     if os.path.exists(snapshot_dir):
         raise SystemExit(
@@ -92,10 +128,10 @@ def main():
         )
     os.makedirs(snapshot_dir)
 
-    print(f'\nPulling {args.hours}h of {PAIR} trades from Kraken '
+    print(f'\nPulling {args.hours}h of {pair} trades from Kraken '
           f'(this will take a while -- see estimate above)...')
     raw_trades = pull_recent_trades_kraken(
-        PAIR, args.hours, max_calls=max_calls,
+        pair, args.hours, max_calls=max_calls,
     )
     print(f'  {len(raw_trades)} raw trades pulled')
 
