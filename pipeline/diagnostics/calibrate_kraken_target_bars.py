@@ -114,12 +114,17 @@ def _run_one_config(raw_trades, target_bars, work_root):
 
 
 def main():
-    if len(sys.argv) != 2:
+    if len(sys.argv) not in (2, 3):
         raise SystemExit(
-            'Usage: python calibrate_kraken_target_bars.py <snapshot_dir>\n'
-            'Run capture_kraken_snapshot.py --hours 720 first to produce one.'
+            'Usage: python calibrate_kraken_target_bars.py <snapshot_dir> [output_csv]\n'
+            'Run capture_kraken_snapshot.py --hours 720 first to produce a snapshot.\n'
+            '[output_csv] is optional -- defaults to kraken_target_bars_calibration.csv.\n'
+            'ADDED 2026-08-25: pass a distinct output_csv when running on a SECOND '
+            'window (e.g. for a replication check) so results don\'t mix with the '
+            'first window\'s in the same file.'
         )
     snapshot_dir = sys.argv[1]
+    output_csv = sys.argv[2] if len(sys.argv) == 3 else OUTPUT_CSV
     raw_trades_path = os.path.join(snapshot_dir, 'raw_trades.parquet')
     if not os.path.exists(raw_trades_path):
         raise SystemExit(f'{raw_trades_path} not found -- wrong snapshot dir?')
@@ -127,6 +132,7 @@ def main():
     raw_trades = pd.read_parquet(raw_trades_path)
     print(f'Loaded frozen Kraken snapshot: {len(raw_trades)} raw trades '
           f'from {snapshot_dir}')
+    print(f'Writing results to: {output_csv}')
 
     work_root = os.path.join(HERE, 'kraken_target_bars_sweep_work')
     os.makedirs(work_root, exist_ok=True)
@@ -151,10 +157,10 @@ def main():
                 'notes': f'{type(e).__name__}: {e}',
             })
 
-    file_exists = os.path.exists(OUTPUT_CSV)
+    file_exists = os.path.exists(output_csv)
     df = pd.DataFrame(rows)[SWEEP_COLUMNS]
-    df.to_csv(OUTPUT_CSV, mode='a', header=not file_exists, index=False)
-    print(f'\nResults appended to {OUTPUT_CSV}')
+    df.to_csv(output_csv, mode='a', header=not file_exists, index=False)
+    print(f'\nResults appended to {output_csv}')
 
     print('\n' + '=' * 66)
     print('SUMMARY: T_effective by target_bars')

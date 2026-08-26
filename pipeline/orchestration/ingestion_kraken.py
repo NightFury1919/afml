@@ -100,7 +100,8 @@ KRAKEN_TRADES_URL = 'https://api.kraken.com/0/public/Trades'
 
 def pull_recent_trades_kraken(pair, lookback_hours, limit_per_call=1000,
                                max_calls=500, sleep_seconds=1.0, session=None,
-                               max_429_retries=5, retry_backoff_seconds=5.0):
+                               max_429_retries=5, retry_backoff_seconds=5.0,
+                               end_time_unix=None):
     """
     Pull raw trades for `pair` covering approximately the last
     `lookback_hours` hours from Kraken's public /0/public/Trades
@@ -131,6 +132,17 @@ def pull_recent_trades_kraken(pair, lookback_hours, limit_per_call=1000,
         giving up on that page (progress from all prior pages is kept)
     retry_backoff_seconds : float, sleep duration before retrying a
         429'd call
+    end_time_unix : float or None, ADDED 2026-08-25 for the second-
+        window replication check (see CALIBRATION_AUDIT.md's Kraken
+        section). When None (default, unchanged behavior), pulls the
+        most recent `lookback_hours` ending NOW -- identical to every
+        prior call site in this project. When set to a UNIX timestamp
+        (seconds), pulls `lookback_hours` ending AT that timestamp
+        instead -- e.g. `end_time_unix=time.time()-720*3600,
+        lookback_hours=720` pulls the 720h window immediately BEFORE
+        the "most recent 720h" window, non-overlapping with it. This
+        is what makes an out-of-sample replication check possible
+        without needing to wait for new calendar time to pass.
 
     Returns
     -------
@@ -146,8 +158,9 @@ def pull_recent_trades_kraken(pair, lookback_hours, limit_per_call=1000,
     guidance as ingestion.py's own equivalent guard).
     """
     session = session or requests.Session()
+    end_time = end_time_unix if end_time_unix is not None else time.time()
 
-    since_cursor = str(int(time.time() - lookback_hours * 3600))  # first
+    since_cursor = str(int(end_time - lookback_hours * 3600))  # first
         # call only -- whole seconds, matching the current official
         # docs.kraken.com example format (see module LOAD-BEARING note)
     now_buffer_sec = 5.0  # "caught up to present" tolerance
@@ -190,8 +203,9 @@ def pull_recent_trades_kraken(pair, lookback_hours, limit_per_call=1000,
         pages.append(page)
 
         newest_trade_time_sec = float(page[-1][2])
-        if newest_trade_time_sec >= time.time() - now_buffer_sec:
-            break  # caught up to present
+        if newest_trade_time_sec >= end_time - now_buffer_sec:
+            break  # caught up to the target end time (real "now" by
+                    # default, or the specified historical end_time_unix)
 
         # Reuse Kraken's own cursor VERBATIM -- see module LOAD-BEARING
         # note on why this is never reformatted or reparsed as an int.
@@ -200,8 +214,8 @@ def pull_recent_trades_kraken(pair, lookback_hours, limit_per_call=1000,
     else:
         raise ValueError(
             f'Hit max_calls={max_calls} before catching up to the '
-            f'present for pair {pair!r} -- increase max_calls or shrink '
-            'lookback_hours.'
+            f'target end time for pair {pair!r} -- increase max_calls or '
+            'shrink lookback_hours.'
         )
 
     raw = [trade for page in pages for trade in page]
@@ -250,6 +264,25 @@ def pull_recent_trades_kraken(pair, lookback_hours, limit_per_call=1000,
     df = df.drop_duplicates(subset='TradeID')
     df = df.sort_values('Timestamp').reset_index(drop=True)
 
-    cutoff_us = int((time.time() - lookback_hours * 3600) * 1_000_000)
+    cutoff_us = int((end_time - lookback_hours * 3600) * 1_000_000)
     df = df[df['Timestamp'] >= cutoff_us].reset_index(drop=True)
+
+    # *** LOAD-BEARING (2026-08-25, found real-machine via the window-2
+    # replication capture): UPPER bound trim added -- previously only
+    # the lower (start) bound was enforced. The "caught up" stopping
+    # check above only looks at whether the CURRENT PAGE's last trade
+    # is within now_buffer_sec of end_time before breaking -- but that
+    # whole page (which can contain up to limit_per_call trades) is
+    # already appended to `pages` regardless, and its own trades can
+    # individually extend PAST end_time, not just up to it. For the
+    # default (end_time_unix=None, "pull up to now") case this was
+    # harmless -- there's no adjacent dataset to overlap with. For an
+    # explicit historical end_time_unix (the window-2 replication check
+    # this parameter was built for), it caused REAL overlap: a real
+    # pull confirmed 2026-08-25 that window 2's latest trade timestamp
+    # exceeded window 1's start timestamp -- the two "non-overlapping"
+    # windows actually shared some trades. Fixed with a strict
+    # less-than upper bound, symmetric to the existing lower bound.
+    end_time_us = int(end_time * 1_000_000)
+    df = df[df['Timestamp'] < end_time_us].reset_index(drop=True)
     return df

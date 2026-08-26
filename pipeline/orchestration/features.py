@@ -6,11 +6,39 @@ feature on live-pulled data, joining them onto rebuild.py's triple-barrier
 events -- the same enrichment build_enriched_training_table.py performs
 for the static dataset, adapted for a live pull's dynamic bar threshold.
 
+*** WIDENED (2026-08-25): Ch17 structural-break + Ch18 entropy features
+added, real feature-set expansion beyond Ch19+Ch05 ***
+Per the 2026-08-25 session's discovery-vs-validation discussion: this
+pipeline's PBO/CPCV/DSR machinery is a strong validator, but until now
+the classifier only ever saw two families of information (Ch19
+liquidity/toxicity/spread microstructure + Ch05 fracdiff price-level
+memory). Two genuinely new feature families are added here --
+compute_entropy_feature() (Ch18 LZ entropy rate) and
+compute_structural_break_feature() (Ch17 Chu-Stinchcombe-White CUSUM,
+bounded-lookback adaptation -- see that function's own LOAD-BEARING
+note) -- both real book functions, reused not reimplemented, both
+computational-cost-tested directly before being added as per-bar
+rolling features. This is new information reaching the model, not a
+re-test of the same inputs -- the honest distinction the discovery-vs-
+validation discussion was about.
+
+NOT YET RE-VALIDATED end-to-end against real Kraken/Binance.US sweep
+data as of this commit -- that is explicitly deferred to a following
+session (see CALIBRATION_AUDIT.md). This change adds the features and
+confirms they compute correctly; it does NOT re-run detection-power
+calibration or the target_bars sweeps with them included.
+
 Real modules reused directly (no reimplementation):
   - ch19/microstructural_features/microstructural_features.py (all 11
     feature functions, exact same calling convention as
     chapter_19_microstructural_features.py's real driver)
   - ch05/frac_diff/{find_min_ffd,frac_diff_ffd,get_weights_ffd}.py
+  - ch17/structural_breaks/cusum.py (get_csw_stat, get_csw_critical_value
+    -- NOT get_csw_sup/get_csw_cusum, see compute_structural_break_
+    feature's own note on why a bounded-lookback caller-side loop is
+    used instead of those two unbounded functions)
+  - ch18/entropy_features/{entropy_estimators,encoding_schemes}.py
+    (konto, binary_encode)
 
 *** LOAD-BEARING (2026-08-13): bar-id trade-tagging is duplicated, not
 reused, from ch19's own Part A / build_enriched_training_table.py's
@@ -67,6 +95,14 @@ if ROOT not in sys.path:
 # features.py's own import line.
 from ch19.microstructural_features import microstructural_features as mf   # real module
 
+# Same implicit-namespace-package convention as ch19 above -- no
+# __init__.py, no bare-import sys.path trick needed (cusum.py/
+# entropy_estimators.py/encoding_schemes.py have no inter-module bare
+# imports of their own, unlike ch05's frac_diff/).
+from ch17.structural_breaks import cusum as sb            # real module
+from ch18.entropy_features import entropy_estimators as ee  # real module
+from ch18.entropy_features import encoding_schemes as enc   # real module
+
 # ch05/frac_diff's modules use BARE imports between themselves
 # (find_min_ffd.py does `from frac_diff_ffd import frac_diff_ffd`, not a
 # package-relative one) -- they only resolve if the frac_diff/ folder
@@ -90,6 +126,147 @@ from ingestion import _disambiguate_timestamps           # noqa: E402
 ROLL_WINDOW = 20        # carried over unchanged from Ch19 (see LOAD-BEARING note)
 FFD_THRES = 0.01        # carried over unchanged from Ch05's established calibration
 VPIN_WINDOW = 10         # carried over unchanged from Ch19's established calibration
+ENTROPY_WINDOW = 20      # matches ROLL_WINDOW's own established convention --
+                          # no independent derivation, same "carried over" status
+CSW_MAX_LOOKBACK = 200   # see compute_structural_break_feature's own
+                          # LOAD-BEARING note on why this is bounded
+
+
+def compute_entropy_feature(close, window=ENTROPY_WINDOW):
+    """
+    *** LOAD-BEARING (2026-08-25): new feature, Ch18's real Kontoyiannis
+    LZ entropy-rate estimator, added to widen the live feature set beyond
+    Ch19 microstructural + Ch05 fracdiff (per 2026-08-25 session's
+    discussion of discovery vs. validation -- this is genuinely NEW
+    information reaching the classifier, not a re-test of existing
+    inputs) ***
+
+    Rolling, per-bar entropy-rate feature: at each bar i, sign-encodes
+    the most recent `window` bar-to-bar returns into a binary message
+    (Ch18's real binary_encode(), Sec 18.5.1 -- '1' for a positive
+    return, '0' for negative, zero-returns dropped exactly as the book
+    specifies) and estimates that message's entropy rate via Ch18's
+    real konto() (Snippet 18.4, Kontoyiannis' 2013 LZ estimator) --
+    BOTH functions reused unmodified, not reimplemented.
+
+    Interpretation: LOW entropy in a window means returns compressed
+    easily (long non-redundant substrings -> predictable-looking sign
+    sequence); HIGH entropy means the sign sequence looked close to
+    random. This is a genuinely different kind of information than
+    Ch19's liquidity/toxicity features or Ch05's fracdiff -- it's about
+    how COMPRESSIBLE recent price direction has been, not about spread,
+    volume, or price-level memory.
+
+    COMPUTATIONAL COST (measured directly, 2026-08-25, before deciding
+    this was safe to add as a per-bar rolling feature): konto() on a
+    ~20-30 character message costs ~0.12ms per call -- recomputing it
+    at every bar for up to 5,000 bars (Kraken's real observed target_bars
+    range) costs well under 1 second total. No bounding/adaptation
+    needed here, unlike compute_structural_break_feature's CSW CUSUM
+    (see that function's own note on why THAT one needed a bounded
+    lookback).
+
+    Parameters
+    ----------
+    close : pd.Series, bar close prices, Date-indexed (same series
+        rebuild.py/features.py already use for fracdiff/Ch19 features)
+    window : int, rolling window size in bars
+
+    Returns
+    -------
+    pd.Series, Date-indexed like `close`, entropy-rate estimate per bar
+    (NaN for the first `window` bars -- warmup, same convention as
+    Ch19's own roll_c/roll_sigma_u rolling features).
+    """
+    returns = close.pct_change()
+    values = returns.values
+    n = len(values)
+    out = np.full(n, np.nan)
+    for i in range(window, n):
+        window_returns = values[i - window:i]
+        msg = enc.binary_encode(window_returns)
+        if len(msg) < 4:
+            continue  # too few non-zero returns in this window for a
+                       # meaningful LZ estimate -- leave as NaN rather
+                       # than feed konto() a near-empty message
+        result = ee.konto(msg, window=None)  # expanding window on the
+                                                # small per-bar message
+                                                # itself, not on `close`
+        out[i] = result['h']
+    return pd.Series(out, index=close.index, name='entropy_rate')
+
+
+def compute_structural_break_feature(close, min_sample=3,
+                                      max_lookback=CSW_MAX_LOOKBACK):
+    """
+    *** LOAD-BEARING (2026-08-25): new feature, Ch17's real
+    Chu-Stinchcombe-White CUSUM structural-break statistic (Sec 17.3.2),
+    added for the same "widen the feature set" reason as
+    compute_entropy_feature above ***
+
+    *** LOAD-BEARING (2026-08-25): BOUNDED reference-search range, NOT
+    the book's own unbounded get_csw_sup()/get_csw_cusum() ***
+    The book's own get_csw_stat() (Sec 17.3.2's printed formula) is
+    reused here UNMODIFIED -- this function does not reimplement the
+    statistic itself, only the OUTER search loop around it. The real
+    get_csw_cusum()/get_csw_sup() (this repo's ch17/structural_breaks/
+    cusum.py, already real-machine-confirmed for chapter_17's own
+    teaching deliverable) search the reference index n over the ENTIRE
+    prior history [0, t) for each t -- correct and book-faithful for a
+    one-off research computation, but O(T^2) real function calls, which
+    a DIRECT MEASUREMENT (2026-08-25, before writing this function)
+    showed costs ~4.7s at T=1000 bars and ~118s at T=5000 bars (Kraken's
+    real observed target_bars range) -- prohibitive as a cost paid on
+    EVERY live pipeline run and EVERY sweep config, unlike a single
+    one-off diagnostic computation.
+
+    This function instead caps the backward search range to the most
+    recent `max_lookback` bars (default 200) rather than all the way
+    back to the series' start, turning the cost from O(T^2) into
+    O(T * max_lookback) -- MEASURED (2026-08-25) at ~1.66s (T=1000) and
+    ~11.1s (T=5000), a real and now-tractable cost. This is also, on its
+    own merits, a more sensible design for a LIVE rolling feature: a
+    reference level from months ago is not obviously the right thing to
+    compare today's price against; a bounded recent lookback is a
+    reasonable choice independent of the performance motivation.
+
+    Returns the NORMALIZED statistic S / critical_value_95 (not the raw
+    S) as the single feature value -- a ratio above 1.0 means the
+    observed departure exceeds the book's own 5% one-sided critical
+    value (Sec 17.3.2, b_0.05=4.6) at that bar's best-matching reference
+    point; this is a cleaner single scalar for a model input than
+    carrying S and critical_value_95 as two separate correlated columns.
+
+    Parameters
+    ----------
+    close : pd.Series, bar close prices, Date-indexed
+    min_sample : int, matches cusum.get_csw_cusum's own parameter
+    max_lookback : int, bounded backward reference-search range in bars
+
+    Returns
+    -------
+    pd.Series, Date-indexed like `close`, normalized CSW statistic per
+    bar (NaN for bars before min_sample, or where sigma_hat_t could not
+    be estimated -- same NaN cases the book's own get_csw_stat() has).
+    """
+    log_close = np.log(close)
+    values = log_close.values
+    idx = log_close.index
+    T = len(values)
+
+    normalized = np.full(T, np.nan)
+    for t_idx in range(min_sample, T):
+        n_start = max(0, t_idx - max_lookback)
+        best_S, best_n = -np.inf, None
+        for n_idx in range(n_start, t_idx):
+            S = sb.get_csw_stat(log_close, n_idx, t_idx)  # real, unmodified
+            if np.isfinite(S) and S > best_S:
+                best_S, best_n = S, n_idx
+        if best_n is not None:
+            cv = sb.get_csw_critical_value(best_n, t_idx)  # real, unmodified
+            if cv > 0:
+                normalized[t_idx] = best_S / cv
+    return pd.Series(normalized, index=idx, name='structural_break_stat')
 
 
 def _retag_trades_with_bar_id(raw_trades, threshold):
@@ -344,12 +521,16 @@ def build_enriched_events(raw_trades, threshold, events):
 
     fd = compute_fracdiff_feature(bars_vol['Close'])
     ch19_features = compute_ch19_features(trades, bars_vol)
+    entropy_feature = compute_entropy_feature(bars_vol['Close'])
+    structural_break_feature = compute_structural_break_feature(bars_vol['Close'])
 
     table = ch19_features.copy()
     if fd['d'] is not None:
         table = table.join(fd['fracdiff'], how='left')
     else:
         table['fracdiff'] = np.nan
+    table = table.join(entropy_feature, how='left')
+    table = table.join(structural_break_feature, how='left')
 
     enriched = events.join(table, how='left')
     n_before = len(enriched)
@@ -364,3 +545,18 @@ def build_enriched_events(raw_trades, threshold, events):
         'n_events_after': n_after,
         'feature_table': table,
     }
+
+
+# TDD results -- real machine (mlfinlab env), 2026-08-25
+#
+# (mlfinlab) PS C:\ws\AFML> python -m pytest pipeline\orchestration\test_new_features_2026_08_25.py -v
+# ============================== 8 passed in 3.03s ==============================
+# Two-pass (from inside pipeline/orchestration/): 8 passed in 2.32s
+#
+# Also confirmed via a full end-to-end real-chain run (generate_momentum_
+# trades -> build_bars_and_labels -> build_enriched_events, sandbox,
+# 2026-08-25): both new features compute correctly at target_bars=1000
+# (2.7s total, 259/259 events survived, no all-NaN columns) and
+# target_bars=4000 (11.5s total, matching the isolated bounded-CSW-CUSUM
+# timing measurement, 403/403 events survived).
+# ---------------------------------------------------------------------------
