@@ -137,14 +137,9 @@ def append_to_archive(new_trades, archive_path):
     }
 
 
-# ---------------------------------------------------------------------------
-# TDD results -- sandbox pre-check (numpy 2.4/pandas 3.0), pending real-
-# machine confirmation (mlfinlab env: Python 3.10.20, pandas 1.5.3,
-# numpy 1.23.5) -- see test_trade_archive.py for the full suite.
+# TDD results -- real machine (mlfinlab env), 2026-08-25
 #
-# python -m pytest pipeline/orchestration/test_trade_archive.py -v
-# ============================== 9 passed in 5.99s ==============================
-# (sandbox: Python 3.12.3, pandas/numpy current -- run again on the real
-# mlfinlab env below and update this block with that real output before
-# considering this closed, per this project's two-pass TDD convention)
+# (mlfinlab) PS C:\ws\AFML> python -m pytest pipeline\orchestration\test_trade_archive.py -v
+# ============================== 9 passed in 1.24s ==============================
+# Two-pass (from inside pipeline/orchestration/): 9 passed in 1.01s
 # ---------------------------------------------------------------------------
