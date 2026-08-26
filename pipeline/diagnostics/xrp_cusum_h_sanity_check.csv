@@ -1,0 +1,2 @@
+candidate_h,n_bars,n_events,event_rate,verdict
+0.0113,986,314,0.3184584178498986,PASS -- comparable to BTC's own real event rate range

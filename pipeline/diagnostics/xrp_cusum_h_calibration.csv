@@ -1,0 +1,2 @@
+asset,reference_asset,btc_diff_std,xrp_diff_std,ratio,current_btc_cusum_h,candidate_xrp_cusum_h,calibration_hours,target_bars
+XRPUSD,XBTUSD,61.53822291719486,0.002223644882701658,3.613436945837337e-05,313,0.011310057640470864,24.0,1000
