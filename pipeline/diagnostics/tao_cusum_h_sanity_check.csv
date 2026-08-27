@@ -1,0 +1,3 @@
+candidate_h,n_bars,n_events,event_rate,verdict
+2.33586,972,214,0.22016460905349794,LOW -- threshold may still be too HIGH for TAO (under-firing); consider a smaller candidate H
+1.71,972,296,0.3045267489711934,PASS -- comparable to BTC's own real event rate range

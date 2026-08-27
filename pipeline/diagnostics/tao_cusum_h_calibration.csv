@@ -1,0 +1,2 @@
+asset,reference_asset,btc_diff_std,tao_diff_std,ratio,current_btc_cusum_h,candidate_tao_cusum_h,calibration_hours,target_bars
+TAOUSD,XBTUSD,51.77028931002312,0.38635186015232403,0.007462810529002074,313,2.3358596955776494,24.0,1000
