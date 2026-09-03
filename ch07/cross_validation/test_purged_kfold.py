@@ -201,6 +201,46 @@ def test_split_uses_iloc_not_deprecated_getitem(small_X, small_t1):
     list(pkf.split(small_X))  # should not raise
 
 
+def test_split_no_interior_overlap_mlfinlab_issue_295_repro():
+    """
+    Externally-sourced regression test (2026-08-27), not internally derived:
+    reproduces hudson-and-thames/mlfinlab's real, confirmed, still-open
+    GitHub issue #295 verbatim (10 observations, start times offset by 1 day,
+    each label spanning 2 days, n_splits=2, no embargo) -- their exact
+    apparatus shows a genuine multi-day INTERIOR overlap between a training
+    and a test observation (e.g. train [Jan5-Jan7] vs test [Jan6-Jan8] -- a
+    full day, Jan6-Jan7, where both windows are simultaneously open).
+
+    This class must show NO such interior overlap on the identical input.
+    Exact-boundary touches (a training observation starting at precisely the
+    timestamp a test label resolves) ARE expected and accepted -- see the
+    LOAD-BEARING note on PurgedKFold's own docstring for why a zero-width
+    touch is not the same failure mode as mlfinlab's real bug, and is not
+    asserted against here.
+    """
+    start = pd.Timestamp('2026-01-01')
+    start_dates = pd.date_range(start, periods=10, freq='D')
+    t1 = pd.Series(start_dates + pd.Timedelta(days=2), index=start_dates)
+    X = pd.DataFrame({'dummy': range(10)}, index=t1.index)
+
+    pkf = PurgedKFold(n_splits=2, t1=t1, pctEmbargo=0.0)
+
+    for train_idx, test_idx in pkf.split(X):
+        train_events = t1.iloc[train_idx]
+        test_events = t1.iloc[test_idx]
+        for t_start, t_end in zip(train_events.index, train_events.values):
+            for te_start, te_end in zip(test_events.index, test_events.values):
+                # Strict interior overlap: both windows genuinely open at
+                # once (mlfinlab's real bug). Exact-boundary equality is
+                # deliberately NOT included in this condition.
+                strict_overlap = (t_start < te_end) and (te_start < t_end)
+                assert not strict_overlap, (
+                    f'genuine interior overlap (mlfinlab issue #295 failure '
+                    f'mode): train[{t_start}-{t_end}] vs test[{te_start}-'
+                    f'{te_end}]'
+                )
+
+
 # ---------- cvScore ----------
 
 def test_cvscore_requires_t1():

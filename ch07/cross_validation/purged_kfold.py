@@ -62,6 +62,31 @@ class PurgedKFold(_BaseKFold):
     pctEmbargo : float, default=0.
         Fraction of the total sample size to embargo after each test set,
         as a bar count: mbrg = int(n_samples * pctEmbargo).
+
+    LOAD-BEARING (2026-08-27, found via cross-referencing hudson-and-thames/
+    mlfinlab's real GitHub issue tracker -- see test_purged_kfold.py's
+    test_split_no_interior_overlap_mlfinlab_issue_295_repro):
+
+    mlfinlab has a real, confirmed, still-open bug (issue #295) where
+    training observations can have GENUINE INTERIOR overlap with test
+    observations -- a multi-day leak, not a boundary artifact -- because
+    their internal test-window start is anchored on the END time of the
+    first test observation instead of its START time. This class avoids
+    that failure mode structurally: t0 below is read directly from
+    self.t1.index[i] (the true start time of the first test observation),
+    with no intermediate mis-anchored object in between.
+
+    Reproducing mlfinlab's exact issue #295 test case against this class
+    DOES still show train/test observations touching at an EXACT shared
+    timestamp (e.g. a training observation starting at 2026-01-07 immediately
+    after a test observation's label resolves at 2026-01-07). This is NOT
+    the same bug -- it is a single-point, zero-width boundary touch, not a
+    multi-day interior overlap -- and is standard, intentional behavior for
+    half-open-interval purging: a training observation is safe to include
+    once its own start is not STRICTLY BEFORE the last resolved test label
+    (>=, not >). Flagged explicitly here, with a dedicated regression test,
+    specifically so this distinction is never re-litigated as if it were
+    mlfinlab's bug.
     """
 
     def __init__(self, n_splits=3, t1=None, pctEmbargo=0.):
@@ -165,32 +190,43 @@ def cvScore(clf, X, y, sample_weight=None, scoring='neg_log_loss',
 # ============================================================================
 # TDD results (test_purged_kfold.py), embedded per project convention.
 # Run against the real 88-row Ch07 training table (ch03/ch04/ch05 artifacts).
+# UPDATED 2026-08-27: added test_split_no_interior_overlap_mlfinlab_issue_295_
+# repro, real-machine-confirmed (mlfinlab env, Python 3.10.20, pytest 9.0.3).
 # ============================================================================
 #
-# ============================= test session starts ==============================
-# test_purged_kfold.py::test_purged_kfold_requires_series_t1 PASSED        [  6%]
-# test_purged_kfold.py::test_purged_kfold_default_pctEmbargo_is_zero_not_none PASSED [ 12%]
-# test_purged_kfold.py::test_purged_kfold_get_n_splits PASSED              [ 18%]
-# test_purged_kfold.py::test_purged_kfold_rejects_bad_shuffle_random_state_combo PASSED [ 25%]
-# test_purged_kfold.py::test_split_rejects_misaligned_index PASSED         [ 31%]
-# test_purged_kfold.py::test_split_produces_non_overlapping_test_sets PASSED [ 37%]
-# test_purged_kfold.py::test_split_purges_overlapping_labels PASSED        [ 43%]
-# test_purged_kfold.py::test_split_keeps_train_obs_resolved_before_test_start PASSED [ 50%]
-# test_purged_kfold.py::test_split_uses_iloc_not_deprecated_getitem PASSED [ 56%]
-# test_purged_kfold.py::test_cvscore_requires_t1 PASSED                    [ 62%]
-# test_purged_kfold.py::test_cvscore_rejects_bad_scoring PASSED            [ 68%]
-# test_purged_kfold.py::test_cvscore_uniform_weight_default PASSED         [ 75%]
-# test_purged_kfold.py::test_cvscore_index_mismatch_guard PASSED           [ 81%]
-# test_purged_kfold.py::test_cvscore_real_data_random_forest PASSED        [ 87%]
-# test_purged_kfold.py::test_cvscore_real_data_neg_log_loss PASSED         [ 93%]
-# test_purged_kfold.py::test_fold_sizes_shrink_from_purging_on_real_data PASSED [100%]
-# ======================== 16 passed, 1 warning in 1.74s =========================
+# ================================================= test session starts =================================================
+# platform win32 -- Python 3.10.20, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\earob\miniconda3\envs\mlfinlab\python.exe
+# collected 17 items
+# test_purged_kfold.py::test_purged_kfold_requires_series_t1 PASSED                                                [  5%]
+# test_purged_kfold.py::test_purged_kfold_default_pctEmbargo_is_zero_not_none PASSED                               [ 11%]
+# test_purged_kfold.py::test_purged_kfold_get_n_splits PASSED                                                      [ 17%]
+# test_purged_kfold.py::test_purged_kfold_rejects_bad_shuffle_random_state_combo PASSED                            [ 23%]
+# test_purged_kfold.py::test_split_rejects_misaligned_index PASSED                                                 [ 29%]
+# test_purged_kfold.py::test_split_produces_non_overlapping_test_sets PASSED                                       [ 35%]
+# test_purged_kfold.py::test_split_purges_overlapping_labels PASSED                                                [ 41%]
+# test_purged_kfold.py::test_split_keeps_train_obs_resolved_before_test_start PASSED                               [ 47%]
+# test_purged_kfold.py::test_split_uses_iloc_not_deprecated_getitem PASSED                                         [ 52%]
+# test_purged_kfold.py::test_split_no_interior_overlap_mlfinlab_issue_295_repro PASSED                             [ 58%]
+# test_purged_kfold.py::test_cvscore_requires_t1 PASSED                                                            [ 64%]
+# test_purged_kfold.py::test_cvscore_rejects_bad_scoring PASSED                                                    [ 70%]
+# test_purged_kfold.py::test_cvscore_uniform_weight_default PASSED                                                 [ 76%]
+# test_purged_kfold.py::test_cvscore_index_mismatch_guard PASSED                                                   [ 82%]
+# test_purged_kfold.py::test_cvscore_real_data_random_forest PASSED                                                [ 88%]
+# test_purged_kfold.py::test_cvscore_real_data_neg_log_loss PASSED                                                 [ 94%]
+# test_purged_kfold.py::test_fold_sizes_shrink_from_purging_on_real_data PASSED                                    [100%]
+# ================================================= 17 passed in 3.32s ==================================================
 #
-# (The one warning is sklearn's BaggingClassifier flagging a small per-tree
-# bootstrap sample count -- expected and harmless here: on sklearn 1.2.2,
-# max_samples=0.2288 is a fraction of the fold's *training row count*
-# (int(0.2288 * n_train)), not of summed sample weight. Real fold sizes on
-# this dataset (n_splits=4, pctEmbargo=0.12) run 42-63 train rows, giving
-# 9-14 bootstrap rows per tree -- small but intentional, exactly the
-# variance-reduction mechanism from Ch06 (avgU as max_samples).)
+# (The BaggingClassifier warning present in the original 16-test run did not
+# recur in this run -- sklearn's warning emission there is dependent on
+# internal random draws, not deterministic across runs; harmless either way,
+# see the original explanation below.)
+#
+# Original 16-test note, still applicable: the occasional warning is
+# sklearn's BaggingClassifier flagging a small per-tree bootstrap sample
+# count -- expected and harmless: on sklearn 1.2.2, max_samples=0.2288 is a
+# fraction of the fold's *training row count* (int(0.2288 * n_train)), not
+# of summed sample weight. Real fold sizes on this dataset (n_splits=4,
+# pctEmbargo=0.12) run 42-63 train rows, giving 9-14 bootstrap rows per tree
+# -- small but intentional, exactly the variance-reduction mechanism from
+# Ch06 (avgU as max_samples).
 
