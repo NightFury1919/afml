@@ -114,17 +114,37 @@ def _run_one_config(raw_trades, target_bars, work_root):
 
 
 def main():
-    if len(sys.argv) not in (2, 3):
+    # *** ADDED (2026-09-11): --target-bars=N,N,N override ***
+    # Pooling multiple windows into one continuous series (see
+    # pool_kraken_raw_trades.py) needs a scaled TARGET_BARS_GRID to keep
+    # bar granularity (bars/day) comparable to single-window
+    # calibrations -- requiring a manual edit to this file's module-level
+    # constant for that is exactly the kind of thing that gets forgotten
+    # or accidentally left in place for the next real run. This flag
+    # avoids that without touching the default single-window behavior.
+    args = [a for a in sys.argv[1:] if not a.startswith('--target-bars=')]
+    tb_args = [a for a in sys.argv[1:] if a.startswith('--target-bars=')]
+    target_bars_grid = (
+        [int(x) for x in tb_args[0].split('=', 1)[1].split(',')]
+        if tb_args else TARGET_BARS_GRID
+    )
+    if len(args) not in (1, 2):
         raise SystemExit(
-            'Usage: python calibrate_kraken_target_bars.py <snapshot_dir> [output_csv]\n'
+            'Usage: python calibrate_kraken_target_bars.py <snapshot_dir> '
+            '[output_csv] [--target-bars=N,N,N]\n'
             'Run capture_kraken_snapshot.py --hours 720 first to produce a snapshot.\n'
             '[output_csv] is optional -- defaults to kraken_target_bars_calibration.csv.\n'
+            '[--target-bars=...] overrides the default TARGET_BARS_GRID, e.g. for a '
+            'pooled multi-window snapshot that needs a scaled grid.\n'
             'ADDED 2026-08-25: pass a distinct output_csv when running on a SECOND '
             'window (e.g. for a replication check) so results don\'t mix with the '
             'first window\'s in the same file.'
         )
-    snapshot_dir = sys.argv[1]
-    output_csv = sys.argv[2] if len(sys.argv) == 3 else OUTPUT_CSV
+    snapshot_dir = args[0]
+    output_csv = args[1] if len(args) == 2 else OUTPUT_CSV
+    if tb_args:
+        print(f'Using --target-bars override: {target_bars_grid} '
+              f'(default TARGET_BARS_GRID={TARGET_BARS_GRID} not used this run)')
     raw_trades_path = os.path.join(snapshot_dir, 'raw_trades.parquet')
     if not os.path.exists(raw_trades_path):
         raise SystemExit(f'{raw_trades_path} not found -- wrong snapshot dir?')
@@ -138,7 +158,7 @@ def main():
     os.makedirs(work_root, exist_ok=True)
 
     rows = []
-    for target_bars in TARGET_BARS_GRID:
+    for target_bars in target_bars_grid:
         print(f'\n=== target_bars={target_bars} ===')
         try:
             row = _run_one_config(raw_trades, target_bars, work_root)

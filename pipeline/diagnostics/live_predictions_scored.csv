@@ -1,0 +1,2 @@
+prediction_id,logged_at_utc,elapsed_hours,direction,reference_price,current_price,price_return,old_binary_position,new_continuous_position,running_pnl_old,running_pnl_new
+0fee65ad,2026-09-12 07:02:04.960269+00:00,0.02510777777777778,flat,77293.2,77303.0,0.00012678993753656442,0.0,0.0,0.0,0.0
