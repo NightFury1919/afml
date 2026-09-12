@@ -1,0 +1,16 @@
+n_groups,k,phi,genuine_cpcv,n_splits,n_obs,min_group_size,min_train_size,phase_a_pass,phase_a_fail_reason,phase_b_attempted,phase_b_error,mean_path_sharpe,std_path_sharpe,min_path_sharpe,max_path_sharpe,n_paths_negative,winning_C,notes
+4,1,1,False,4,317,79,154,True,,True,,-0.035130043548001456,0.0,-0.035130043548001456,-0.035130043548001456,1.0,0.01,detrended
+4,2,3,True,6,317,79,10,False,single-class train fold,False,,,,,,,0.01,detrended
+4,3,3,True,4,317,79,10,False,single-class train fold,False,,,,,,,0.01,detrended
+5,1,1,False,5,317,63,175,True,,True,,0.16451894891264085,0.0,0.16451894891264085,0.16451894891264085,0.0,0.01,detrended
+5,2,4,True,10,317,63,63,True,,True,,0.0765444519587481,0.18181514020639963,-0.15583899377623153,0.2782008866761797,1.0,0.01,detrended
+5,3,6,True,10,317,63,10,False,single-class train fold,False,,,,,,,0.01,detrended
+6,1,1,False,6,317,52,173,True,,True,,0.07989179610087373,0.0,0.07989179610087373,0.07989179610087373,0.0,0.01,detrended
+6,2,5,True,15,317,52,70,True,,True,,-0.0533869323886933,0.24460653950559133,-0.2318492487476853,0.36378067953676163,4.0,0.01,detrended
+6,3,10,True,20,317,52,4,False,single-class train fold,False,,,,,,,0.01,detrended
+8,1,1,False,8,317,39,182,True,,True,,0.15890677525941813,0.0,0.15890677525941813,0.15890677525941813,0.0,0.01,detrended
+8,2,7,True,28,317,39,85,True,,True,,0.06596482228843711,0.1873634161522349,-0.19649848075344034,0.3825915386204917,3.0,0.01,detrended
+8,3,21,True,56,317,39,11,False,min_train_size 11 < 30,False,,,,,,,0.01,detrended
+10,1,1,False,10,317,31,190,True,,True,,0.19271452211514567,0.0,0.19271452211514567,0.19271452211514567,0.0,0.01,detrended
+10,2,9,True,45,317,31,85,True,,True,,0.06701072673162534,0.1449543409657282,-0.22237742326288654,0.29201677798536935,2.0,0.01,detrended
+10,3,36,True,120,317,31,29,False,min_train_size 29 < 30,False,,,,,,,0.01,detrended
