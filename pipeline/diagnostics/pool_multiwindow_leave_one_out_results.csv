@@ -1,0 +1,2 @@
+n_folds,n_pooled_bars,n_pooled_active_bars,pooled_hit_rate,pooled_sharpe,binom_p_value,mean_pnl_t_stat,mean_pnl_t_p_value
+8,7887,5455,0.5118240146654446,0.022546914894217333,0.08307629141321717,2.0025344503511677,0.04527669483778962
