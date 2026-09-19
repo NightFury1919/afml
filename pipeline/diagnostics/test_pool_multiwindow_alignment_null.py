@@ -26,13 +26,13 @@ N_BARS, EVERY, HORIZON = 500, 5, 5
 FEATURE_COLS = ['f1', 'f2', 'f3']
 
 
-def make_window(seed, planted):
+def make_window(seed, planted, drift=0.0, p_short=0.5):
     """Synthetic window: iid returns; an event every EVERY bars with
     horizon HORIZON. planted=True -> label and f1 both carry the sign of
     the FORWARD return (a real, exploitable edge); False -> pure noise."""
     rng = np.random.default_rng(seed)
     idx = pd.date_range('2026-01-01', periods=N_BARS, freq='h')
-    rets = rng.normal(0, 0.002, N_BARS)
+    rets = rng.normal(drift, 0.002, N_BARS)
     close = pd.Series(100 * np.cumprod(1 + rets), index=idx, name='close')
     starts = np.arange(0, N_BARS - HORIZON - 1, EVERY)
     fwd = np.array([close.iloc[s + HORIZON] / close.iloc[s] - 1 for s in starts])
@@ -40,7 +40,7 @@ def make_window(seed, planted):
         bin_ = np.where(fwd > 0, 1, -1)
         f1 = np.sign(fwd) + rng.normal(0, 0.7, len(starts))
     else:
-        bin_ = rng.choice([-1, 1], len(starts))
+        bin_ = rng.choice([-1, 1], len(starts), p=[p_short, 1 - p_short])
         f1 = rng.normal(0, 1, len(starts))
     events = pd.DataFrame({
         'f1': f1, 'f2': rng.normal(0, 1, len(starts)), 'f3': rng.normal(0, 1, len(starts)),
@@ -60,8 +60,8 @@ def small_real(monkeypatch):
     return real
 
 
-def tables(planted):
-    return {w: make_window(100 + w, planted) for w in (1, 2, 3, 4)}
+def tables(planted, drift=0.0, p_short=0.5):
+    return {w: make_window(100 + w, planted, drift, p_short) for w in (1, 2, 3, 4)}
 
 
 def test_zero_shift_reproduces_real_procedure_exactly(small_real):
@@ -146,15 +146,50 @@ def test_planted_edge_is_detected_against_the_alignment_null(small_real):
     assert p1 <= 0.05
 
 
+def test_demean_equals_prescoring_on_demeaned_returns(small_real):
+    tb = tables(planted=True)
+    cache = an.build_cache(tb, FEATURE_COLS, verbose=False)
+    pre = {'pos': cache['pos'],
+           'ret': {w: r - r.mean() for w, r in cache['ret'].items()}}
+    shifts = {1: 40, 2: 90, 3: 150, 4: 200}
+    a = an.evaluate_draw(cache, shifts, demean=True)
+    b = an.evaluate_draw(pre, shifts)
+    np.testing.assert_allclose(a['pooled_pnl'], b['pooled_pnl'], rtol=0, atol=1e-15)
+    raw = an.evaluate_draw(cache, shifts)
+    assert not np.allclose(a['pooled_pnl'], raw['pooled_pnl'])   # flag really does something
+
+
+def test_demeaning_removes_the_drift_offset_a_circular_shift_cannot(small_real):
+    # Strong upward drift + labels mostly -1 -> classifiers are net short
+    # -> position-average x return-average is negative in EVERY roll, since
+    # circular shifts preserve each window's mean return.
+    tb = tables(planted=False, drift=0.001, p_short=0.85)
+    cache = an.build_cache(tb, FEATURE_COLS, verbose=False)
+    lens = {w: len(cache['ret'][w]) for w in cache['ret']}
+
+    def null_ts(demean):
+        rng = np.random.default_rng(3)
+        ts = [an.evaluate_draw(cache, an.draw_shifts(rng, lens, 20), demean=demean)['t_stat']
+              for _ in range(40)]
+        return np.array([t for t in ts if np.isfinite(t)])
+
+    raw_null, dm_null = null_ts(False), null_ts(True)
+    assert raw_null.mean() < -2.0            # drift x net-short bias, as hypothesised
+    assert abs(dm_null.mean()) < 0.75        # demeaning recentres the null
+
+
 # =============================================================================
-# TDD RESULTS (synthetic data, sandbox run 2026-09-18: Python 3.12.3, pytest 9.1.1
-# -- NOT the mlfinlab env; re-run there and overwrite this block if it differs)
+# TDD RESULTS (synthetic data)
+# Sandbox run 2026-09-18 (Python 3.12.3, pytest 9.1.1): 9 passed in 55.43s.
+# Ethan's mlfinlab run (Python 3.10.20, pytest 9.0.3) of the first 7 tests:
+# 7 passed in 89.53s. Re-run all 9 in mlfinlab and overwrite this block.
 # =============================================================================
-# test_pool_multiwindow_alignment_null.py::test_zero_shift_reproduces_real_procedure_exactly PASSED
-# test_pool_multiwindow_alignment_null.py::test_shifting_changes_pnl_but_not_its_length_or_position_cache PASSED
-# test_pool_multiwindow_alignment_null.py::test_full_length_shift_is_identity PASSED
-# test_pool_multiwindow_alignment_null.py::test_draw_shifts_respect_bounds_and_are_reproducible PASSED
-# test_pool_multiwindow_alignment_null.py::test_empirical_p_known_values PASSED
-# test_pool_multiwindow_alignment_null.py::test_noise_only_null_is_centred_near_zero PASSED
-# test_pool_multiwindow_alignment_null.py::test_planted_edge_is_detected_against_the_alignment_null PASSED
-# ============================== 7 passed in 33.13s ==============================
+# test_zero_shift_reproduces_real_procedure_exactly PASSED
+# test_shifting_changes_pnl_but_not_its_length_or_position_cache PASSED
+# test_full_length_shift_is_identity PASSED
+# test_draw_shifts_respect_bounds_and_are_reproducible PASSED
+# test_empirical_p_known_values PASSED
+# test_noise_only_null_is_centred_near_zero PASSED
+# test_planted_edge_is_detected_against_the_alignment_null PASSED
+# test_demean_equals_prescoring_on_demeaned_returns PASSED
+# test_demeaning_removes_the_drift_offset_a_circular_shift_cannot PASSED

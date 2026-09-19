@@ -20,3 +20,4 @@ pipeline/diagnostics/sensitivity_snapshot_*/sweep_plots/
 
 pipeline/diagnostics/*_work/
 pipeline/diagnostics/alignment_null_cache.pkl
+pipeline/diagnostics/alignment_null_cache.pkl

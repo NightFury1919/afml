@@ -59,6 +59,7 @@ Usage
     cd C:\\ws\\AFML
     python pipeline\\diagnostics\\pool_multiwindow_alignment_null.py
     # options: --n-rolls 1000  --min-shift 50  --seed 20260918  --rebuild-cache
+    #          --demean-returns   (pure-timing statistic; see evaluate_draw)
 
 Cache: pipeline/diagnostics/alignment_null_cache.pkl (mlfinlab env only --
 do not share across envs; do not commit).
@@ -156,11 +157,18 @@ def pooled_t(pooled_pnl):
     return t_stat, p, int(len(active))
 
 
-def evaluate_draw(cache, shifts):
-    """shifts: {window_id: int}. Zero shifts == the real, unrolled run."""
+def evaluate_draw(cache, shifts, demean=False):
+    """shifts: {window_id: int}. Zero shifts == the real, unrolled run.
+
+    demean=True subtracts each window's own mean bar return BEFORE scoring
+    (selection Sharpe and held-out PnL alike). That removes the
+    position-average x return-average "drift/beta" term, which a circular
+    shift cannot remove (it preserves every window's mean), leaving a pure
+    timing statistic. demean=False is the real, raw statistic."""
     ids = list(real.WINDOW_DIRS)
     pos, ret = cache['pos'], cache['ret']
-    rolled = {w: np.roll(ret[w], shifts.get(w, 0)) for w in ids}
+    base = {w: (ret[w] - ret[w].mean()) if demean else ret[w] for w in ids}
+    rolled = {w: np.roll(base[w], shifts.get(w, 0)) for w in ids}
 
     all_pnl, folds = [], []
     for test in ids:
@@ -240,7 +248,14 @@ def main():
     ap.add_argument('--min-shift', type=int, default=50)
     ap.add_argument('--seed', type=int, default=20260918)
     ap.add_argument('--rebuild-cache', action='store_true')
+    ap.add_argument('--demean-returns', action='store_true',
+                    help='Score the real draw AND every roll on per-window '
+                         'demeaned returns (pure-timing statistic). The '
+                         'self-check still runs on the RAW real statistic. '
+                         'Results go to *_demeaned_results.csv.')
     args = ap.parse_args()
+    results_path = (RESULTS_CSV_PATH.replace('_results.csv', '_demeaned_results.csv')
+                    if args.demean_returns else RESULTS_CSV_PATH)
 
     print('Loading the 8 real window tables (cached staging)...')
     window_tables, feature_cols = {}, None
@@ -262,7 +277,13 @@ def main():
     print('\nDraw 0: zero shifts (must reproduce the real run)')
     draw0 = evaluate_draw(cache, {})
     selfcheck_against_real_csvs(draw0)
+    if args.demean_returns:
+        print(f"  raw real t = {draw0['t_stat']:+.4f}; re-scoring the real draw "
+              f"and all rolls on per-window DEMEANED returns.")
+        draw0 = evaluate_draw(cache, {}, demean=True)
     real_t = draw0['t_stat']
+    print(f"  real t used for comparison = {real_t:+.4f} "
+          f"(n_active={draw0['n_active']}, demeaned={args.demean_returns})")
 
     ret_lengths = {w: len(cache['ret'][w]) for w in cache['ret']}
     rng = np.random.default_rng(args.seed)
@@ -270,12 +291,12 @@ def main():
     t0 = time.time()
     for i in range(args.n_rolls):
         shifts = draw_shifts(rng, ret_lengths, args.min_shift)
-        out = evaluate_draw(cache, shifts)
+        out = evaluate_draw(cache, shifts, demean=args.demean_returns)
         rows.append({'roll': i + 1, 't_stat': out['t_stat'],
                      't_p_value': out['t_p_value'], 'n_active': out['n_active'],
                      'mean_pnl': out['mean_pnl']})
         if (i + 1) % 100 == 0 or i + 1 == args.n_rolls:
-            pd.DataFrame(rows).to_csv(RESULTS_CSV_PATH, index=False)
+            pd.DataFrame(rows).to_csv(results_path, index=False)
             print(f'  roll {i + 1}/{args.n_rolls} ({time.time() - t0:.0f}s)', flush=True)
 
     df = pd.DataFrame(rows)
@@ -283,7 +304,8 @@ def main():
     p1, p2, n = empirical_p(real_t, null_t)
 
     print(f'\n{"=" * 74}')
-    print(f'ALIGNMENT NULL ({n} random circular return shifts per window)')
+    print(f'ALIGNMENT NULL ({n} random circular return shifts per window'
+          f'{", DEMEANED returns" if args.demean_returns else ""})')
     print(f'{"=" * 74}')
     print(f'real pooled t-stat      = {real_t:+.4f}')
     print(f'null t-stat mean / sd   = {null_t.mean():+.4f} / {null_t.std(ddof=1):.4f}   '
@@ -293,7 +315,7 @@ def main():
     print(f'naive iid-bar p (real)  = {draw0["t_p_value"]:.4f}')
     print(f'EMPIRICAL p, one-sided (null >= real)  = {p1:.4f}')
     print(f'EMPIRICAL p, two-sided (|null| >= |real|) = {p2:.4f}')
-    print(f'\nSaved -> {RESULTS_CSV_PATH}')
+    print(f'\nSaved -> {results_path}')
     print('\nHOW TO READ IT: if the null is centred near 0 and the empirical '
           'p is well above 0.05, the real t=+2.0 is what alignment-free '
           'noise produces this often (the naive iid p=0.045 overstated it). '
@@ -309,14 +331,17 @@ if __name__ == '__main__':
 
 
 # =============================================================================
-# TDD RESULTS (synthetic data, sandbox run 2026-09-18: Python 3.12.3, pytest 9.1.1
-# -- NOT the mlfinlab env; re-run there and overwrite this block if it differs)
+# TDD RESULTS (synthetic data)
+# Sandbox run 2026-09-18 (Python 3.12.3, pytest 9.1.1): 9 passed in 55.43s.
+# Ethan's mlfinlab run (Python 3.10.20, pytest 9.0.3) of the first 7 tests:
+# 7 passed in 89.53s. Re-run all 9 in mlfinlab and overwrite this block.
 # =============================================================================
-# test_pool_multiwindow_alignment_null.py::test_zero_shift_reproduces_real_procedure_exactly PASSED
-# test_pool_multiwindow_alignment_null.py::test_shifting_changes_pnl_but_not_its_length_or_position_cache PASSED
-# test_pool_multiwindow_alignment_null.py::test_full_length_shift_is_identity PASSED
-# test_pool_multiwindow_alignment_null.py::test_draw_shifts_respect_bounds_and_are_reproducible PASSED
-# test_pool_multiwindow_alignment_null.py::test_empirical_p_known_values PASSED
-# test_pool_multiwindow_alignment_null.py::test_noise_only_null_is_centred_near_zero PASSED
-# test_pool_multiwindow_alignment_null.py::test_planted_edge_is_detected_against_the_alignment_null PASSED
-# ============================== 7 passed in 33.13s ==============================
+# test_zero_shift_reproduces_real_procedure_exactly PASSED
+# test_shifting_changes_pnl_but_not_its_length_or_position_cache PASSED
+# test_full_length_shift_is_identity PASSED
+# test_draw_shifts_respect_bounds_and_are_reproducible PASSED
+# test_empirical_p_known_values PASSED
+# test_noise_only_null_is_centred_near_zero PASSED
+# test_planted_edge_is_detected_against_the_alignment_null PASSED
+# test_demean_equals_prescoring_on_demeaned_returns PASSED
+# test_demeaning_removes_the_drift_offset_a_circular_shift_cannot PASSED
