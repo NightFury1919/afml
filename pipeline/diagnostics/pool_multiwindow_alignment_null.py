@@ -60,6 +60,8 @@ Usage
     python pipeline\\diagnostics\\pool_multiwindow_alignment_null.py
     # options: --n-rolls 1000  --min-shift 50  --seed 20260918  --rebuild-cache
     #          --demean-returns   (pure-timing statistic; see evaluate_draw)
+    #          --cost-bps 0 1 2.5 5 10 25 40   (transaction-cost sweep mode)
+    #          --turnover-report   (how much the real run trades + first-order breakeven)
 
 Cache: pipeline/diagnostics/alignment_null_cache.pkl (mlfinlab env only --
 do not share across envs; do not commit).
@@ -157,14 +159,32 @@ def pooled_t(pooled_pnl):
     return t_stat, p, int(len(active))
 
 
-def evaluate_draw(cache, shifts, demean=False):
+def _turnover(cache, key):
+    """|change in position| per bar for one cached position array (the first
+    bar's change is from a flat start). Depends only on positions, so it is
+    identical in every roll; computed lazily and memoised in the cache."""
+    tcache = cache.setdefault('turn', {})
+    if key not in tcache:
+        pos = cache['pos'][key]
+        tcache[key] = np.abs(np.diff(pos, prepend=0.0))
+    return tcache[key]
+
+
+def evaluate_draw(cache, shifts, demean=False, cost=0.0):
     """shifts: {window_id: int}. Zero shifts == the real, unrolled run.
 
     demean=True subtracts each window's own mean bar return BEFORE scoring
     (selection Sharpe and held-out PnL alike). That removes the
     position-average x return-average "drift/beta" term, which a circular
     shift cannot remove (it preserves every window's mean), leaving a pure
-    timing statistic. demean=False is the real, raw statistic."""
+    timing statistic. demean=False is the real, raw statistic.
+
+    cost = one-way trading cost as a FRACTION of notional per unit of
+    |change in position| (0.0005 = 5 bps). Net PnL per bar is
+    position*return - cost*|delta position|; going +1 -> -1 is 2 units of
+    turnover. It is applied to selection scoring AND the held-out PnL, so
+    the whole procedure (including which step size wins) is cost-aware.
+    cost=0.0 is the original gross statistic, unchanged."""
     ids = list(real.WINDOW_DIRS)
     pos, ret = cache['pos'], cache['ret']
     base = {w: (ret[w] - ret[w].mean()) if demean else ret[w] for w in ids}
@@ -177,11 +197,17 @@ def evaluate_draw(cache, shifts, demean=False):
         for C in real.C_GRID:
             for val in train_ids:
                 for step in real.STEP_GRID:
-                    pnl = pos[('inner', C, val, test, step)] * rolled[val]
+                    key = ('inner', C, val, test, step)
+                    pnl = pos[key] * rolled[val]
+                    if cost:
+                        pnl = pnl - cost * _turnover(cache, key)
                     scores[(C, step)].append(real.sharpe_ratio(pd.Series(pnl)))
         avg_scores = {k: float(np.mean(v)) for k, v in scores.items()}
         winner_C, winner_step = max(avg_scores, key=avg_scores.get)
-        test_pnl = pos[('refit', winner_C, test, winner_step)] * rolled[test]
+        tkey = ('refit', winner_C, test, winner_step)
+        test_pnl = pos[tkey] * rolled[test]
+        if cost:
+            test_pnl = test_pnl - cost * _turnover(cache, tkey)
         all_pnl.append(test_pnl)
         folds.append({'test_window': test, 'winner_C': winner_C,
                       'winner_step': winner_step,
@@ -214,6 +240,77 @@ def empirical_p(real_t, null_t):
 
 
 # ---------------------------------------------------------------------------
+def run_cost_sweep(cache, cost_bps_list, n_rolls, min_shift, seed, demean, out_path):
+    """For each cost level: real net t / mean net PnL per active bar, and the
+    same statistic's alignment-null distribution (SAME shifts at every cost
+    level -> paired comparison). Selection is cost-aware inside every draw."""
+    ret_lengths = {w: len(cache['ret'][w]) for w in cache['ret']}
+    rng = np.random.default_rng(seed)
+    all_shifts = [draw_shifts(rng, ret_lengths, min_shift) for _ in range(n_rolls)]
+
+    rows = []
+    t0 = time.time()
+    for bps in cost_bps_list:
+        c = bps / 1e4
+        d0 = evaluate_draw(cache, {}, demean=demean, cost=c)
+        null_t, null_m = [], []
+        for sh in all_shifts:
+            out = evaluate_draw(cache, sh, demean=demean, cost=c)
+            null_t.append(out['t_stat'])
+            null_m.append(out['mean_pnl'])
+        null_t = np.array([x for x in null_t if np.isfinite(x)])
+        p1, p2, n = empirical_p(d0['t_stat'], null_t)
+        rows.append({'cost_bps_one_way': bps, 'real_net_t': d0['t_stat'],
+                     'real_net_mean_pnl_per_active_bar': d0['mean_pnl'],
+                     'real_n_active': d0['n_active'],
+                     'null_mean_t': float(null_t.mean()), 'null_sd_t': float(null_t.std(ddof=1)),
+                     'empirical_p_one_sided': p1, 'empirical_p_two_sided': p2,
+                     'n_rolls': n})
+        pd.DataFrame(rows).to_csv(out_path, index=False)
+        print(f'  cost {bps:g} bps done ({time.time() - t0:.0f}s): real net t '
+              f'{d0["t_stat"]:+.3f}, one-sided p {p1:.4f}', flush=True)
+    return pd.DataFrame(rows)
+
+
+def turnover_report(cache, demean=False):
+    """How much does the REAL run (zero shifts, gross, its own selected
+    winners) trade? Also a first-order breakeven: total gross PnL divided by
+    total turnover = the one-way cost (bps) that would exactly cancel it,
+    ignoring that a higher cost would change which step size wins. Use it to
+    sanity-check the cost sweep's breakeven."""
+    d0 = evaluate_draw(cache, {}, demean=demean)
+    rows = []
+    for f in d0['folds']:
+        key = ('refit', f['winner_C'], f['test_window'], f['winner_step'])
+        pos, turn = cache['pos'][key], _turnover(cache, key)
+        rows.append({'test_window': f['test_window'], 'winner_C': f['winner_C'],
+                     'winner_step': f['winner_step'], 'n_bars': len(pos),
+                     'frac_bars_in_market': float((pos != 0).mean()),
+                     'mean_abs_position': float(np.abs(pos).mean()),
+                     'frac_bars_with_trade': float((turn > 0).mean()),
+                     'mean_turnover_per_bar': float(turn.mean())})
+    df = pd.DataFrame(rows)
+    turn_sum = float(sum(_turnover(cache, ('refit', f['winner_C'], f['test_window'],
+                                          f['winner_step'])).sum() for f in d0['folds']))
+    gross_sum = float(d0['pooled_pnl'].sum())
+    return {'per_fold': df, 'pooled_gross_pnl_sum': gross_sum,
+            'pooled_turnover_sum': turn_sum,
+            'n_bars_total': int(df['n_bars'].sum()),
+            'mean_turnover_per_bar': turn_sum / int(df['n_bars'].sum()),
+            'breakeven_bps_first_order': (1e4 * gross_sum / turn_sum) if turn_sum > 0 else np.nan}
+
+
+def breakeven_bps(df):
+    """Linear interpolation of the cost at which real net mean PnL crosses 0
+    (None if it never does within the swept range)."""
+    x = df['cost_bps_one_way'].values
+    y = df['real_net_mean_pnl_per_active_bar'].values
+    for i in range(len(x) - 1):
+        if y[i] > 0 >= y[i + 1]:
+            return float(x[i] + (0 - y[i]) * (x[i + 1] - x[i]) / (y[i + 1] - y[i]))
+    return None
+
+
 def selfcheck_against_real_csvs(draw0):
     """Compare draw 0 to the committed real-run CSVs. Returns True/False/None."""
     res_path = os.path.join(HERE, 'pool_multiwindow_leave_one_out_results.csv')
@@ -253,6 +350,15 @@ def main():
                          'demeaned returns (pure-timing statistic). The '
                          'self-check still runs on the RAW real statistic. '
                          'Results go to *_demeaned_results.csv.')
+    ap.add_argument('--turnover-report', action='store_true',
+                    help='Print how much the real run trades (per fold and '
+                         'pooled) plus a first-order breakeven cost; no rolls.')
+    ap.add_argument('--cost-bps', type=float, nargs='+', default=None,
+                    help='COST SWEEP MODE: one-way cost levels in bps of '
+                         'notional per unit |delta position|, e.g. '
+                         '--cost-bps 0 1 2.5 5 10 25 40. Runs the alignment '
+                         'null at every level (same shifts throughout) with '
+                         'cost-aware selection. Combine with --demean-returns.')
     args = ap.parse_args()
     results_path = (RESULTS_CSV_PATH.replace('_results.csv', '_demeaned_results.csv')
                     if args.demean_returns else RESULTS_CSV_PATH)
@@ -284,6 +390,45 @@ def main():
     real_t = draw0['t_stat']
     print(f"  real t used for comparison = {real_t:+.4f} "
           f"(n_active={draw0['n_active']}, demeaned={args.demean_returns})")
+
+    if args.turnover_report:
+        rep = turnover_report(cache, demean=args.demean_returns)
+        print(f'\nTURNOVER REPORT (real run, gross, demeaned={args.demean_returns})')
+        print(rep['per_fold'].to_string(index=False, float_format=lambda v: f'{v:.4f}'))
+        print(f"\npooled: {rep['n_bars_total']} bars, mean turnover/bar = "
+              f"{rep['mean_turnover_per_bar']:.4f} position-units "
+              f"(sum {rep['pooled_turnover_sum']:.1f})")
+        print(f"pooled gross PnL sum = {rep['pooled_gross_pnl_sum']:+.6f}")
+        print(f"first-order breakeven one-way cost = "
+              f"{rep['breakeven_bps_first_order']:+.2f} bps  "
+              f"(gross PnL / turnover; compare with the --cost-bps sweep)")
+        return
+
+    if args.cost_bps:
+        out_path = os.path.join(HERE, 'pool_multiwindow_alignment_null_cost_sweep'
+                                + ('_demeaned' if args.demean_returns else '') + '.csv')
+        print(f'\nCOST SWEEP: {args.cost_bps} bps one-way, {args.n_rolls} shared rolls per level'
+              f'{", DEMEANED returns" if args.demean_returns else ""}')
+        df = run_cost_sweep(cache, args.cost_bps, args.n_rolls, args.min_shift,
+                            args.seed, args.demean_returns, out_path)
+        print(f'\n{"=" * 74}\nCOST SWEEP RESULT\n{"=" * 74}')
+        print(df.to_string(index=False, float_format=lambda v: f'{v:.6g}'))
+        be = breakeven_bps(df)
+        print('\nbreakeven one-way cost (real net mean PnL crosses 0): '
+              + (f'{be:.2f} bps' if be is not None
+                 else f'not reached within swept range (max {max(args.cost_bps):g} bps)'))
+        print(f'\nSaved -> {out_path}')
+        print('\nHOW TO READ IT: real_net_mean_pnl_per_active_bar > 0 means the '
+              'strategy still makes money after that fee. The empirical p '
+              'columns ask whether real TIMING still beats random timing at '
+              'that fee (a fee drag hits real and null draws alike, so p can '
+              'stay small even when net PnL is negative -- that is a timing '
+              'statement, not a profitability one). For tradability, the '
+              'net-PnL column and breakeven bps are the numbers that matter. '
+              'Compare breakeven to your actual fee tier (Kraken base-tier '
+              'fees are tens of bps per side -- verify the current schedule; '
+              'volume tiers are lower).')
+        return
 
     ret_lengths = {w: len(cache['ret'][w]) for w in cache['ret']}
     rng = np.random.default_rng(args.seed)
@@ -332,7 +477,7 @@ if __name__ == '__main__':
 
 # =============================================================================
 # TDD RESULTS (synthetic data; mlfinlab env, Python 3.10.20, pytest 9.0.3)
-# 9 passed in 96.51s  (run 2026-09-19)
+# 15 passed in 136.17s  (run 2026-09-19)
 # =============================================================================
 # test_zero_shift_reproduces_real_procedure_exactly PASSED
 # test_shifting_changes_pnl_but_not_its_length_or_position_cache PASSED
@@ -343,3 +488,9 @@ if __name__ == '__main__':
 # test_planted_edge_is_detected_against_the_alignment_null PASSED
 # test_demean_equals_prescoring_on_demeaned_returns PASSED
 # test_demeaning_removes_the_drift_offset_a_circular_shift_cannot PASSED
+# test_cost_zero_is_identical_to_gross PASSED
+# test_cost_hand_computed_known_values PASSED
+# test_turnover_memo_never_modifies_positions PASSED
+# test_breakeven_interpolation_known_value PASSED
+# test_cost_sweep_kills_a_planted_edge_at_high_cost PASSED
+# test_turnover_report_hand_computed_known_values PASSED

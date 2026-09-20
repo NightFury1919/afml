@@ -178,9 +178,101 @@ def test_demeaning_removes_the_drift_offset_a_circular_shift_cannot(small_real):
     assert abs(dm_null.mean()) < 0.75        # demeaning recentres the null
 
 
+# ---------------------------------------------------------------------------
+# Transaction-cost model
+# ---------------------------------------------------------------------------
+def test_cost_zero_is_identical_to_gross(small_real):
+    tb = tables(planted=True)
+    cache = an.build_cache(tb, FEATURE_COLS, verbose=False)
+    sh = {1: 40, 2: 90, 3: 150, 4: 200}
+    a = an.evaluate_draw(cache, sh)
+    b = an.evaluate_draw(cache, sh, cost=0.0)
+    np.testing.assert_array_equal(a['pooled_pnl'], b['pooled_pnl'])
+
+
+def test_cost_hand_computed_known_values(monkeypatch):
+    """Two windows, one grid point, positions/returns small enough to do by
+    hand. net = pos*ret - cost*|delta pos| (first bar's delta is from flat)."""
+    monkeypatch.setattr(real, 'WINDOW_DIRS', {1: 'a', 2: 'b'})
+    monkeypatch.setattr(real, 'C_GRID', [1.0])
+    monkeypatch.setattr(real, 'STEP_GRID', [0.1])
+    p1 = np.array([0.0, 1.0, 1.0, -1.0])
+    p2 = np.array([-1.0, -1.0, 0.0, 0.5])
+    r1 = np.array([0.01, 0.02, -0.01, 0.03])
+    r2 = np.array([0.02, -0.01, 0.04, 0.02])
+    filler = np.array([0.5, -0.5, 0.25, -0.25])
+    cache = {'pos': {('inner', 1.0, 2, 1, 0.1): filler,
+                     ('inner', 1.0, 1, 2, 0.1): filler,
+                     ('refit', 1.0, 1, 0.1): p1,
+                     ('refit', 1.0, 2, 0.1): p2},
+             'ret': {1: r1, 2: r2}}
+    c = 0.001
+    out = an.evaluate_draw(cache, {}, cost=c)
+    net1 = [0.0, 0.019, -0.010, -0.032]      # gross [0,.02,-.01,-.03] - cost*[0,1,0,2]
+    net2 = [-0.021, 0.010, -0.001, 0.0095]   # gross [-.02,.01,0,.01]  - cost*[1,0,1,.5]
+    np.testing.assert_allclose(out['pooled_pnl'], net1 + net2, atol=1e-15)
+    assert out['n_active'] == 7              # the flat, no-trade bar is inactive
+    assert out['mean_pnl'] == pytest.approx(-0.0255 / 7)
+    gross = an.evaluate_draw(cache, {})
+    assert gross['mean_pnl'] > out['mean_pnl']
+
+
+def test_turnover_memo_never_modifies_positions(small_real):
+    tb = tables(planted=True)
+    cache = an.build_cache(tb, FEATURE_COLS, verbose=False)
+    before = {k: v.copy() for k, v in cache['pos'].items()}
+    an.evaluate_draw(cache, {1: 30, 2: 60, 3: 90, 4: 120}, cost=0.0005)
+    for k, v in before.items():
+        np.testing.assert_array_equal(cache['pos'][k], v)
+    assert cache['turn']                     # memo populated
+
+
+def test_breakeven_interpolation_known_value():
+    df = pd.DataFrame({'cost_bps_one_way': [0.0, 10.0, 20.0],
+                       'real_net_mean_pnl_per_active_bar': [2.0, 1.0, -1.0]})
+    assert an.breakeven_bps(df) == pytest.approx(15.0)
+    df2 = df.assign(real_net_mean_pnl_per_active_bar=[2.0, 1.5, 1.0])
+    assert an.breakeven_bps(df2) is None
+
+
+def test_cost_sweep_kills_a_planted_edge_at_high_cost(small_real, tmp_path):
+    tb = tables(planted=True)
+    cache = an.build_cache(tb, FEATURE_COLS, verbose=False)
+    df = an.run_cost_sweep(cache, [0.0, 5.0, 500.0], n_rolls=10, min_shift=20,
+                           seed=4, demean=False, out_path=str(tmp_path / 'sweep.csv'))
+    pnl = df['real_net_mean_pnl_per_active_bar'].values
+    assert pnl[0] > 0                        # gross edge is real
+    assert pnl[-1] < 0                       # 5% one-way cost must destroy it
+    assert pnl[0] > pnl[1] > pnl[-1]         # more cost, less money
+    assert df['n_rolls'].tolist() == [10, 10, 10]
+
+
+def test_turnover_report_hand_computed_known_values(monkeypatch):
+    monkeypatch.setattr(real, 'WINDOW_DIRS', {1: 'a', 2: 'b'})
+    monkeypatch.setattr(real, 'C_GRID', [1.0])
+    monkeypatch.setattr(real, 'STEP_GRID', [0.1])
+    p1 = np.array([0.0, 1.0, 1.0, -1.0])     # turnover [0,1,0,2]
+    p2 = np.array([-1.0, -1.0, 0.0, 0.5])    # turnover [1,0,1,0.5]
+    filler = np.array([0.5, -0.5, 0.25, -0.25])
+    cache = {'pos': {('inner', 1.0, 2, 1, 0.1): filler, ('inner', 1.0, 1, 2, 0.1): filler,
+                     ('refit', 1.0, 1, 0.1): p1, ('refit', 1.0, 2, 0.1): p2},
+             'ret': {1: np.array([0.01, 0.02, -0.01, 0.03]),
+                     2: np.array([0.02, -0.01, 0.04, 0.02])}}
+    rep = an.turnover_report(cache)
+    assert rep['n_bars_total'] == 8
+    assert rep['pooled_turnover_sum'] == pytest.approx(5.5)
+    assert rep['mean_turnover_per_bar'] == pytest.approx(5.5 / 8)
+    assert rep['pooled_gross_pnl_sum'] == pytest.approx(-0.02)   # fold1 -0.02, fold2 0.0
+    assert rep['breakeven_bps_first_order'] == pytest.approx(1e4 * -0.02 / 5.5)
+    f1 = rep['per_fold'].set_index('test_window').loc[1]
+    assert f1['frac_bars_in_market'] == pytest.approx(3 / 4)
+    assert f1['frac_bars_with_trade'] == pytest.approx(2 / 4)
+    assert f1['mean_abs_position'] == pytest.approx(3 / 4)
+
+
 # =============================================================================
 # TDD RESULTS (synthetic data; mlfinlab env, Python 3.10.20, pytest 9.0.3)
-# 9 passed in 96.51s  (run 2026-09-19)
+# 15 passed in 136.17s  (run 2026-09-19)
 # =============================================================================
 # test_zero_shift_reproduces_real_procedure_exactly PASSED
 # test_shifting_changes_pnl_but_not_its_length_or_position_cache PASSED
@@ -191,3 +283,9 @@ def test_demeaning_removes_the_drift_offset_a_circular_shift_cannot(small_real):
 # test_planted_edge_is_detected_against_the_alignment_null PASSED
 # test_demean_equals_prescoring_on_demeaned_returns PASSED
 # test_demeaning_removes_the_drift_offset_a_circular_shift_cannot PASSED
+# test_cost_zero_is_identical_to_gross PASSED
+# test_cost_hand_computed_known_values PASSED
+# test_turnover_memo_never_modifies_positions PASSED
+# test_breakeven_interpolation_known_value PASSED
+# test_cost_sweep_kills_a_planted_edge_at_high_cost PASSED
+# test_turnover_report_hand_computed_known_values PASSED
