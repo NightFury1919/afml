@@ -62,7 +62,7 @@ from bet_sizing import getSignal                             # noqa: E402
 
 OLD_BINARY_DSR_THRESHOLD = 0.95
 THRESHOLD_FILE = os.path.join(HERE, 'confidence_threshold.txt')
-FALLBACK_ZERO_EXPOSURE_THRESHOLD = 0.7235
+FALLBACK_ZERO_EXPOSURE_THRESHOLD = 0.5363
 LOG_PATH = os.path.join(HERE, 'live_predictions_log.csv')
 QUICK_PRICE_LOOKBACK_HOURS = 2
 PAIR = 'XBTUSD'

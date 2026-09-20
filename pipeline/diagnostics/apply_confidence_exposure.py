@@ -49,7 +49,7 @@ from bet_sizing import getSignal                             # noqa: E402
 
 OLD_BINARY_DSR_THRESHOLD = 0.95   # the gate this whole option replaces
 THRESHOLD_FILE = os.path.join(HERE, 'confidence_threshold.txt')
-FALLBACK_ZERO_EXPOSURE_THRESHOLD = 0.7235  # real 2026-09-11 calibration,
+FALLBACK_ZERO_EXPOSURE_THRESHOLD = 0.5363  # 2026-09-19 risk-budget (3%) calibration,
     # used only if confidence_threshold.txt is missing -- re-run
     # calibrate_confidence_threshold.py to refresh this properly rather
     # than relying on the fallback long-term.
