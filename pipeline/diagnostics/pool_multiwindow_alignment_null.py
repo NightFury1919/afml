@@ -331,10 +331,8 @@ if __name__ == '__main__':
 
 
 # =============================================================================
-# TDD RESULTS (synthetic data)
-# Sandbox run 2026-09-18 (Python 3.12.3, pytest 9.1.1): 9 passed in 55.43s.
-# Ethan's mlfinlab run (Python 3.10.20, pytest 9.0.3) of the first 7 tests:
-# 7 passed in 89.53s. Re-run all 9 in mlfinlab and overwrite this block.
+# TDD RESULTS (synthetic data; mlfinlab env, Python 3.10.20, pytest 9.0.3)
+# 9 passed in 96.51s  (run 2026-09-19)
 # =============================================================================
 # test_zero_shift_reproduces_real_procedure_exactly PASSED
 # test_shifting_changes_pnl_but_not_its_length_or_position_cache PASSED
