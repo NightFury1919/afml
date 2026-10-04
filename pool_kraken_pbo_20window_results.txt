@@ -1,0 +1,44 @@
+Loaded 20 window CSVs, 100 total (window, target_bars) rows: ['kraken_target_bars_calibration_window1.csv', 'kraken_target_bars_calibration_window10.csv', 'kraken_target_bars_calibration_window11.csv', 'kraken_target_bars_calibration_window12.csv', 'kraken_target_bars_calibration_window13.csv', 'kraken_target_bars_calibration_window14.csv', 'kraken_target_bars_calibration_window15.csv', 'kraken_target_bars_calibration_window16.csv', 'kraken_target_bars_calibration_window17.csv', 'kraken_target_bars_calibration_window18.csv', 'kraken_target_bars_calibration_window19.csv', 'kraken_target_bars_calibration_window2.csv', 'kraken_target_bars_calibration_window20.csv', 'kraken_target_bars_calibration_window3.csv', 'kraken_target_bars_calibration_window4.csv', 'kraken_target_bars_calibration_window5.csv', 'kraken_target_bars_calibration_window6.csv', 'kraken_target_bars_calibration_window7.csv', 'kraken_target_bars_calibration_window8.csv', 'kraken_target_bars_calibration_window9.csv']
+
+==========================================================================
+(a) NAIVE POOLED VIEW -- all (window, target_bars) rows treated as iid
+    (see module docstring: this OVERSTATES independence -- sanity check only)
+==========================================================================
+  n=100, mean=0.4956, std=0.2481, min=0.0043, max=0.9913
+  naive z-score vs null (mean=0.4925, std=0.2051): +0.15  <- treat with real suspicion, see docstring
+
+==========================================================================
+(b) PER-WINDOW-MEAN VIEW -- the real answer (8 independent values)
+==========================================================================
+window
+window1     0.067965
+window10    0.525325
+window11    0.458009
+window12    0.555195
+window13    0.558442
+window14    0.415801
+window15    0.514502
+window16    0.525758
+window17    0.338095
+window18    0.599784
+window19    0.491775
+window2     0.673377
+window20    0.367316
+window3     0.604329
+window4     0.698485
+window5     0.284416
+window6     0.652381
+window7     0.343723
+window8     0.576407
+window9     0.661905
+
+  n_windows=20, mean_of_window_means=0.4956, std_across_windows=0.1562
+  z-score vs null (using the null's own std, since we are testing whether these 20 means come from that null distribution): +0.07
+  two-sided p-value: 0.9457
+  (cross-check) one-sample t-test using OBSERVED across-window std instead of the null's: t=+0.09, p=0.9297
+
+==========================================================================
+READ THIS AS
+==========================================================================
+  A |z| comfortably below ~2 (p > 0.05) across (b) means: 8 independent windows worth of real Kraken BTC PBO readings are NOT distinguishable from pure null noise at this S. That would be a real, defensible answer to the entire 2026-09-10 investigation -- the single-window anomalies were noise, full stop.
+  A |z| clearly above ~2 would be the first evidence in this whole investigation that survived a genuinely independent multi-window test -- worth taking seriously, though still only n=20 windows, all from one exchange, one continuous ~7-month stretch of calendar time (not independent draws from "all possible market regimes").
