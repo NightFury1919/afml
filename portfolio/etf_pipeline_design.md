@@ -55,8 +55,9 @@ count too.
 ## Build order and status
 - [x] panel data loader, features, labels (this commit)
 - [x] panel purged CV by date across all ETFs (`panel_purged_cv.py`, 19 tests, mutation-checked)
-- [ ] positive-control harness and shuffle null
-- [ ] effective breadth (Meucci, from correlation eigenvalues)
+- [ ] positive-control harness and shuffle null (default model: logistic regression on the five ranked features, so few trials)
+- [ ] lever what-ifs, AFTER the baseline positive control: long-short vs long-only (TC), horizon (e.g. 5 / 21 / 63 days), fewer features; same harness, compare what each can detect
+- [x] effective breadth (`effective_breadth.py`, 12 tests): ENB 16.5 vs median (9.0 on raw returns); implied IC needed 0.049 (TC=1) / 0.098 (TC=0.5) at 50% power
 - [ ] portfolio construction (HRP x signal tilt x confidence scalar, long-only)
 
 ## Still open
