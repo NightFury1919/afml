@@ -1,0 +1,73 @@
+# One ticker per line. Blank lines and # comments are ignored.
+# Draft universe from the 2026-10-01 planning chat: 48 ranked ETFs plus 1 hedge.
+# Launch years in that draft were from memory; pull_prices.py reports the real first dates.
+# USO was cut (its structure changed after April 2020).
+
+# US broad and style (6)
+SPY
+QQQ
+MDY
+IWM
+IWD
+IWF
+
+# US sectors (9)
+XLB
+XLE
+XLF
+XLI
+XLK
+XLP
+XLU
+XLV
+XLY
+
+# US industries (4)
+XBI
+KRE
+XHB
+GDX
+
+# Real estate (1)
+IYR
+
+# International developed (7)
+EFA
+EWJ
+EWG
+EWU
+EWC
+EWA
+EWL
+
+# Emerging markets (6)
+EEM
+EWZ
+EWT
+EWY
+FXI
+EWW
+
+# Bonds (8)
+SHY
+IEF
+TLT
+TIP
+LQD
+HYG
+EMB
+MUB
+
+# Commodities (4). DBC, DBA issue K-1s.
+GLD
+SLV
+DBC
+DBA
+
+# Currencies (3). UUP issues a K-1.
+UUP
+FXE
+FXY
+
+# Hedge candidate, not ranked (1)
+SH
