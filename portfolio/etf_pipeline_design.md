@@ -17,6 +17,11 @@ Agreed with Ethan on 2026-10-04. Change a decision here before changing code.
 - Uniqueness: per-ETF (`panel_uniqueness.py`) as a first approximation. The
   shuffle null measures whether that inflates false positives.
 
+## Cross-validation (`panel_purged_cv.py`)
+- Folds are blocks of dates; purge by date across all ETFs; embargo after the test block.
+- Embargo = 252 dates (the longest feature lookback, mom_12_1). Decided 2026-10-04.
+  It costs about 5% of the history.
+
 ## Features (`etf_features.py`), five fixed, no lookback tuning
 | Feature | Definition | Why someone would pay for it |
 |---|---|---|
@@ -55,7 +60,5 @@ count too.
 - [ ] portfolio construction (HRP x signal tilt x confidence scalar, long-only)
 
 ## Still open
-- Embargo length for the real run. Features look back up to 252 days (mom_12_1), so
-  at least 252 dates is recommended; not yet decided (costs about 5% of the history).
 - Success benchmark: equal-weight universe, or SPY?
 - Model class and the declared trial grid.
