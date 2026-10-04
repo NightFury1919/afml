@@ -1,31 +1,31 @@
-"""Time decay for a panel of many assets (AFML Chapter 4, Section 4.7).
+"""Average uniqueness for a panel of assets (AFML Chapter 4, Sections 4.3 and 4.4).
 
-Why a wrapper?  The book's get_time_decay() (Snippet 4.11, in
-ch04/sample_weights/time_decay.py) sorts events by date and decays along the
-cumulative sum of average uniqueness.  That is correct for ONE asset, where
-each date appears once.  In a pooled ETF panel many events share a date, and
-sorting only by date leaves the order of those ties arbitrary, so two events
-from the same day could get slightly different decay weights.
+What this does
+    Runs the book's get_average_uniqueness() (Snippets 4.1 and 4.2, in
+    ch04/sample_weights/uniqueness.py) once per asset, then stacks the results
+    into one Series indexed by (date, asset).  The book code is not modified.
 
-This wrapper fixes that without touching the book code:
-    1. add up the uniqueness of all events that fall on each date,
-    2. run the book's get_time_decay() on those one-row-per-date totals,
-    3. give every event the weight of its date.
+What "overlap" means here
+    The book calls two labels concurrent when both depend on at least one
+    common RETURN.  If each ETF's label is built from that ETF's own returns,
+    labels from different ETFs share no return, so uniqueness is computed
+    inside each ETF and one ETF never changes another's values.
 
-So every event on the same date shares one weight, and the result does not
-depend on the order of the rows you pass in.
+What this does NOT do
+    ETFs still move together, so 49 ETFs are not 49 independent samples.  That
+    shows up in effective breadth, not here.  If labels are later defined
+    relative to the universe (for example minus the universe median), labels
+    on different ETFs DO share information and this function must be revisited.
 
-Input  : tw, a pd.Series of average uniqueness per event, indexed by event date
-         (duplicate dates allowed) or by a (date, asset) MultiIndex.  For a panel, compute uniqueness across the
-         whole panel, not per asset.
-Output : pd.Series of decay weights, same index and same row order as tw.
-         The newest date gets 1.0.  The meaning of clf_last_w (the book's c) is
-         the same as in the book:
-             1        no decay
-             0 to 1   linear decay, oldest data keeps a positive weight
-             0        oldest data fades to (almost) zero
-             -1 to 0  the oldest slice gets weight exactly 0 (erased)
-         c must be greater than -1; c = -1 would divide by zero.
+Inputs
+    close_by_asset  : dict {asset: pd.Series of closes indexed by date}
+    events_by_asset : dict {asset: pd.DataFrame with a 't1' column, indexed by
+                      event start date} (the Chapter 3 events object)
+    Both dicts must contain the same assets.  An asset with no events is skipped.
+
+Output
+    pd.Series of average uniqueness, MultiIndex names ['date', 'asset'], assets
+    in the order of close_by_asset.  Pass it to get_time_decay_by_date().
 """
 import sys
 from pathlib import Path
@@ -37,29 +37,28 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from ch04.sample_weights.time_decay import get_time_decay  # noqa: E402
+from ch04.sample_weights.uniqueness import get_average_uniqueness  # noqa: E402
 
 
-def get_time_decay_by_date(tw, clf_last_w=1.0):
-    if not clf_last_w > -1:
-        raise ValueError(f"clf_last_w must be greater than -1, got {clf_last_w}")
-    if len(tw) == 0:
-        return tw.astype(float).copy()
-    if tw.isna().any():
-        raise ValueError("tw contains NaN values")
+def get_panel_average_uniqueness(close_by_asset, events_by_asset, num_threads=1):
+    if set(close_by_asset) != set(events_by_asset):
+        raise ValueError("close_by_asset and events_by_asset must have the same assets")
 
-    # Step 1: one uniqueness total per date.
-    per_date = tw.groupby(level=0).sum()
-    if not per_date.sum() > 0:
-        raise ValueError("total uniqueness must be positive")
+    pieces = []
+    for asset, close in close_by_asset.items():
+        events = events_by_asset[asset]
+        if len(events) == 0:
+            continue
+        tw = get_average_uniqueness(close, events, num_threads=num_threads)
+        tw.index = pd.MultiIndex.from_arrays(
+            [tw.index, [asset] * len(tw)], names=["date", "asset"]
+        )
+        pieces.append(tw)
 
-    # Step 2: the book's decay, on unique dates only.
-    decay_by_date = get_time_decay(per_date, clf_last_w=clf_last_w)
-
-    # Step 3: hand each event the weight of its date, keeping the input order.
-    # (For a (date, asset) MultiIndex, the date is the first level.)
-    dates = tw.index.get_level_values(0)
-    return pd.Series(decay_by_date.reindex(dates).to_numpy(), index=tw.index)
+    if not pieces:
+        empty_index = pd.MultiIndex.from_arrays([[], []], names=["date", "asset"])
+        return pd.Series([], dtype=float, index=empty_index)
+    return pd.concat(pieces)
 
 # ---------------------------------------------------------------------------
 # TDD RESULTS (pytest, 2026-10-03, mlfinlab env: Python 3.10.20, pytest 9.0.3)

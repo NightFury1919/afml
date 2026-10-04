@@ -103,28 +103,47 @@ def test_empty_input_returns_empty():
     out = get_time_decay_by_date(tw, clf_last_w=0.5)
     assert len(out) == 0
 
+
+def test_multiindex_date_asset_input_is_supported():
+    # Panel uniqueness comes back indexed by (date, asset). Decay still works per date.
+    idx = pd.MultiIndex.from_tuples(
+        [(D1, "A"), (D1, "B"), (D2, "A"), (D3, "B")], names=["date", "asset"]
+    )
+    tw = pd.Series([0.5, 0.5, 1.0, 1.0], index=idx)
+    out = get_time_decay_by_date(tw, clf_last_w=0.0)
+    assert out.index.equals(tw.index)
+    assert np.allclose(out.values, [1 / 3, 1 / 3, 2 / 3, 1.0])
+
 # ---------------------------------------------------------------------------
 # TDD RESULTS (pytest, 2026-10-03, mlfinlab env: Python 3.10.20, pytest 9.0.3)
-# $ cd portfolio ; pytest test_panel_time_decay.py -v
+# $ cd portfolio ; pytest test_panel_uniqueness.py test_panel_time_decay.py -v
 #
 # platform win32 -- Python 3.10.20, pytest-9.0.3, pluggy-1.6.0
 # rootdir: C:\ws\AFML\portfolio
-# collected 14 items
+# collected 22 items
 #
-# test_panel_time_decay.py::test_no_decay_when_c_is_one PASSED                       [  7%]
-# test_panel_time_decay.py::test_same_date_events_share_one_weight_known_values PASSED [ 14%]
-# test_panel_time_decay.py::test_newest_date_always_gets_weight_one PASSED           [ 21%]
-# test_panel_time_decay.py::test_positive_c_known_values PASSED                      [ 28%]
-# test_panel_time_decay.py::test_negative_c_erases_oldest_known_values PASSED        [ 35%]
-# test_panel_time_decay.py::test_weights_never_decrease_toward_the_present PASSED    [ 42%]
-# test_panel_time_decay.py::test_result_does_not_depend_on_row_order PASSED          [ 50%]
-# test_panel_time_decay.py::test_output_keeps_input_index_and_order PASSED           [ 57%]
-# test_panel_time_decay.py::test_matches_book_function_when_dates_are_unique PASSED  [ 64%]
-# test_panel_time_decay.py::test_c_at_or_below_minus_one_is_rejected[-1.0] PASSED    [ 71%]
-# test_panel_time_decay.py::test_c_at_or_below_minus_one_is_rejected[-1.5] PASSED    [ 78%]
-# test_panel_time_decay.py::test_zero_total_uniqueness_is_rejected PASSED            [ 85%]
-# test_panel_time_decay.py::test_nan_uniqueness_is_rejected PASSED                   [ 92%]
-# test_panel_time_decay.py::test_empty_input_returns_empty PASSED                    [100%]
+# test_panel_uniqueness.py::test_single_asset_matches_the_book_function_known_values PASSED  [  4%]
+# test_panel_uniqueness.py::test_two_assets_known_values PASSED                              [  9%]
+# test_panel_uniqueness.py::test_one_asset_never_changes_another_assets_uniqueness PASSED    [ 13%]
+# test_panel_uniqueness.py::test_index_is_date_then_asset_and_counts_every_event PASSED      [ 18%]
+# test_panel_uniqueness.py::test_asset_with_no_events_is_skipped PASSED                      [ 22%]
+# test_panel_uniqueness.py::test_mismatched_asset_names_are_rejected PASSED                  [ 27%]
+# test_panel_uniqueness.py::test_feeds_the_decay_wrapper_events_on_one_date_share_a_weight PASSED [ 31%]
+# test_panel_time_decay.py::test_no_decay_when_c_is_one PASSED                               [ 36%]
+# test_panel_time_decay.py::test_same_date_events_share_one_weight_known_values PASSED       [ 40%]
+# test_panel_time_decay.py::test_newest_date_always_gets_weight_one PASSED                   [ 45%]
+# test_panel_time_decay.py::test_positive_c_known_values PASSED                              [ 50%]
+# test_panel_time_decay.py::test_negative_c_erases_oldest_known_values PASSED                [ 54%]
+# test_panel_time_decay.py::test_weights_never_decrease_toward_the_present PASSED            [ 59%]
+# test_panel_time_decay.py::test_result_does_not_depend_on_row_order PASSED                  [ 63%]
+# test_panel_time_decay.py::test_output_keeps_input_index_and_order PASSED                   [ 68%]
+# test_panel_time_decay.py::test_matches_book_function_when_dates_are_unique PASSED          [ 72%]
+# test_panel_time_decay.py::test_c_at_or_below_minus_one_is_rejected[-1.0] PASSED            [ 77%]
+# test_panel_time_decay.py::test_c_at_or_below_minus_one_is_rejected[-1.5] PASSED            [ 81%]
+# test_panel_time_decay.py::test_zero_total_uniqueness_is_rejected PASSED                    [ 86%]
+# test_panel_time_decay.py::test_nan_uniqueness_is_rejected PASSED                           [ 90%]
+# test_panel_time_decay.py::test_empty_input_returns_empty PASSED                            [ 95%]
+# test_panel_time_decay.py::test_multiindex_date_asset_input_is_supported PASSED             [100%]
 #
-# 14 passed in 1.43s
+# 22 passed in 1.45s
 # ---------------------------------------------------------------------------
