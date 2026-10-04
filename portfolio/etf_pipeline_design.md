@@ -49,11 +49,13 @@ count too.
 
 ## Build order and status
 - [x] panel data loader, features, labels (this commit)
-- [ ] panel purged CV by date across all ETFs (highest leakage risk)
+- [x] panel purged CV by date across all ETFs (`panel_purged_cv.py`, 19 tests, mutation-checked)
 - [ ] positive-control harness and shuffle null
 - [ ] effective breadth (Meucci, from correlation eigenvalues)
 - [ ] portfolio construction (HRP x signal tilt x confidence scalar, long-only)
 
 ## Still open
+- Embargo length for the real run. Features look back up to 252 days (mom_12_1), so
+  at least 252 dates is recommended; not yet decided (costs about 5% of the history).
 - Success benchmark: equal-weight universe, or SPY?
 - Model class and the declared trial grid.
