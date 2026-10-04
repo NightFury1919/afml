@@ -214,3 +214,70 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# ---------------------------------------------------------------------------
+# TDD RESULTS (pytest, 2026-10-04, mlfinlab env: Python 3.10.20, pytest 9.0.3)
+# $ cd portfolio ; pytest test_positive_control_etf.py -v
+#
+# platform win32 -- Python 3.10.20, pytest-9.0.3, pluggy-1.6.0
+# rootdir: C:\ws\AFML\portfolio
+# collected 16 items
+#
+# test_positive_control_etf.py::test_block_bootstrap_keeps_shape_index_and_uses_only_original_rows PASSED [  6%]
+# test_positive_control_etf.py::test_block_bootstrap_blocks_are_consecutive_runs_of_the_original PASSED [ 12%]
+# test_positive_control_etf.py::test_block_bootstrap_is_reproducible_for_a_seed_and_differs_across_seeds PASSED [ 18%]
+# test_positive_control_etf.py::test_returns_to_prices_known_values PASSED            [ 25%]
+# test_positive_control_etf.py::test_planted_score_is_centered_and_ordered_by_momentum PASSED [ 31%]
+# test_positive_control_etf.py::test_plant_signal_known_values PASSED                 [ 37%]
+# test_positive_control_etf.py::test_zero_ic_changes_nothing_and_missing_scores_mean_no_tilt PASSED [ 43%]
+# test_positive_control_etf.py::test_date_ics_known_values PASSED                     [ 50%]
+# test_positive_control_etf.py::test_ic_tstat_takes_every_nth_date_and_matches_the_formula PASSED [ 56%]
+# test_positive_control_etf.py::test_top_quintile_active_ir_known_values PASSED       [ 62%]
+# test_positive_control_etf.py::test_out_of_fold_predictions_cover_every_row_once_and_are_probabilities PASSED [ 68%]
+# test_positive_control_etf.py::test_pipeline_finds_a_strong_planted_signal PASSED    [ 75%]
+# test_positive_control_etf.py::test_pipeline_finds_nothing_when_nothing_is_planted PASSED [ 81%]
+# test_positive_control_etf.py::test_realized_oracle_ic_is_close_to_the_nominal_planted_ic PASSED [ 87%]
+# test_positive_control_etf.py::test_one_replicate_returns_one_row_per_ic_level_and_is_reproducible PASSED [ 93%]
+# test_positive_control_etf.py::test_analyze_power_uses_the_null_95th_percentile_threshold PASSED [100%]
+#
+# 16 passed in 5.81s
+#
+# Mutation check (sandbox, 2026-10-04): breaking the planting timing (same-day
+# score), the bootstrap (ETFs resampled independently) and the detection
+# threshold (50th instead of 95th percentile) each made one test fail.
+# Original code restored: 16 passed.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# REAL-DATA RUN v1 (mlfinlab env, 2026-10-04; prices_daily_asof_2026-10-02.csv)
+# Pre-registered in preregistration_etf_positive_control.md. 500 bootstrapped
+# worlds x 6 IC levels, seeds 20261004-20261503, 4 workers.
+# $ python positive_control_etf.py --workers 4
+#
+#  ic_nominal  n_reps  null95  power  fpr_t196  mean_t  mean_model_ic  mean_oracle_ic  mean_active_ir  mean_oracle_active_ir  capture_ir
+#       0.000     500   4.307  0.050     0.694   2.453          0.057           0.024           0.122                  0.025       4.842
+#       0.020     500   4.307  0.212     0.872   3.344          0.073           0.053           0.327                  0.264       1.240
+#       0.030     500   4.307  0.402     0.958   3.975          0.084           0.067           0.464                  0.383       1.212
+#       0.050     500   4.307  0.814     0.996   5.398          0.108           0.095           0.762                  0.621       1.227
+#       0.075     500   4.307  0.996     1.000   7.259          0.140           0.130           1.120                  0.918       1.220
+#       0.100     500   4.307  1.000     1.000   9.078          0.171           0.164           1.454                  1.214       1.197
+#
+# OUTCOME against the pre-registered primary bar: NOT MET.
+#   - Power at nominal IC 0.05 = 81.4% (needed >= 50%): met.
+#   - False-positive rate of t >= 1.96 at IC 0 = 69.4% (needed 2% to 8%): NOT met.
+#
+# WHY (diagnosed after the run, development diagnostics only, seeds 900000-900039):
+#   The block bootstrap keeps each ETF's own average return, and those differ widely
+#   (annualized mean log return from -2.2% to +15.8%, std 4.1% across ETFs). In 40
+#   fresh worlds the mom_12_1 rank had mean IC +0.020 against 21-day excess returns
+#   with ETF means kept and -0.003 with means removed. So the "no-edge" world still
+#   holds static cross-sectional differences that k-fold CV (which trains on later
+#   periods) can exploit. Not yet explained: why the model's null IC (0.057) exceeds
+#   the oracle's (0.024).
+#
+# READ THE CAPTURE RATIO WITH CARE: capture_ir above 1 includes the model exploiting
+# those static differences, so it is not extra skill. The realized planted increment
+# (oracle IC minus 0.024) runs about 1.4x nominal in this world; cause not verified
+# (fat tails inflating the standard deviation is a guess; relative-return dispersion
+# was checked and does not explain it).
+# ---------------------------------------------------------------------------
