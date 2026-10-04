@@ -34,18 +34,16 @@ Agreed with Ethan on 2026-10-04. Change a decision here before changing code.
 Returns, momentum and trend are divided by the ETF's trailing 60-day volatility,
 then every feature is ranked across the eligible ETFs each date, scaled to (0, 1).
 
-## Positive control (to build)
-1. Scoring-machinery power: reuse `positive_control_exposure_power.py` (iid PnL
-   with a planted z). It tests PBO, DSR and the ramp, not the model.
-2. End-to-end: plant a known signal into the real daily ETF returns, so features
-   and labels are recomputed from the planted path. Plant sizes: gross active
-   Sharpe of about 0.3, 0.5, 0.75, 1.0, 1.5 for a long-only top-ranked portfolio
-   against the equal-weight universe.
-3. Record: detection rate (confidence above the null's 95th percentile), the
-   share of the planted Sharpe captured after costs, and the exposure the ramp gives.
-4. Shuffle null: same pipeline on labels shuffled across the cross-section.
-5. PROPOSED pass bar (not yet agreed): detects a planted 0.75 at 50% power or
-   better, with false positives at 5% or less.
+## Positive control (`positive_control_etf.py`, pre-registered in `preregistration_etf_positive_control.md`)
+1. Scoring-machinery power (reuse `positive_control_exposure_power.py`, iid PnL with a planted z)
+   tests PBO, DSR and the ramp, not the model.
+2. End-to-end: block-bootstrap the real 48-ETF returns (no-edge world), plant a tilt on the
+   `mom_12_1` rank at nominal IC 0 / 0.02 / 0.03 / 0.05 / 0.075 / 0.10, recompute features and
+   labels, run panel purged CV with a logistic regression, and measure the IC t-stat.
+3. Detection = t above the 95th percentile of the IC = 0 worlds. Also reported: false-positive
+   rate of t >= 1.96, realized planted IC, long-only top-quintile active IR, capture ratio.
+4. Decision bars (fixed before the run): primary = power >= 50% at IC 0.05 with false positives 2% to 8%;
+   sensitivity, reported only = the same rule at IC 0.03 and 0.075.
 
 ## Trials
 Every model configuration counts as a trial in the DSR and PBO deflation.
@@ -55,7 +53,8 @@ count too.
 ## Build order and status
 - [x] panel data loader, features, labels (this commit)
 - [x] panel purged CV by date across all ETFs (`panel_purged_cv.py`, 19 tests, mutation-checked)
-- [ ] positive-control harness and shuffle null (default model: logistic regression on the five ranked features, so few trials)
+- [x] positive-control harness (`positive_control_etf.py`, 16 tests, mutation-checked); logistic regression on the five ranked features
+- [ ] full positive-control run: ready (500 worlds x 6 IC levels)
 - [ ] lever what-ifs, AFTER the baseline positive control: long-short vs long-only (TC), horizon (e.g. 5 / 21 / 63 days), fewer features; same harness, compare what each can detect
 - [x] effective breadth (`effective_breadth.py`, 12 tests): ENB 16.5 vs median (9.0 on raw returns); implied IC needed 0.049 (TC=1) / 0.098 (TC=0.5) at 50% power
 - [ ] portfolio construction (HRP x signal tilt x confidence scalar, long-only)

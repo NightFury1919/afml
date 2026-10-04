@@ -1,0 +1,216 @@
+"""End-to-end positive control for the ETF pipeline (pre-registered design).
+
+QUESTION
+    If a real edge of known size exists in this universe, how often does our whole
+    pipeline (features -> labels -> purged panel CV -> model -> detection statistic)
+    find it?  And how often does it "find" one when there is none?
+
+DESIGN (see preregistration_etf_positive_control.md; frozen before the full run)
+    World      Moving-block bootstrap of the real 48-ETF daily log returns, whole
+               cross-sections at a time, block length 63. Keeps fat tails, volatility
+               clustering and the real cross-ETF correlation. Destroys any real
+               long-horizon momentum, so IC = 0 is a true no-edge world.
+    Plant      z = centered unit-variance rank of mom_12_1 on the UNPLANTED prices.
+               Next-day return gets  + a * sigma_i * z,  a = IC / sqrt(h)  (h = 21).
+               The tilt is relative (z sums to zero), so market returns are unchanged.
+               Features and labels are then recomputed from the PLANTED prices, as they
+               would be live. Nominal IC is the planted skill at the 21-day horizon;
+               the realized IC of the planted score is measured and reported.
+    Pipeline   build_dataset (5 ranked features, relative 21-day labels) ->
+               PanelPurgedKFold(5 folds, 252-date embargo) -> logistic regression (C=1)
+               -> out-of-fold probabilities for every row.
+    Statistic  Cross-sectional Spearman IC between the out-of-fold probability and the
+               realized 21-day excess return, on dates 21 apart (non-overlapping), then
+               t = mean / (sd / sqrt(n)).
+    Detection  t above the 95th percentile of the t-stats from the IC = 0 worlds
+               (same replicates). Power = share of planted worlds above it.
+    Also       Long-only top-quintile active IR vs the equal-weight universe (model and
+               oracle), the capture ratio, and the false-positive rate of t >= 1.96.
+
+Not in v1 (on purpose): sample weights / time decay, costs, DSR and PBO (one declared
+model = one trial), shorting. The lever what-ifs come after the baseline.
+"""
+import argparse
+import os
+from concurrent.futures import ProcessPoolExecutor
+
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import LogisticRegression
+
+from etf_features import DEFAULT_MIN_ASSETS, DEFAULT_WINDOWS, FEATURE_NAMES, compute_features
+from etf_labels import DEFAULT_HORIZON, build_dataset
+from panel_data import drop_hedge, load_prices, wide_to_long
+from panel_purged_cv import PanelPurgedKFold
+
+DEFAULT_IC_LEVELS = [0.0, 0.02, 0.03, 0.05, 0.075, 0.10]
+BLOCK_LENGTH = 63
+BASE_SEED = 20261004
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+# ----------------------------------------------------------------- the world
+def block_bootstrap_returns(returns, block_length, rng):
+    """Moving-block bootstrap of whole rows; keeps the original date index and length."""
+    n = len(returns)
+    n_blocks = int(np.ceil(n / block_length))
+    starts = rng.integers(0, n - block_length + 1, size=n_blocks)
+    rows = np.concatenate([np.arange(s, s + block_length) for s in starts])[:n]
+    out = returns.iloc[rows].copy()
+    out.index = returns.index
+    return out
+
+
+def returns_to_prices(returns, start=100.0):
+    return start * np.exp(returns.cumsum())
+
+
+# ------------------------------------------------------------------ planting
+def planted_score(prices, windows=DEFAULT_WINDOWS, min_assets=DEFAULT_MIN_ASSETS):
+    """Centered, unit-variance score from the mom_12_1 rank; NaN where an ETF is not eligible."""
+    feats = compute_features(prices, windows, min_assets)
+    rank = feats["mom_12_1"].unstack("asset").reindex(index=prices.index, columns=prices.columns)
+    return (rank - 0.5) * np.sqrt(12.0)
+
+
+def plant_signal(returns, score, ic_horizon, horizon=DEFAULT_HORIZON):
+    """Add a * sigma_i * z (known at the previous close) to each day's return. a = IC / sqrt(h)."""
+    a = ic_horizon / np.sqrt(horizon)
+    sigma = returns.std()
+    tilt = score.reindex_like(returns).shift(1).fillna(0.0).mul(sigma, axis=1) * a
+    return returns + tilt
+
+
+# ---------------------------------------------------------------- statistics
+def date_ics(pred, target):
+    """Cross-sectional Spearman IC on each date. pred, target: Series indexed by (date, asset)."""
+    rp = pred.groupby(level="date").rank()
+    rt = target.groupby(level="date").rank()
+    rp = rp - rp.groupby(level="date").transform("mean")
+    rt = rt - rt.groupby(level="date").transform("mean")
+    num = (rp * rt).groupby(level="date").sum()
+    den = np.sqrt((rp ** 2).groupby(level="date").sum() * (rt ** 2).groupby(level="date").sum())
+    return num / den
+
+
+def ic_tstat(ics, spacing):
+    """t-statistic of the mean IC using every `spacing`-th date (non-overlapping labels)."""
+    s = ics.iloc[::spacing].dropna()
+    n = len(s)
+    mean = float(s.mean())
+    t = mean / (float(s.std(ddof=1)) / np.sqrt(n))
+    return t, mean, n
+
+
+def top_quintile_active_ir(pred, fwd_ret, horizon, top_share=0.2):
+    """Annualized IR of 'hold the top fifth by pred' minus the equal-weight universe, per period."""
+    pct = pred.groupby(level="date").rank(pct=True)
+    top = pct > (1.0 - top_share)
+    top_mean = fwd_ret.where(top).groupby(level="date").mean()
+    all_mean = fwd_ret.groupby(level="date").mean()
+    active = (top_mean - all_mean).dropna().iloc[::horizon]
+    mean_active = float(active.mean())
+    ir = mean_active / float(active.std(ddof=1)) * np.sqrt(252.0 / horizon)
+    return ir, mean_active, len(active)
+
+
+# ------------------------------------------------------------------ pipeline
+def out_of_fold_predictions(dataset, n_splits=5, embargo_dates=252, C=1.0):
+    """Probability of label 1 for every row, each from a model that never saw that row's fold."""
+    X, y = dataset[FEATURE_NAMES], dataset["label"]
+    cv = PanelPurgedKFold(n_splits=n_splits, t1=dataset["t1"], embargo_dates=embargo_dates)
+    pred = pd.Series(np.nan, index=dataset.index)
+    for train, test in cv.split(X):
+        model = LogisticRegression(C=C, max_iter=200)
+        model.fit(X.iloc[train].to_numpy(), y.iloc[train].to_numpy())
+        pred.iloc[test] = model.predict_proba(X.iloc[test].to_numpy())[:, 1]
+    return pred
+
+
+def run_pipeline(prices, horizon=DEFAULT_HORIZON, n_splits=5, embargo_dates=252,
+                 min_assets=DEFAULT_MIN_ASSETS, windows=DEFAULT_WINDOWS, C=1.0, oracle_score=None):
+    ds = build_dataset(prices, horizon, windows, min_assets)
+    pred = out_of_fold_predictions(ds, n_splits, embargo_dates, C)
+    t, mean_ic, n_ic = ic_tstat(date_ics(pred, ds["excess_ret"]), horizon)
+    ir, _, _ = top_quintile_active_ir(pred, ds["fwd_ret"], horizon)
+    out = dict(t=float(t), mean_ic=float(mean_ic), n_ic=int(n_ic), active_ir=float(ir),
+               oracle_ic=float("nan"), oracle_active_ir=float("nan"))
+    if oracle_score is not None:
+        z = wide_to_long(oracle_score, "z").reindex(ds.index)
+        _, out["oracle_ic"], _ = ic_tstat(date_ics(z, ds["excess_ret"]), horizon)
+        out["oracle_active_ir"], _, _ = top_quintile_active_ir(z, ds["fwd_ret"], horizon)
+    return out
+
+
+def one_replicate(returns, seed, ic_levels, block_length=BLOCK_LENGTH, horizon=DEFAULT_HORIZON,
+                  **pipeline_kwargs):
+    """One bootstrapped world, every IC level planted into it (common random numbers)."""
+    rng = np.random.default_rng(seed)
+    boot = block_bootstrap_returns(returns, block_length, rng)
+    score = planted_score(returns_to_prices(boot),
+                          min_assets=pipeline_kwargs.get("min_assets", DEFAULT_MIN_ASSETS))
+    rows = []
+    for ic in ic_levels:
+        prices = returns_to_prices(plant_signal(boot, score, ic, horizon))
+        res = run_pipeline(prices, horizon=horizon, oracle_score=score, **pipeline_kwargs)
+        rows.append({"seed": seed, "ic_nominal": ic, **res})
+    return rows
+
+
+# ------------------------------------------------------------------ analysis
+def analyze(results):
+    """Power curve. Threshold = 95th percentile of the IC = 0 t-stats in the same results."""
+    null95 = float(np.percentile(results.loc[results["ic_nominal"] == 0.0, "t"], 95))
+    rows = []
+    for ic, g in results.groupby("ic_nominal"):
+        oracle_ir = g["oracle_active_ir"].mean()
+        rows.append(dict(
+            ic_nominal=ic, n_reps=len(g), null95=null95,
+            power=float((g["t"] > null95).mean()), fpr_t196=float((g["t"] >= 1.96).mean()),
+            mean_t=g["t"].mean(), mean_model_ic=g["mean_ic"].mean(), mean_oracle_ic=g["oracle_ic"].mean(),
+            mean_active_ir=g["active_ir"].mean(), mean_oracle_active_ir=oracle_ir,
+            capture_ir=g["active_ir"].mean() / oracle_ir if oracle_ir else float("nan")))
+    return pd.DataFrame(rows)
+
+
+def _worker(args):
+    from threadpoolctl import threadpool_limits
+    returns, seed, ic_levels, block_length, horizon = args
+    with threadpool_limits(limits=1):
+        return one_replicate(returns, seed, ic_levels, block_length, horizon)
+
+
+def full_universe_returns(prices_path):
+    px = drop_hedge(load_prices(prices_path))
+    return np.log(px).diff().dropna(how="any")
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--prices", default=os.path.join(HERE, "prices_daily_asof_2026-10-02.csv"))
+    ap.add_argument("--out", default=os.path.join(HERE, "positive_control_etf_results.csv"))
+    ap.add_argument("--reps", type=int, default=500)
+    ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--ic-levels", type=float, nargs="+", default=DEFAULT_IC_LEVELS)
+    ap.add_argument("--analyze-only", action="store_true")
+    args = ap.parse_args()
+
+    if not args.analyze_only:
+        returns = full_universe_returns(args.prices)
+        done = set(pd.read_csv(args.out)["seed"]) if os.path.exists(args.out) else set()
+        seeds = [BASE_SEED + k for k in range(args.reps) if BASE_SEED + k not in done]
+        print(f"{len(done)} replicates already done, {len(seeds)} to run, "
+              f"{len(args.ic_levels)} IC levels each, {args.workers} workers")
+        jobs = [(returns, s, args.ic_levels, BLOCK_LENGTH, DEFAULT_HORIZON) for s in seeds]
+        with ProcessPoolExecutor(max_workers=args.workers) as pool:
+            for k, rows in enumerate(pool.map(_worker, jobs), 1):
+                pd.DataFrame(rows).to_csv(args.out, mode="a", header=not os.path.exists(args.out), index=False)
+                print(f"  replicate {k}/{len(seeds)} done (seed {rows[0]['seed']})", flush=True)
+
+    res = pd.read_csv(args.out)
+    print(f"\n{res['seed'].nunique()} replicates. Threshold = 95th percentile of the IC=0 t-stats.\n")
+    print(analyze(res).round(3).to_string(index=False))
+
+
+if __name__ == "__main__":
+    main()
