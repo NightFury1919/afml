@@ -3,6 +3,8 @@ import pandas as pd
 import pytest
 
 from signed_flow_predictability import (
+    MIN_SAME_SIGN_WINDOWS,
+    WINDOW_DIRS,
     block_table,
     window_pairs,
     pooled_test,
@@ -102,13 +104,13 @@ def _pairs(x, y):
 def test_pooled_test_detects_a_strong_relationship():
     rng = np.random.default_rng(1)
     wins = []
-    for _ in range(8):
+    for _ in range(7):
         x = rng.normal(size=200)
         wins.append(_pairs(x, x + rng.normal(scale=0.5, size=200)))
     res = pooled_test(wins)
     assert res["rho"] > 0.8
-    assert res["n"] == 1600
-    assert res["n_same_sign"] == 8
+    assert res["n"] == 1400
+    assert res["n_same_sign"] == 7
     assert res["passes"] is True
 
 
@@ -119,28 +121,28 @@ def test_rule_rarely_fires_on_pure_noise():
     hits = 0
     runs = 300
     for _ in range(runs):
-        wins = [_pairs(rng.normal(size=177), rng.normal(size=177)) for _ in range(8)]
+        wins = [_pairs(rng.normal(size=177), rng.normal(size=177)) for _ in range(7)]
         hits += pooled_test(wins)["passes"]
     assert hits / runs < 0.10
 
 
 def test_sign_consistency_counts_windows_matching_the_pooled_sign():
     rng = np.random.default_rng(3)
-    pos = [_pairs(x, x + rng.normal(scale=0.2, size=100)) for x in (rng.normal(size=100) for _ in range(6))]
+    pos = [_pairs(x, x + rng.normal(scale=0.2, size=100)) for x in (rng.normal(size=100) for _ in range(5))]
     neg = [_pairs(x, -x + rng.normal(scale=3.0, size=100)) for x in (rng.normal(size=100) for _ in range(2))]
     res = pooled_test(pos + neg)
     assert res["rho"] > 0
-    assert res["n_same_sign"] == 6
+    assert res["n_same_sign"] == 5
 
 
 def test_passing_needs_both_significance_and_sign_consistency():
     rng = np.random.default_rng(4)
-    # Pooled signal is strong, but it comes from only 5 of 8 windows; the other 3 are opposite.
-    pos = [_pairs(x, x + rng.normal(scale=0.2, size=300)) for x in (rng.normal(size=300) for _ in range(5))]
+    # Pooled signal is strong, but it comes from only 4 of 7 windows; the other 3 are opposite.
+    pos = [_pairs(x, x + rng.normal(scale=0.2, size=300)) for x in (rng.normal(size=300) for _ in range(4))]
     neg = [_pairs(x, -x + rng.normal(scale=0.3, size=40)) for x in (rng.normal(size=40) for _ in range(3))]
     res = pooled_test(pos + neg)
     assert abs(res["t"]) >= 1.96
-    assert res["n_same_sign"] < 6
+    assert res["n_same_sign"] < 5
     assert res["passes"] is False
 
 
@@ -155,3 +157,12 @@ def test_disjoint_windows_pass_in_any_order():
     a = (pd.Timestamp("2026-01-01"), pd.Timestamp("2026-01-31"))
     b = (pd.Timestamp("2026-02-01"), pd.Timestamp("2026-03-01"))
     check_windows_disjoint([b, a])
+
+
+def test_window_list_is_the_seven_disjoint_windows_and_the_rule_needs_five_of_seven():
+    # Window 1 (2026-08-25 snapshot, Jul 26 to Aug 25) overlaps window 2 (Jul 11 to Aug 10) by about 15 days,
+    # so it is excluded. Windows 9 to 20 are reserved for replication.
+    assert len(WINDOW_DIRS) == 7
+    assert "kraken_snapshot_720h_2026-08-25" not in WINDOW_DIRS
+    assert WINDOW_DIRS[0].startswith("kraken_snapshot_720h_window2_")
+    assert MIN_SAME_SIGN_WINDOWS == 5

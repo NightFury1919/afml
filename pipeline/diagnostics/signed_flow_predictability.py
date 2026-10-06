@@ -17,8 +17,8 @@ assumption documented in ingestion_kraken.py. If it is backwards, only the SIGN
 of the correlation flips; the test is two-sided.
 
 Statistic: pooled Spearman correlation between imbalance and fwd_ret over all
-window-internal block pairs of the 8 Kraken windows, with t = rho*sqrt((n-2)/(1-rho^2)).
-Pass rule (fixed in advance): |t| >= 1.96 AND the same sign in at least 6 of 8 windows.
+window-internal block pairs of the 7 Kraken windows, with t = rho*sqrt((n-2)/(1-rho^2)).
+Pass rule (fixed in advance): |t| >= 1.96 AND the same sign in at least 5 of 7 windows.
 
 Run once, from the repo root, in the mlfinlab env:
     python pipeline\\diagnostics\\signed_flow_predictability.py
@@ -35,13 +35,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 BLOCK_HOURS = 4
 MIN_TRADES_PER_BLOCK = 50
 T_THRESHOLD = 1.96
-MIN_SAME_SIGN_WINDOWS = 6
+MIN_SAME_SIGN_WINDOWS = 5
 RESULTS_FILE = os.path.join(HERE, 'signed_flow_predictability_results.csv')
 
-# The 8 independent 30-day Kraken windows used in briefing_kraken_8window_resolution.md.
+# The 7 disjoint 30-day Kraken windows 2 to 8 (amendment 1 to the pre-registration).
+# Window 1 (kraken_snapshot_720h_2026-08-25, Jul 26 to Aug 25) is excluded: it overlaps window 2
+# (Jul 11 to Aug 10) by about 15 days. Windows 9 to 20 are reserved for replication.
 WINDOW_DIRS = [
-    'kraken_snapshot_720h_2026-08-25',            # window 1
-    'kraken_snapshot_720h_window2_2026-09-08',
+    'kraken_snapshot_720h_window2_2026-09-08',     # window 2
     'kraken_snapshot_720h_window3_2026-09-10',
     'kraken_snapshot_720h_window4_2026-09-11',
     'kraken_snapshot_720h_window5_2026-09-10',

@@ -56,3 +56,26 @@ The 8 independent 30-day Kraken XBTUSD windows from
   under this registration. Any variant needs a new pre-registration and counts as
   an additional trial in the deflation.
 - Report n, rho, t, the per-window rhos and the sign count, whatever they are.
+
+## Amendment 1 (2026-10-06, before any statistic was computed)
+
+**What happened.** The first run attempt stopped at the script's window-overlap check, before it
+computed any correlation. No statistic was calculated, and no results file exists.
+
+**Finding.** Window 1 (`kraken_snapshot_720h_2026-08-25`, about 2026-07-26 to 2026-08-25) overlaps
+window 2 (2026-07-11 to 2026-08-10 05:16) by about 15 days, so the 8 windows were not all independent.
+
+**Changes (made before any result was seen)**
+
+1. Window 1 is dropped. The primary data are windows 2 to 8, seven disjoint windows.
+2. The rule becomes: |t| >= 1.96 AND the same sign in at least **5 of 7** windows (was 6 of 8).
+3. Expected pairs: about 1,240 (7 x 177 to 178). The smallest correlation detectable at |t| = 1.96 is
+   about 0.056, and about 0.079 with 80% power.
+4. On pure noise the full rule fires about 5.5% of the time (4,000 simulated runs). The original rule was
+   4.1%. A 6-of-7 rule would give 3.4%. 5 of 7 keeps the false-positive rate near 5% and keeps the
+   sign-consistency share close to the original 6 of 8.
+5. Windows 9 to 20 stay reserved for replication, as before. A pass must replicate there: the pooled
+   |t| >= 1.96 over the 12 windows, the same sign as the primary result, and the same sign in at least 9 of 12.
+
+**Unchanged:** the one hypothesis, the block construction, the 50-trade minimum, the Spearman statistic,
+the run-once rule (the results file is never overwritten), and every other rule above.
