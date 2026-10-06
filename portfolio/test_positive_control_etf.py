@@ -6,6 +6,7 @@ from positive_control_etf import (
     analyze,
     block_bootstrap_returns,
     date_ics,
+    demean_returns,
     ic_tstat,
     one_replicate,
     out_of_fold_predictions,
@@ -192,35 +193,26 @@ def test_analyze_power_uses_the_null_95th_percentile_threshold():
     assert out.loc[0.05, "capture_ir"] == pytest.approx(0.5)
     assert out.loc[0.0, "power"] == pytest.approx(0.05, abs=0.011)
 
-# ---------------------------------------------------------------------------
-# TDD RESULTS (pytest, 2026-10-04, mlfinlab env: Python 3.10.20, pytest 9.0.3)
-# $ cd portfolio ; pytest test_positive_control_etf.py -v
-#
-# platform win32 -- Python 3.10.20, pytest-9.0.3, pluggy-1.6.0
-# rootdir: C:\ws\AFML\portfolio
-# collected 16 items
-#
-# test_positive_control_etf.py::test_block_bootstrap_keeps_shape_index_and_uses_only_original_rows PASSED [  6%]
-# test_positive_control_etf.py::test_block_bootstrap_blocks_are_consecutive_runs_of_the_original PASSED [ 12%]
-# test_positive_control_etf.py::test_block_bootstrap_is_reproducible_for_a_seed_and_differs_across_seeds PASSED [ 18%]
-# test_positive_control_etf.py::test_returns_to_prices_known_values PASSED            [ 25%]
-# test_positive_control_etf.py::test_planted_score_is_centered_and_ordered_by_momentum PASSED [ 31%]
-# test_positive_control_etf.py::test_plant_signal_known_values PASSED                 [ 37%]
-# test_positive_control_etf.py::test_zero_ic_changes_nothing_and_missing_scores_mean_no_tilt PASSED [ 43%]
-# test_positive_control_etf.py::test_date_ics_known_values PASSED                     [ 50%]
-# test_positive_control_etf.py::test_ic_tstat_takes_every_nth_date_and_matches_the_formula PASSED [ 56%]
-# test_positive_control_etf.py::test_top_quintile_active_ir_known_values PASSED       [ 62%]
-# test_positive_control_etf.py::test_out_of_fold_predictions_cover_every_row_once_and_are_probabilities PASSED [ 68%]
-# test_positive_control_etf.py::test_pipeline_finds_a_strong_planted_signal PASSED    [ 75%]
-# test_positive_control_etf.py::test_pipeline_finds_nothing_when_nothing_is_planted PASSED [ 81%]
-# test_positive_control_etf.py::test_realized_oracle_ic_is_close_to_the_nominal_planted_ic PASSED [ 87%]
-# test_positive_control_etf.py::test_one_replicate_returns_one_row_per_ic_level_and_is_reproducible PASSED [ 93%]
-# test_positive_control_etf.py::test_analyze_power_uses_the_null_95th_percentile_threshold PASSED [100%]
-#
-# 16 passed in 5.81s
-#
-# Mutation check (sandbox, 2026-10-04): breaking the planting timing (same-day
-# score), the bootstrap (ETFs resampled independently) and the detection
-# threshold (50th instead of 95th percentile) each made one test fail.
-# Original code restored: 16 passed.
-# ---------------------------------------------------------------------------
+
+# ------------------------------------------------------- demeaned no-edge world
+def test_demean_returns_known_values_and_shape():
+    idx = pd.bdate_range("2020-01-01", periods=3)
+    r = pd.DataFrame({"A": [0.01, 0.02, 0.03], "B": [0.00, -0.02, 0.05]}, index=idx)
+    out = demean_returns(r)
+    assert out["A"].tolist() == pytest.approx([-0.01, 0.0, 0.01])
+    assert out["B"].tolist() == pytest.approx([-0.01, -0.03, 0.04])      # B's mean is 0.01
+    assert out.index.equals(r.index) and list(out.columns) == ["A", "B"]
+    assert out.mean().abs().max() < 1e-15
+    assert out.std().tolist() == pytest.approx(r.std().tolist())         # volatility untouched
+
+
+def test_demeaned_world_has_no_static_edge_but_the_raw_world_does():
+    # Give every ETF its own constant drift (a static difference between ETFs).
+    r = noise_returns(2500, 20, seed=8)
+    drift = np.linspace(-0.0005, 0.0005, 20)
+    r = r + drift
+    raw = one_replicate(r, seed=3, ic_levels=[0.0], block_length=63, **SMALL)[0]
+    dem = one_replicate(demean_returns(r), seed=3, ic_levels=[0.0], block_length=63, **SMALL)[0]
+    assert raw["oracle_ic"] > 0.05            # static differences make momentum look predictive
+    assert abs(dem["oracle_ic"]) < 0.04       # removing them takes that away
+    assert raw["mean_ic"] > dem["mean_ic"] + 0.04

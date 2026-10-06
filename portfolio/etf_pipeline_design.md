@@ -54,7 +54,9 @@ count too.
 - [x] panel data loader, features, labels (this commit)
 - [x] panel purged CV by date across all ETFs (`panel_purged_cv.py`, 19 tests, mutation-checked)
 - [x] positive-control harness (`positive_control_etf.py`, 16 tests, mutation-checked); logistic regression on the five ranked features
-- [ ] full positive-control run: ready (500 worlds x 6 IC levels)
+- [x] positive-control v1 run (500 worlds x 6 IC levels): primary bar NOT met; null contaminated (false positives 69%) by static differences between ETF average returns
+- [ ] positive-control v1.1, demeaned worlds (`--demean`, pre-registered in `preregistration_etf_positive_control_v1_1_demeaned.md`): harness-validity check, ready to run
+- [ ] possible follow-up: walk-forward (past-only) CV variant, if v1.1 is not clean
 - [ ] lever what-ifs, AFTER the baseline positive control: long-short vs long-only (TC), horizon (e.g. 5 / 21 / 63 days), fewer features; same harness, compare what each can detect
 - [x] effective breadth (`effective_breadth.py`, 12 tests): ENB 16.5 vs median (9.0 on raw returns); implied IC needed 0.049 (TC=1) / 0.098 (TC=0.5) at 50% power
 - [ ] portfolio construction (HRP x signal tilt x confidence scalar, long-only)

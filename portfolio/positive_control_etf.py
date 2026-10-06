@@ -27,6 +27,10 @@ DESIGN (see preregistration_etf_positive_control.md; frozen before the full run)
     Also       Long-only top-quintile active IR vs the equal-weight universe (model and
                oracle), the capture ratio, and the false-positive rate of t >= 1.96.
 
+Variant v1.1 (--demean): the same design, with each ETF's average return removed before
+the bootstrap, so the IC = 0 world is a true no-edge world. See
+preregistration_etf_positive_control_v1_1_demeaned.md.
+
 Not in v1 (on purpose): sample weights / time decay, costs, DSR and PBO (one declared
 model = one trial), shorting. The lever what-ifs come after the baseline.
 """
@@ -59,6 +63,15 @@ def block_bootstrap_returns(returns, block_length, rng):
     out = returns.iloc[rows].copy()
     out.index = returns.index
     return out
+
+
+def demean_returns(returns):
+    """Subtract each ETF's own average return, so no ETF has a higher expected return than another.
+
+    v1 kept the real ETF averages (they differ a lot) and the "no-edge" world still held static
+    differences that a characteristic-based sort could exploit. Volatility is unchanged.
+    """
+    return returns - returns.mean()
 
 
 def returns_to_prices(returns, start=100.0):
@@ -188,15 +201,24 @@ def full_universe_returns(prices_path):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--prices", default=os.path.join(HERE, "prices_daily_asof_2026-10-02.csv"))
-    ap.add_argument("--out", default=os.path.join(HERE, "positive_control_etf_results.csv"))
+    ap.add_argument("--out", default=None,
+                    help="results CSV (default: positive_control_etf_results.csv, or "
+                         "positive_control_etf_demeaned_results.csv with --demean)")
     ap.add_argument("--reps", type=int, default=500)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--ic-levels", type=float, nargs="+", default=DEFAULT_IC_LEVELS)
     ap.add_argument("--analyze-only", action="store_true")
+    ap.add_argument("--demean", action="store_true",
+                    help="v1.1: remove each ETF's average return before the bootstrap")
     args = ap.parse_args()
+    if args.out is None:
+        name = "positive_control_etf_demeaned_results.csv" if args.demean else "positive_control_etf_results.csv"
+        args.out = os.path.join(HERE, name)
 
     if not args.analyze_only:
         returns = full_universe_returns(args.prices)
+        if args.demean:
+            returns = demean_returns(returns)
         done = set(pd.read_csv(args.out)["seed"]) if os.path.exists(args.out) else set()
         seeds = [BASE_SEED + k for k in range(args.reps) if BASE_SEED + k not in done]
         print(f"{len(done)} replicates already done, {len(seeds)} to run, "
@@ -216,42 +238,10 @@ if __name__ == "__main__":
     main()
 
 # ---------------------------------------------------------------------------
-# TDD RESULTS (pytest, 2026-10-04, mlfinlab env: Python 3.10.20, pytest 9.0.3)
-# $ cd portfolio ; pytest test_positive_control_etf.py -v
-#
-# platform win32 -- Python 3.10.20, pytest-9.0.3, pluggy-1.6.0
-# rootdir: C:\ws\AFML\portfolio
-# collected 16 items
-#
-# test_positive_control_etf.py::test_block_bootstrap_keeps_shape_index_and_uses_only_original_rows PASSED [  6%]
-# test_positive_control_etf.py::test_block_bootstrap_blocks_are_consecutive_runs_of_the_original PASSED [ 12%]
-# test_positive_control_etf.py::test_block_bootstrap_is_reproducible_for_a_seed_and_differs_across_seeds PASSED [ 18%]
-# test_positive_control_etf.py::test_returns_to_prices_known_values PASSED            [ 25%]
-# test_positive_control_etf.py::test_planted_score_is_centered_and_ordered_by_momentum PASSED [ 31%]
-# test_positive_control_etf.py::test_plant_signal_known_values PASSED                 [ 37%]
-# test_positive_control_etf.py::test_zero_ic_changes_nothing_and_missing_scores_mean_no_tilt PASSED [ 43%]
-# test_positive_control_etf.py::test_date_ics_known_values PASSED                     [ 50%]
-# test_positive_control_etf.py::test_ic_tstat_takes_every_nth_date_and_matches_the_formula PASSED [ 56%]
-# test_positive_control_etf.py::test_top_quintile_active_ir_known_values PASSED       [ 62%]
-# test_positive_control_etf.py::test_out_of_fold_predictions_cover_every_row_once_and_are_probabilities PASSED [ 68%]
-# test_positive_control_etf.py::test_pipeline_finds_a_strong_planted_signal PASSED    [ 75%]
-# test_positive_control_etf.py::test_pipeline_finds_nothing_when_nothing_is_planted PASSED [ 81%]
-# test_positive_control_etf.py::test_realized_oracle_ic_is_close_to_the_nominal_planted_ic PASSED [ 87%]
-# test_positive_control_etf.py::test_one_replicate_returns_one_row_per_ic_level_and_is_reproducible PASSED [ 93%]
-# test_positive_control_etf.py::test_analyze_power_uses_the_null_95th_percentile_threshold PASSED [100%]
-#
-# 16 passed in 5.81s
-#
-# Mutation check (sandbox, 2026-10-04): breaking the planting timing (same-day
-# score), the bootstrap (ETFs resampled independently) and the detection
-# threshold (50th instead of 95th percentile) each made one test fail.
-# Original code restored: 16 passed.
-# ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
 # REAL-DATA RUN v1 (mlfinlab env, 2026-10-04; prices_daily_asof_2026-10-02.csv)
 # Pre-registered in preregistration_etf_positive_control.md. 500 bootstrapped
-# worlds x 6 IC levels, seeds 20261004-20261503, 4 workers.
+# worlds x 6 IC levels, seeds 20261004-20261503, 4 workers. Run before the
+# --demean option was added; the default behaviour is unchanged.
 # $ python positive_control_etf.py --workers 4
 #
 #  ic_nominal  n_reps  null95  power  fpr_t196  mean_t  mean_model_ic  mean_oracle_ic  mean_active_ir  mean_oracle_active_ir  capture_ir
@@ -273,7 +263,7 @@ if __name__ == "__main__":
 #   with ETF means kept and -0.003 with means removed. So the "no-edge" world still
 #   holds static cross-sectional differences that k-fold CV (which trains on later
 #   periods) can exploit. Not yet explained: why the model's null IC (0.057) exceeds
-#   the oracle's (0.024).
+#   the oracle's (0.024). Next: v1.1, demeaned worlds (--demean).
 #
 # READ THE CAPTURE RATIO WITH CARE: capture_ir above 1 includes the model exploiting
 # those static differences, so it is not extra skill. The realized planted increment
