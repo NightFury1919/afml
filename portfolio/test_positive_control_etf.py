@@ -216,3 +216,36 @@ def test_demeaned_world_has_no_static_edge_but_the_raw_world_does():
     assert raw["oracle_ic"] > 0.05            # static differences make momentum look predictive
     assert abs(dem["oracle_ic"]) < 0.04       # removing them takes that away
     assert raw["mean_ic"] > dem["mean_ic"] + 0.04
+
+# ---------------------------------------------------------------------------
+# TDD RESULTS (pytest, 2026-10-06, mlfinlab env: Python 3.10.20, pytest 9.0.3)
+# $ cd portfolio ; pytest test_sizing.py test_rebalance.py test_positive_control_etf.py test_etf_classes.py test_etf_features.py test_etf_labels.py test_panel_data.py -v
+# Seven test files were run together (88 items); the lines for this file's tests are shown.
+#
+# platform win32 -- Python 3.10.20, pytest-9.0.3, pluggy-1.6.0
+# rootdir: C:\ws\AFML\portfolio
+# collected 88 items
+#
+# test_positive_control_etf.py::test_block_bootstrap_keeps_shape_index_and_uses_only_original_rows PASSED [ 28%]
+# test_positive_control_etf.py::test_block_bootstrap_blocks_are_consecutive_runs_of_the_original PASSED [ 29%]
+# test_positive_control_etf.py::test_block_bootstrap_is_reproducible_for_a_seed_and_differs_across_seeds PASSED [ 30%]
+# test_positive_control_etf.py::test_returns_to_prices_known_values PASSED [ 31%]
+# test_positive_control_etf.py::test_planted_score_is_centered_and_ordered_by_momentum PASSED [ 32%]
+# test_positive_control_etf.py::test_plant_signal_known_values PASSED      [ 34%]
+# test_positive_control_etf.py::test_zero_ic_changes_nothing_and_missing_scores_mean_no_tilt PASSED [ 35%]
+# test_positive_control_etf.py::test_date_ics_known_values PASSED          [ 36%]
+# test_positive_control_etf.py::test_ic_tstat_takes_every_nth_date_and_matches_the_formula PASSED [ 37%]
+# test_positive_control_etf.py::test_top_quintile_active_ir_known_values PASSED [ 38%]
+# test_positive_control_etf.py::test_out_of_fold_predictions_cover_every_row_once_and_are_probabilities PASSED [ 39%]
+# test_positive_control_etf.py::test_pipeline_finds_a_strong_planted_signal PASSED [ 40%]
+# test_positive_control_etf.py::test_pipeline_finds_nothing_when_nothing_is_planted PASSED [ 42%]
+# test_positive_control_etf.py::test_realized_oracle_ic_is_close_to_the_nominal_planted_ic PASSED [ 43%]
+# test_positive_control_etf.py::test_one_replicate_returns_one_row_per_ic_level_and_is_reproducible PASSED [ 44%]
+# test_positive_control_etf.py::test_analyze_power_uses_the_null_95th_percentile_threshold PASSED [ 45%]
+# test_positive_control_etf.py::test_demean_returns_known_values_and_shape PASSED [ 46%]
+# test_positive_control_etf.py::test_demeaned_world_has_no_static_edge_but_the_raw_world_does PASSED [ 47%]
+#
+# 88 passed in 17.89s (all seven files)
+#
+# Mutation check (sandbox): same-day planting score, independent per-ETF bootstrap, a 50th-percentile threshold, and a no-op demean each made tests fail; original restored.
+# ---------------------------------------------------------------------------

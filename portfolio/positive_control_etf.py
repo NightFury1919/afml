@@ -271,3 +271,79 @@ if __name__ == "__main__":
 # (fat tails inflating the standard deviation is a guess; relative-return dispersion
 # was checked and does not explain it).
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# REAL-DATA RUN v1.1, demeaned worlds (mlfinlab env, 2026-10-04/05;
+# prices_daily_asof_2026-10-02.csv). Pre-registered in
+# preregistration_etf_positive_control_v1_1_demeaned.md. Same 500 seeds and IC levels as v1.
+# $ python positive_control_etf.py --workers 4 --demean
+#
+#  ic_nominal  n_reps  null95  power  fpr_t196  mean_t  mean_model_ic  mean_oracle_ic  mean_active_ir  mean_oracle_active_ir  capture_ir
+#       0.000     500   2.972  0.050     0.260   1.199          0.028           0.002           0.061                 -0.054      -1.128
+#       0.020     500   2.972  0.140     0.430   1.679          0.037           0.031           0.146                  0.190       0.767
+#       0.030     500   2.972  0.290     0.614   2.233          0.048           0.045           0.249                  0.311       0.800
+#       0.050     500   2.972  0.722     0.934   3.635          0.073           0.074           0.521                  0.555       0.939
+#       0.075     500   2.972  0.994     0.996   5.499          0.107           0.110           0.875                  0.858       1.019
+#       0.100     500   2.972  1.000     1.000   7.323          0.139           0.145           1.200                  1.161       1.033
+#
+# OUTCOME against the pre-registered clean-null criteria at IC 0: NOT CLEAN (2 of 3 fail).
+#   1. False-positive rate of t >= 1.96 in 2% to 8%:      26.0%   FAIL (v1: 69.4%)
+#   2. |mean model IC| <= 0.01:                           0.028   FAIL (v1: 0.057)
+#   3. |mean oracle IC (mom_12_1 rank)| <= 0.01:          0.002   PASS (v1: 0.024)
+# Because the null is not clean, the primary detection bar is not evaluated. For the
+# record: power at nominal IC 0.05 was 72.2%, but the false-positive condition fails.
+#
+# WHAT CHANGED vs v1: removing ETF means fixed the momentum part (oracle IC 0.024 -> 0.002)
+# and cut the inflation roughly in half (null95 4.307 -> 2.972, mean null t 2.45 -> 1.20).
+#
+# DIAGNOSTICS AFTER THE RUN (development only, 40 demeaned worlds, seeds 900000-900039):
+#   Mean IC of each ranked feature vs 21-day excess return: mom_12_1 -0.003, mom_3m -0.009,
+#   ret_5d -0.018, vol_60 +0.034, trend_200 -0.012.
+#   Mean out-of-fold model IC: 0.0253 (SE 0.0046) with all five features; 0.0102 (SE 0.0039)
+#   without vol_60.
+#   Static difference that survives mean removal: the per-ETF MEDIAN 21-day return relative to
+#   the cross-sectional median (std 0.27%) correlates +0.51 with volatility and -0.58 with
+#   skew across the 48 ETFs (225 blocks per ETF, so noisy).
+# READING: rank IC credits differences in typical (median) outcomes, which track volatility
+# and skew even when means are equal, and the model learns that through vol_60. A rank
+# statistic needs a null that equalizes ranks, not means. The block bootstrap also keeps real
+# short-horizon structure (ret_5d IC -0.018), so the no-edge world is not free of real
+# dynamics. The skew explanation is supported by the diagnostics above but not proven.
+#
+# Planted IC: realized oracle IC runs about 1.45x to 1.55x nominal in this clean-oracle
+# world. The model recovers about 60% to 77% of the planted IC (model IC minus null model IC,
+# divided by oracle IC).
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# TDD RESULTS (pytest, 2026-10-06, mlfinlab env: Python 3.10.20, pytest 9.0.3)
+# $ cd portfolio ; pytest test_sizing.py test_rebalance.py test_positive_control_etf.py test_etf_classes.py test_etf_features.py test_etf_labels.py test_panel_data.py -v
+# Seven test files were run together (88 items); the lines for this file's tests are shown.
+#
+# platform win32 -- Python 3.10.20, pytest-9.0.3, pluggy-1.6.0
+# rootdir: C:\ws\AFML\portfolio
+# collected 88 items
+#
+# test_positive_control_etf.py::test_block_bootstrap_keeps_shape_index_and_uses_only_original_rows PASSED [ 28%]
+# test_positive_control_etf.py::test_block_bootstrap_blocks_are_consecutive_runs_of_the_original PASSED [ 29%]
+# test_positive_control_etf.py::test_block_bootstrap_is_reproducible_for_a_seed_and_differs_across_seeds PASSED [ 30%]
+# test_positive_control_etf.py::test_returns_to_prices_known_values PASSED [ 31%]
+# test_positive_control_etf.py::test_planted_score_is_centered_and_ordered_by_momentum PASSED [ 32%]
+# test_positive_control_etf.py::test_plant_signal_known_values PASSED      [ 34%]
+# test_positive_control_etf.py::test_zero_ic_changes_nothing_and_missing_scores_mean_no_tilt PASSED [ 35%]
+# test_positive_control_etf.py::test_date_ics_known_values PASSED          [ 36%]
+# test_positive_control_etf.py::test_ic_tstat_takes_every_nth_date_and_matches_the_formula PASSED [ 37%]
+# test_positive_control_etf.py::test_top_quintile_active_ir_known_values PASSED [ 38%]
+# test_positive_control_etf.py::test_out_of_fold_predictions_cover_every_row_once_and_are_probabilities PASSED [ 39%]
+# test_positive_control_etf.py::test_pipeline_finds_a_strong_planted_signal PASSED [ 40%]
+# test_positive_control_etf.py::test_pipeline_finds_nothing_when_nothing_is_planted PASSED [ 42%]
+# test_positive_control_etf.py::test_realized_oracle_ic_is_close_to_the_nominal_planted_ic PASSED [ 43%]
+# test_positive_control_etf.py::test_one_replicate_returns_one_row_per_ic_level_and_is_reproducible PASSED [ 44%]
+# test_positive_control_etf.py::test_analyze_power_uses_the_null_95th_percentile_threshold PASSED [ 45%]
+# test_positive_control_etf.py::test_demean_returns_known_values_and_shape PASSED [ 46%]
+# test_positive_control_etf.py::test_demeaned_world_has_no_static_edge_but_the_raw_world_does PASSED [ 47%]
+#
+# 88 passed in 17.89s (all seven files)
+#
+# Mutation check (sandbox): same-day planting score, independent per-ETF bootstrap, a 50th-percentile threshold, and a no-op demean each made tests fail; original restored.
+# ---------------------------------------------------------------------------
