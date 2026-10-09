@@ -263,3 +263,33 @@ if __name__ == "__main__":
 # Full-size synthetic run (48 ETFs x 4,700 dates) took about 5 seconds.
 # NOT yet run on the real snapshot. Pre-register first (preregistration_real_history_check.md).
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# REAL-DATA RUN (mlfinlab env, 2026-10-09; prices_daily_asof_2026-10-08.csv, 8,481 dates, 48 ETFs + SH)
+# Pre-registered in preregistration_real_history_check.md (committed before this run). Run once.
+# $ python real_history_check.py
+#
+#                ir  mean_ic  vol_tilt  mean_vol_rank_of_picks  ir_first_half  ir_second_half  n_periods
+# current     0.237    0.073     0.885                   0.847          0.279           0.185      320
+# vol_scaled -0.031    0.010    -0.339                   0.330          0.039          -0.121      320
+# vol_rule    0.129    0.072     1.000                   0.895          0.123           0.144      320
+#
+# PAIRED DIFFERENCE IN IR, 90% block-bootstrap interval
+#   current-vol_rule       [-0.09, +0.28]
+#   vol_scaled-vol_rule    [-0.67, +0.34]
+#   vol_scaled-current     [-0.73, +0.21]
+#
+# PRE-REGISTERED RULES
+#   current_adds_beyond_volatility:    False  (interval includes 0; tilt 0.885 is above 0.7)
+#   vol_scaled_adds_beyond_volatility: False  (interval includes 0)
+#   scaling_reduces_tilt:              True   (0.885 - (-0.339) = 1.22, needed 0.4)
+#
+# OUTCOME: row 1 of the pre-registered table, "neither arm adds beyond volatility". The baseline is
+# indistinguishable from a volatility sort on the real history. It is not proof of no skill: 320 periods
+# (about 27 years) give each arm an ir standard error near 0.2, so only a large gap could pass.
+# NOTES: (1) The model's mean_ic (0.073) equals the volatility rule's (0.072): all of the baseline's rank IC
+# is the volatility signal, and rank IC overstates its worth (the vol rule's top-fifth ir is only 0.13).
+# (2) The vol-scaled label over-corrected: it flipped the tilt to low-volatility ETFs (picks' vol rank 0.33)
+# and earned nothing (ir -0.03). (3) There were 320 periods, more than the roughly 210 assumed in the
+# pre-registration, because early dates have 10+ ETFs; those early years use a smaller universe.
+# ---------------------------------------------------------------------------

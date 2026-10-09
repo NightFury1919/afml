@@ -40,3 +40,28 @@ Otherwise it is "no clear gain" and the pooled design stays the default. Either 
 - Small classes (Currencies 3, Commodities 4) are noisy and carry fixed weight; this run does not test the
   portfolio-level cost of that.
 - Not a test of live profitability.
+
+
+## Outcome (2026-10-09)
+
+Run once, 500 worlds, same seeds and IC levels. Results file: `positive_control_etf_demeaned_within_class_results.csv`.
+
+| Nominal IC | null95 | Power within-class | Power pooled (v1.1) | Oracle IC within-class | Oracle IC pooled |
+|---|---|---|---|---|---|
+| 0.02 | 2.341 | 0.472 | 0.140 | 0.039 | 0.031 |
+| 0.03 | 2.341 | 0.870 | 0.290 | 0.058 | 0.045 |
+| 0.05 | 2.341 | 1.000 | 0.722 | 0.097 | 0.074 |
+
+Pass rule: power at nominal IC 0.03 at least 0.39 (**0.870, met**) and power at nominal IC 0.05 at least 0.67
+(**1.000, met**). Within-class **helps** under the frozen rule.
+
+Comparison by realized oracle IC (interpolated): about 0.6 power within-class against 0.29 pooled at oracle IC 0.045,
+so the gain survives the fact that the within-class world delivered about 1.9x its nominal IC (pooled about 1.5x; the
+cause of that difference is not verified).
+
+Null quality is much cleaner: mean model IC at IC 0 is 0.004 (pooled 0.028), mean oracle IC is -0.000, the false-positive
+rate of t >= 1.96 is 10.0% (pooled 26.0%). The 10.0% is still above the 2% to 8% band used for v1.1, which was not part of
+this pre-registration's pass rule.
+
+Caveats unchanged: nominal IC is a within-class skill here and a pooled skill there; this is a test of detection power,
+not of live profitability or of class budgets.

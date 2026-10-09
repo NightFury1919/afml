@@ -425,3 +425,34 @@ if __name__ == "__main__":
 #   test fail; original restored. CLI smoke test (--within-class, synthetic prices, 1 world, 2 IC levels) ran.
 # Re-run on your Windows mlfinlab env and replace this block with that output if you prefer.
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# REAL-DATA RUN v1.2, within-class ranking, demeaned worlds (mlfinlab env, 2026-10-09;
+# prices_daily_asof_2026-10-02.csv). Pre-registered in
+# preregistration_etf_positive_control_v1_2_within_class.md (committed before the run). Same 500 seeds and
+# IC levels as v1 and v1.1.
+# $ python positive_control_etf.py --workers 4 --demean --within-class
+#
+#  ic_nominal  n_reps  null95  power  fpr_t196  mean_t  mean_model_ic  mean_oracle_ic  mean_active_ir  mean_oracle_active_ir  capture_ir
+#       0.000     500   2.341  0.050     0.100   0.272          0.004          -0.000           0.030                 -0.038      -0.799
+#       0.020     500   2.341  0.472     0.606   2.168          0.032           0.039           0.277                  0.316       0.876
+#       0.030     500   2.341  0.870     0.926   3.582          0.053           0.058           0.478                  0.493       0.970
+#       0.050     500   2.341  1.000     1.000   6.164          0.092           0.097           0.859                  0.847       1.015
+#       0.075     500   2.341  1.000     1.000   9.157          0.136           0.144           1.306                  1.289       1.013
+#       0.100     500   2.341  1.000     1.000  11.991          0.176           0.190           1.730                  1.730       1.000
+#
+# OUTCOME against the frozen pass rule: MET. Power at nominal IC 0.03 is 0.870 (needed at least 0.39) and power
+# at nominal IC 0.05 is 1.000 (needed at least 0.67). Within-class ranking detects a planted edge far more often
+# than the pooled design (v1.1: 0.140 / 0.290 / 0.722 at nominal 0.02 / 0.03 / 0.05).
+# FAIRER COMPARISON by realized oracle IC (the planted skill actually delivered): pooled v1.1 had oracle IC
+# 0.031 / 0.045 / 0.074 and power 0.140 / 0.290 / 0.722; within-class had oracle IC 0.039 / 0.058 / 0.097 and
+# power 0.472 / 0.870 / 1.000. Interpolating, within-class power at oracle IC 0.045 is about 0.6 against 0.29
+# pooled, so the gain is real after allowing for the within-class world delivering about 1.9x its nominal IC
+# (pooled delivered about 1.5x; cause of the difference not verified).
+# NULL QUALITY: much cleaner than v1.1. Mean model IC at IC 0 is 0.004 (pooled 0.028), mean oracle IC is
+# -0.000, null95 is 2.341 (pooled 2.972), and the false-positive rate of t >= 1.96 is 10.0% (pooled 26.0%).
+# That 10.0% is still above the 2% to 8% band set for v1.1; that band was not part of the v1.2 pass rule.
+# Rough reading: about 50% power at a realized rank IC near 0.04 and about 85% near 0.06.
+# CAVEAT: nominal IC means a within-class skill here and a pooled skill there, and the statistic pools
+# within-class excess returns across classes. Not a test of live profitability or of class budgets.
+# ---------------------------------------------------------------------------

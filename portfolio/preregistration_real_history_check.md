@@ -73,3 +73,27 @@ walk-forward). No costs, no shorting, no time decay. Overlapping 21-day labels s
 ## Reporting
 All arms, intervals, half-split numbers and both rule outcomes are reported whether or not they pass, and recorded as
 comments at the bottom of `real_history_check.py` after the run.
+
+
+## Outcome (2026-10-09)
+
+Run once on `prices_daily_asof_2026-10-08.csv` after this file was committed. 320 non-overlapping periods.
+
+| Arm | ir | mean IC | vol tilt | vol rank of picks | ir first / second half |
+|---|---|---|---|---|---|
+| current | 0.237 | 0.073 | 0.885 | 0.847 | 0.279 / 0.185 |
+| vol_scaled | -0.031 | 0.010 | -0.339 | 0.330 | 0.039 / -0.121 |
+| vol_rule | 0.129 | 0.072 | 1.000 | 0.895 | 0.123 / 0.144 |
+
+Paired difference in ir (90% interval): current minus vol_rule [-0.09, +0.28]; vol_scaled minus vol_rule
+[-0.67, +0.34]; vol_scaled minus current [-0.73, +0.21].
+
+Rules: current adds beyond volatility **False**; vol_scaled adds beyond volatility **False**; scaling reduces tilt **True**.
+
+Outcome table row: **neither arm adds beyond volatility.** The frozen baseline is not distinguishable from a
+volatility sort, so it should not be paper traded as it stands; a redesign needs a new registration.
+
+Observations (not part of the rules): the model's mean IC equals the volatility rule's, so all of its rank IC is the
+volatility signal; the vol-scaled label over-corrected into a low-volatility tilt and earned nothing; the run had 320
+periods, more than the roughly 210 assumed above, because early dates have 10 or more ETFs. This is "not shown", not
+"proved useless": each arm's ir has a standard error near 0.2.
