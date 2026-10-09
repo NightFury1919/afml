@@ -166,3 +166,14 @@ def test_window_list_is_the_seven_disjoint_windows_and_the_rule_needs_five_of_se
     assert "kraken_snapshot_720h_2026-08-25" not in WINDOW_DIRS
     assert WINDOW_DIRS[0].startswith("kraken_snapshot_720h_window2_")
     assert MIN_SAME_SIGN_WINDOWS == 5
+
+# ---------------------------------------------------------------------------
+# TDD RESULTS (pytest, 2026-10-06, mlfinlab env: Python 3.10.20)
+# $ cd pipeline\diagnostics ; pytest test_signed_flow_predictability.py -v
+#
+# collected 14 items
+# 14 passed
+#
+# (Run after Amendment 1: window 1 dropped, rule = same sign in >= 5 of 7 windows.
+#  Committed as 9d28bf7 before the real-data run.)
+# ---------------------------------------------------------------------------

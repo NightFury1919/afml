@@ -79,3 +79,18 @@ window 2 (2026-07-11 to 2026-08-10 05:16) by about 15 days, so the 8 windows wer
 
 **Unchanged:** the one hypothesis, the block construction, the 50-trade minimum, the Spearman statistic,
 the run-once rule (the results file is never overwritten), and every other rule above.
+
+
+## Outcome (2026-10-06)
+
+Run once, after Amendment 1 (commit 9d28bf7), on windows 2 to 8.
+
+- n pairs: 1246
+- Pooled Spearman rho: -0.0065
+- t statistic: -0.23 (threshold 1.96)
+- Same sign as pooled in 5 of 7 windows (needed 5)
+- **Pre-registered rule met: NO** (the t statistic fails)
+- Approximate 95% interval for rho: about -0.062 to +0.049, so a pooled correlation above about 0.05 is ruled out.
+
+Conclusion: no evidence that signed trade-flow imbalance in one 4-hour block predicts the next block's return.
+Windows 9 to 20 stay unused, because replication applies only after a pass. The run-once guard refused a second run.

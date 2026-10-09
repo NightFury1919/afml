@@ -217,6 +217,100 @@ def test_demeaned_world_has_no_static_edge_but_the_raw_world_does():
     assert abs(dem["oracle_ic"]) < 0.04       # removing them takes that away
     assert raw["mean_ic"] > dem["mean_ic"] + 0.04
 
+# ------------------------------------------------------- within-class ranking
+def grouped_returns(n_dates=1500, n_groups=4, per_group=6, seed=0):
+    r = noise_returns(n_dates, n_groups * per_group, seed=seed)
+    groups = {c: f"G{k // per_group}" for k, c in enumerate(r.columns)}
+    return r, groups
+
+
+def test_planted_score_with_groups_is_standardized_inside_each_group():
+    idx = pd.bdate_range("2015-01-01", periods=400)
+    common = np.random.default_rng(0).normal(0, 0.01, 400)
+    low = [0.0000, 0.0003, 0.0006]
+    high = [0.0020, 0.0023, 0.0026]                    # a whole group that trended far more
+    drifts = low + high
+    prices = pd.DataFrame({f"E{k}": 100 * np.exp(np.cumsum(common + d)) for k, d in enumerate(drifts)}, index=idx)
+    prices.index.name, prices.columns.name = "date", "asset"
+    groups = {"E0": "lo", "E1": "lo", "E2": "lo", "E3": "hi", "E4": "hi", "E5": "hi"}
+    z = planted_score(prices, min_assets=5, groups=groups, min_group_assets=3)
+    last = z.iloc[-1]
+    for cols in (["E0", "E1", "E2"], ["E3", "E4", "E5"]):
+        assert last[cols].mean() == pytest.approx(0.0, abs=1e-12)    # each group centered by itself
+        assert last[cols].std(ddof=0) == pytest.approx(1.0)          # and unit variance by itself
+        assert last[cols].is_monotonic_increasing                     # more drift, higher score
+    pooled = planted_score(prices, min_assets=5)
+    assert pooled.iloc[-1][["E0", "E1", "E2"]].mean() < -0.5          # pooled score would favor the "hi" group
+
+
+def test_planted_score_without_groups_is_unchanged_by_the_new_parameters():
+    r = noise_returns(400, 12, seed=4)
+    p = returns_to_prices(r)
+    pd.testing.assert_frame_equal(planted_score(p, min_assets=5), planted_score(p, min_assets=5, groups=None))
+
+
+def test_groups_with_too_few_eligible_etfs_get_no_planted_score():
+    r = noise_returns(400, 8, seed=6)
+    p = returns_to_prices(r)
+    cols = list(p.columns)
+    groups = {c: ("big" if k < 6 else "small") for k, c in enumerate(cols)}    # "small" has 2 ETFs
+    z = planted_score(p, min_assets=5, groups=groups, min_group_assets=3)
+    assert z[cols[6:]].iloc[-1].isna().all()
+    assert z[cols[:6]].iloc[-1].notna().all()
+
+
+def test_run_pipeline_hands_groups_to_build_dataset(monkeypatch):
+    import positive_control_etf as pc
+    seen = {}
+    real = pc.build_dataset
+
+    def spy(prices, horizon, windows, min_assets, groups=None, min_group_assets=3):
+        seen["groups"], seen["min_group_assets"] = groups, min_group_assets
+        return real(prices, horizon, windows, min_assets, groups, min_group_assets)
+
+    monkeypatch.setattr(pc, "build_dataset", spy)
+    r, groups = grouped_returns(1300, 3, 5, seed=2)
+    run_pipeline(returns_to_prices(r), groups=groups, min_group_assets=3, **SMALL)
+    assert seen["groups"] == groups and seen["min_group_assets"] == 3
+    run_pipeline(returns_to_prices(r), **SMALL)
+    assert seen["groups"] is None
+
+
+def test_grouped_pipeline_finds_a_strong_within_class_planted_signal():
+    r, groups = grouped_returns(1500, 4, 6, seed=1)
+    score = planted_score(returns_to_prices(r), min_assets=5, groups=groups)
+    prices = returns_to_prices(plant_signal(r, score, ic_horizon=0.3))
+    res = run_pipeline(prices, oracle_score=score, groups=groups, **SMALL)
+    assert res["mean_ic"] > 0.1 and res["t"] > 3
+    assert res["oracle_ic"] > 0.15
+
+
+def test_grouped_pipeline_finds_nothing_when_nothing_is_planted():
+    r, groups = grouped_returns(1500, 4, 6, seed=2)
+    prices = returns_to_prices(r)
+    score = planted_score(prices, min_assets=5, groups=groups)
+    res = run_pipeline(prices, oracle_score=score, groups=groups, **SMALL)
+    assert abs(res["t"]) < 3
+
+
+def test_one_replicate_with_groups_is_reproducible_and_differs_from_pooled():
+    r, groups = grouped_returns(1300, 3, 5, seed=5)
+    a = one_replicate(r, seed=11, ic_levels=[0.0, 0.1], block_length=63, groups=groups, **SMALL)
+    b = one_replicate(r, seed=11, ic_levels=[0.0, 0.1], block_length=63, groups=groups, **SMALL)
+    pooled = one_replicate(r, seed=11, ic_levels=[0.0, 0.1], block_length=63, **SMALL)
+    assert a == b
+    assert [row["ic_nominal"] for row in a] == [0.0, 0.1]
+    assert a != pooled                                  # the labels and ranks really changed
+
+
+def test_results_filename_is_distinct_for_every_variant():
+    from positive_control_etf import results_filename
+    names = {results_filename(d, w) for d in (False, True) for w in (False, True)}
+    assert len(names) == 4
+    assert results_filename(False, False) == "positive_control_etf_results.csv"          # v1 name kept
+    assert results_filename(True, False) == "positive_control_etf_demeaned_results.csv"  # v1.1 name kept
+    assert "within_class" in results_filename(True, True)
+
 # ---------------------------------------------------------------------------
 # TDD RESULTS (pytest, 2026-10-06, mlfinlab env: Python 3.10.20, pytest 9.0.3)
 # $ cd portfolio ; pytest test_sizing.py test_rebalance.py test_positive_control_etf.py test_etf_classes.py test_etf_features.py test_etf_labels.py test_panel_data.py -v
@@ -248,4 +342,46 @@ def test_demeaned_world_has_no_static_edge_but_the_raw_world_does():
 # 88 passed in 17.89s (all seven files)
 #
 # Mutation check (sandbox): same-day planting score, independent per-ETF bootstrap, a 50th-percentile threshold, and a no-op demean each made tests fail; original restored.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# TDD RESULTS, within-class addition (pytest, 2026-10-06; sandbox run: Linux, Python 3.10,
+# pandas 1.5.3, numpy 1.23.5, scikit-learn 1.2.2, the same versions as the mlfinlab env)
+# $ cd portfolio ; pytest test_positive_control_etf.py -v
+#
+# collected 26 items
+#
+# test_positive_control_etf.py::test_block_bootstrap_keeps_shape_index_and_uses_only_original_rows PASSED [  3%]
+# test_positive_control_etf.py::test_block_bootstrap_blocks_are_consecutive_runs_of_the_original PASSED [  7%]
+# test_positive_control_etf.py::test_block_bootstrap_is_reproducible_for_a_seed_and_differs_across_seeds PASSED [ 11%]
+# test_positive_control_etf.py::test_returns_to_prices_known_values PASSED [ 15%]
+# test_positive_control_etf.py::test_planted_score_is_centered_and_ordered_by_momentum PASSED [ 19%]
+# test_positive_control_etf.py::test_plant_signal_known_values PASSED      [ 23%]
+# test_positive_control_etf.py::test_zero_ic_changes_nothing_and_missing_scores_mean_no_tilt PASSED [ 26%]
+# test_positive_control_etf.py::test_date_ics_known_values PASSED          [ 30%]
+# test_positive_control_etf.py::test_ic_tstat_takes_every_nth_date_and_matches_the_formula PASSED [ 34%]
+# test_positive_control_etf.py::test_top_quintile_active_ir_known_values PASSED [ 38%]
+# test_positive_control_etf.py::test_out_of_fold_predictions_cover_every_row_once_and_are_probabilities PASSED [ 42%]
+# test_positive_control_etf.py::test_pipeline_finds_a_strong_planted_signal PASSED [ 46%]
+# test_positive_control_etf.py::test_pipeline_finds_nothing_when_nothing_is_planted PASSED [ 50%]
+# test_positive_control_etf.py::test_realized_oracle_ic_is_close_to_the_nominal_planted_ic PASSED [ 53%]
+# test_positive_control_etf.py::test_one_replicate_returns_one_row_per_ic_level_and_is_reproducible PASSED [ 57%]
+# test_positive_control_etf.py::test_analyze_power_uses_the_null_95th_percentile_threshold PASSED [ 61%]
+# test_positive_control_etf.py::test_demean_returns_known_values_and_shape PASSED [ 65%]
+# test_positive_control_etf.py::test_demeaned_world_has_no_static_edge_but_the_raw_world_does PASSED [ 69%]
+# test_positive_control_etf.py::test_planted_score_with_groups_is_standardized_inside_each_group PASSED [ 73%]
+# test_positive_control_etf.py::test_planted_score_without_groups_is_unchanged_by_the_new_parameters PASSED [ 76%]
+# test_positive_control_etf.py::test_groups_with_too_few_eligible_etfs_get_no_planted_score PASSED [ 80%]
+# test_positive_control_etf.py::test_run_pipeline_hands_groups_to_build_dataset PASSED [ 84%]
+# test_positive_control_etf.py::test_grouped_pipeline_finds_a_strong_within_class_planted_signal PASSED [ 88%]
+# test_positive_control_etf.py::test_grouped_pipeline_finds_nothing_when_nothing_is_planted PASSED [ 92%]
+# test_positive_control_etf.py::test_one_replicate_with_groups_is_reproducible_and_differs_from_pooled PASSED [ 96%]
+# test_positive_control_etf.py::test_results_filename_is_distinct_for_every_variant PASSED [100%]
+#
+# 26 passed in 10.83s (the 18 earlier tests unchanged, 8 new)
+# Wider regression: test_positive_control_etf, test_etf_labels, test_etf_features, test_etf_classes,
+#   test_panel_data together: 72 passed.
+# Mutation checks (sandbox): run_pipeline ignoring groups, and planted_score ignoring groups, each made a
+#   test fail; original restored. CLI smoke test (--within-class, synthetic prices, 1 world, 2 IC levels) ran.
+# Re-run on your Windows mlfinlab env and replace this block with that output if you prefer.
 # ---------------------------------------------------------------------------

@@ -42,7 +42,8 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
-from etf_features import DEFAULT_MIN_ASSETS, DEFAULT_WINDOWS, FEATURE_NAMES, compute_features
+from etf_features import (DEFAULT_MIN_ASSETS, DEFAULT_MIN_GROUP_ASSETS, DEFAULT_WINDOWS,
+                          FEATURE_NAMES, compute_features)
 from etf_labels import DEFAULT_HORIZON, build_dataset
 from panel_data import drop_hedge, load_prices, wide_to_long
 from panel_purged_cv import PanelPurgedKFold
@@ -79,11 +80,26 @@ def returns_to_prices(returns, start=100.0):
 
 
 # ------------------------------------------------------------------ planting
-def planted_score(prices, windows=DEFAULT_WINDOWS, min_assets=DEFAULT_MIN_ASSETS):
-    """Centered, unit-variance score from the mom_12_1 rank; NaN where an ETF is not eligible."""
-    feats = compute_features(prices, windows, min_assets)
+def planted_score(prices, windows=DEFAULT_WINDOWS, min_assets=DEFAULT_MIN_ASSETS,
+                  groups=None, min_group_assets=DEFAULT_MIN_GROUP_ASSETS):
+    """Centered, unit-variance score from the mom_12_1 rank; NaN where an ETF is not eligible.
+
+    With groups ({ticker: class}) the rank is taken inside each ETF's own class and the score is
+    centered and scaled to unit variance inside each class on each date, so the planted skill is
+    a within-class skill (the same kind of skill the within-class labels reward). A class with
+    fewer than min_group_assets eligible ETFs that day gets no score, hence no tilt.
+    """
+    feats = compute_features(prices, windows, min_assets, groups, min_group_assets)
     rank = feats["mom_12_1"].unstack("asset").reindex(index=prices.index, columns=prices.columns)
-    return (rank - 0.5) * np.sqrt(12.0)
+    if groups is None:
+        return (rank - 0.5) * np.sqrt(12.0)
+    z = pd.DataFrame(np.nan, index=rank.index, columns=rank.columns)
+    for g in sorted({groups[c] for c in rank.columns}):
+        cols = [c for c in rank.columns if groups[c] == g]
+        block = rank[cols]
+        sd = block.std(axis=1, ddof=0).replace(0.0, np.nan)
+        z[cols] = block.sub(block.mean(axis=1), axis=0).div(sd, axis=0)
+    return z
 
 
 def plant_signal(returns, score, ic_horizon, horizon=DEFAULT_HORIZON):
@@ -141,8 +157,9 @@ def out_of_fold_predictions(dataset, n_splits=5, embargo_dates=252, C=1.0):
 
 
 def run_pipeline(prices, horizon=DEFAULT_HORIZON, n_splits=5, embargo_dates=252,
-                 min_assets=DEFAULT_MIN_ASSETS, windows=DEFAULT_WINDOWS, C=1.0, oracle_score=None):
-    ds = build_dataset(prices, horizon, windows, min_assets)
+                 min_assets=DEFAULT_MIN_ASSETS, windows=DEFAULT_WINDOWS, C=1.0, oracle_score=None,
+                 groups=None, min_group_assets=DEFAULT_MIN_GROUP_ASSETS):
+    ds = build_dataset(prices, horizon, windows, min_assets, groups, min_group_assets)
     pred = out_of_fold_predictions(ds, n_splits, embargo_dates, C)
     t, mean_ic, n_ic = ic_tstat(date_ics(pred, ds["excess_ret"]), horizon)
     ir, _, _ = top_quintile_active_ir(pred, ds["fwd_ret"], horizon)
@@ -161,7 +178,9 @@ def one_replicate(returns, seed, ic_levels, block_length=BLOCK_LENGTH, horizon=D
     rng = np.random.default_rng(seed)
     boot = block_bootstrap_returns(returns, block_length, rng)
     score = planted_score(returns_to_prices(boot),
-                          min_assets=pipeline_kwargs.get("min_assets", DEFAULT_MIN_ASSETS))
+                          min_assets=pipeline_kwargs.get("min_assets", DEFAULT_MIN_ASSETS),
+                          groups=pipeline_kwargs.get("groups"),
+                          min_group_assets=pipeline_kwargs.get("min_group_assets", DEFAULT_MIN_GROUP_ASSETS))
     rows = []
     for ic in ic_levels:
         prices = returns_to_prices(plant_signal(boot, score, ic, horizon))
@@ -188,9 +207,19 @@ def analyze(results):
 
 def _worker(args):
     from threadpoolctl import threadpool_limits
-    returns, seed, ic_levels, block_length, horizon = args
+    returns, seed, ic_levels, block_length, horizon, groups = args
     with threadpool_limits(limits=1):
-        return one_replicate(returns, seed, ic_levels, block_length, horizon)
+        return one_replicate(returns, seed, ic_levels, block_length, horizon, groups=groups)
+
+
+def results_filename(demean=False, within_class=False):
+    """Results file per variant. v1 and v1.1 names are kept so old results are never overwritten."""
+    name = "positive_control_etf"
+    if demean:
+        name += "_demeaned"
+    if within_class:
+        name += "_within_class"
+    return name + "_results.csv"
 
 
 def full_universe_returns(prices_path):
@@ -202,28 +231,35 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--prices", default=os.path.join(HERE, "prices_daily_asof_2026-10-02.csv"))
     ap.add_argument("--out", default=None,
-                    help="results CSV (default: positive_control_etf_results.csv, or "
-                         "positive_control_etf_demeaned_results.csv with --demean)")
+                    help="results CSV (default depends on the flags, see results_filename())")
     ap.add_argument("--reps", type=int, default=500)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--ic-levels", type=float, nargs="+", default=DEFAULT_IC_LEVELS)
     ap.add_argument("--analyze-only", action="store_true")
     ap.add_argument("--demean", action="store_true",
                     help="v1.1: remove each ETF's average return before the bootstrap")
+    ap.add_argument("--within-class", action="store_true",
+                    help="rank, label and plant within each ETF's asset class (etf_classes.CLASS_OF)")
     args = ap.parse_args()
     if args.out is None:
-        name = "positive_control_etf_demeaned_results.csv" if args.demean else "positive_control_etf_results.csv"
-        args.out = os.path.join(HERE, name)
+        args.out = os.path.join(HERE, results_filename(args.demean, args.within_class))
+    groups = None
+    if args.within_class:
+        from etf_classes import CLASS_OF
+        groups = CLASS_OF
 
     if not args.analyze_only:
         returns = full_universe_returns(args.prices)
+        if groups is not None:
+            from etf_classes import validate_classes
+            validate_classes(list(returns.columns))
         if args.demean:
             returns = demean_returns(returns)
         done = set(pd.read_csv(args.out)["seed"]) if os.path.exists(args.out) else set()
         seeds = [BASE_SEED + k for k in range(args.reps) if BASE_SEED + k not in done]
         print(f"{len(done)} replicates already done, {len(seeds)} to run, "
               f"{len(args.ic_levels)} IC levels each, {args.workers} workers")
-        jobs = [(returns, s, args.ic_levels, BLOCK_LENGTH, DEFAULT_HORIZON) for s in seeds]
+        jobs = [(returns, s, args.ic_levels, BLOCK_LENGTH, DEFAULT_HORIZON, groups) for s in seeds]
         with ProcessPoolExecutor(max_workers=args.workers) as pool:
             for k, rows in enumerate(pool.map(_worker, jobs), 1):
                 pd.DataFrame(rows).to_csv(args.out, mode="a", header=not os.path.exists(args.out), index=False)
@@ -346,4 +382,46 @@ if __name__ == "__main__":
 # 88 passed in 17.89s (all seven files)
 #
 # Mutation check (sandbox): same-day planting score, independent per-ETF bootstrap, a 50th-percentile threshold, and a no-op demean each made tests fail; original restored.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# TDD RESULTS, within-class addition (pytest, 2026-10-06; sandbox run: Linux, Python 3.10,
+# pandas 1.5.3, numpy 1.23.5, scikit-learn 1.2.2, the same versions as the mlfinlab env)
+# $ cd portfolio ; pytest test_positive_control_etf.py -v
+#
+# collected 26 items
+#
+# test_positive_control_etf.py::test_block_bootstrap_keeps_shape_index_and_uses_only_original_rows PASSED [  3%]
+# test_positive_control_etf.py::test_block_bootstrap_blocks_are_consecutive_runs_of_the_original PASSED [  7%]
+# test_positive_control_etf.py::test_block_bootstrap_is_reproducible_for_a_seed_and_differs_across_seeds PASSED [ 11%]
+# test_positive_control_etf.py::test_returns_to_prices_known_values PASSED [ 15%]
+# test_positive_control_etf.py::test_planted_score_is_centered_and_ordered_by_momentum PASSED [ 19%]
+# test_positive_control_etf.py::test_plant_signal_known_values PASSED      [ 23%]
+# test_positive_control_etf.py::test_zero_ic_changes_nothing_and_missing_scores_mean_no_tilt PASSED [ 26%]
+# test_positive_control_etf.py::test_date_ics_known_values PASSED          [ 30%]
+# test_positive_control_etf.py::test_ic_tstat_takes_every_nth_date_and_matches_the_formula PASSED [ 34%]
+# test_positive_control_etf.py::test_top_quintile_active_ir_known_values PASSED [ 38%]
+# test_positive_control_etf.py::test_out_of_fold_predictions_cover_every_row_once_and_are_probabilities PASSED [ 42%]
+# test_positive_control_etf.py::test_pipeline_finds_a_strong_planted_signal PASSED [ 46%]
+# test_positive_control_etf.py::test_pipeline_finds_nothing_when_nothing_is_planted PASSED [ 50%]
+# test_positive_control_etf.py::test_realized_oracle_ic_is_close_to_the_nominal_planted_ic PASSED [ 53%]
+# test_positive_control_etf.py::test_one_replicate_returns_one_row_per_ic_level_and_is_reproducible PASSED [ 57%]
+# test_positive_control_etf.py::test_analyze_power_uses_the_null_95th_percentile_threshold PASSED [ 61%]
+# test_positive_control_etf.py::test_demean_returns_known_values_and_shape PASSED [ 65%]
+# test_positive_control_etf.py::test_demeaned_world_has_no_static_edge_but_the_raw_world_does PASSED [ 69%]
+# test_positive_control_etf.py::test_planted_score_with_groups_is_standardized_inside_each_group PASSED [ 73%]
+# test_positive_control_etf.py::test_planted_score_without_groups_is_unchanged_by_the_new_parameters PASSED [ 76%]
+# test_positive_control_etf.py::test_groups_with_too_few_eligible_etfs_get_no_planted_score PASSED [ 80%]
+# test_positive_control_etf.py::test_run_pipeline_hands_groups_to_build_dataset PASSED [ 84%]
+# test_positive_control_etf.py::test_grouped_pipeline_finds_a_strong_within_class_planted_signal PASSED [ 88%]
+# test_positive_control_etf.py::test_grouped_pipeline_finds_nothing_when_nothing_is_planted PASSED [ 92%]
+# test_positive_control_etf.py::test_one_replicate_with_groups_is_reproducible_and_differs_from_pooled PASSED [ 96%]
+# test_positive_control_etf.py::test_results_filename_is_distinct_for_every_variant PASSED [100%]
+#
+# 26 passed in 10.83s (the 18 earlier tests unchanged, 8 new)
+# Wider regression: test_positive_control_etf, test_etf_labels, test_etf_features, test_etf_classes,
+#   test_panel_data together: 72 passed.
+# Mutation checks (sandbox): run_pipeline ignoring groups, and planted_score ignoring groups, each made a
+#   test fail; original restored. CLI smoke test (--within-class, synthetic prices, 1 world, 2 IC levels) ran.
+# Re-run on your Windows mlfinlab env and replace this block with that output if you prefer.
 # ---------------------------------------------------------------------------

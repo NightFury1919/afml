@@ -155,3 +155,31 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# ---------------------------------------------------------------------------
+# TDD RESULTS (pytest, 2026-10-06, mlfinlab env: Python 3.10.20)
+# $ cd pipeline\diagnostics ; pytest test_signed_flow_predictability.py -v
+#
+# collected 14 items
+# 14 passed
+#
+# (Run after Amendment 1: window 1 dropped, rule = same sign in >= 5 of 7 windows.
+#  Committed as 9d28bf7 before the real-data run.)
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# REAL-DATA RUN (mlfinlab env, 2026-10-06, 7 windows: window2..window8). Run once.
+# $ python signed_flow_predictability.py
+#
+# POOLED RESULT
+#   n pairs               : 1246
+#   Spearman rho          : -0.0065
+#   t statistic           : -0.23
+#   same-sign wins        : 5 of 7 (need >= 5)
+#   PRE-REGISTERED RULE MET: False   (|t| = 0.23 < 1.96)
+#   Approx 95% interval for rho: about -0.062 to +0.049
+#
+# Reading: clean null. Signed flow in one 4-hour block shows no detectable link to
+# the next block's return. Windows 9-20 stay unused (replication applies only after a
+# pass). A second run was refused by the run-once guard, as designed.
+# ---------------------------------------------------------------------------
