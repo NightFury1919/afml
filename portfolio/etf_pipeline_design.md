@@ -77,7 +77,7 @@ count too.
 - [ ] lever what-ifs, AFTER the baseline positive control: long-short vs long-only (TC), horizon (e.g. 5 / 21 / 63 days), fewer features; same harness, compare what each can detect
 - [x] effective breadth (`effective_breadth.py`, 12 tests): ENB 16.5 vs median (9.0 on raw returns); implied IC needed 0.049 (TC=1) / 0.098 (TC=0.5) at 50% power
 - [x] rebalance step (`rebalance.py`, 19 tests): targets vs current holdings -> sells first, then buys; whole-share rounding bug fixed in `sizing.py`
-- [ ] portfolio construction (HRP x signal tilt x confidence scalar, long-only): produces the target weights the rebalance step consumes
+- [x] portfolio construction (`portfolio_construction.py`, 22 tests): scores -> target weights (top share, base weights such as HRP, exposure scalar, per-ETF cap, optional within-class budgets). HRP, the exposure scalar and class budgets are inputs, not computed here
 
 ## Still open
 - Success benchmark: equal-weight universe, or SPY?
