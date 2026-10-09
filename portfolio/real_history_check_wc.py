@@ -275,3 +275,37 @@ if __name__ == "__main__":
 # Full-size synthetic run (48 ETFs x 4,700 dates, no edge): about 5 seconds.
 # NOT yet run on the real snapshot. Pre-register first (preregistration_real_history_check_wc.md).
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# REAL-DATA RUN (mlfinlab env, 2026-10-09; prices_daily_asof_2026-10-08.csv, 8,481 dates, 48 ETFs + SH)
+# Run once. PROCESS DEVIATION: the pre-registration was NOT committed before this run. The commit command
+# failed (wrong git path) and the run command, chained after it, executed anyway. The script and the
+# pre-registration text were unchanged between being written and being run, but "frozen at commit" did
+# not hold. They are committed after the fact, together with the results.
+# $ python real_history_check_wc.py
+#
+#                 ir  mean_ic  vol_tilt  mean_vol_rank_of_picks  ir_first_half  ir_second_half  n_periods
+# wc_current   0.181    0.015     0.570                   0.712          0.136           0.242        320
+# wc_no_vol   -0.022    0.010    -0.131                   0.450          0.010          -0.068        320
+# wc_vol_rule  0.026    0.010     1.000                   0.869          0.000           0.062        320
+#
+# STANDALONE IR, 90% block-bootstrap interval
+#   wc_current   [-0.13, +0.53]
+#   wc_no_vol    [-0.32, +0.26]
+#   wc_vol_rule  [-0.27, +0.31]
+# PAIRED DIFFERENCE IN IR, 90% interval
+#   wc_current-wc_vol_rule   [-0.19, +0.54]
+#   wc_no_vol-wc_vol_rule    [-0.54, +0.44]
+#   wc_no_vol-wc_current     [-0.55, +0.09]
+#
+# PRE-REGISTERED RULES: all six False (adds_beyond_volatility, positive_alone, edge_found for both arms).
+#
+# OUTCOME: row 1 of the pre-registered table, "neither fitted arm has edge_found". No demonstrated predictive
+# edge in these features on this history. "Not shown", not "proved useless": ir standard error is near 0.2.
+# NOTES: (1) Inside classes a pure volatility sort earns almost nothing (ir 0.026, mean_ic 0.010), versus
+# ir 0.129 / mean_ic 0.072 pooled. Most of the pooled 'volatility signal' was a class effect (volatile
+# classes vs calm ones), not selection inside classes. (2) wc_current's point estimate (ir 0.18) is the best
+# of the three but its interval includes zero and its picks are still volatile (vol rank 0.71, tilt 0.57).
+# (3) wc_no_vol minus wc_current [-0.55, +0.09] leans toward the volatility feature helping, descriptive only.
+# (4) This is now 4 fitted variants on one history; do not pick the 0.18 and go looking for confirmation here.
+# ---------------------------------------------------------------------------

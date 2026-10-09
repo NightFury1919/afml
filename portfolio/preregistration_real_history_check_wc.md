@@ -69,3 +69,29 @@ costs, no shorting, no time decay; overlapping 21-day labels sampled daily in tr
 ## Reporting
 All arms, intervals, half-split numbers and every rule outcome are reported whether or not they pass, and recorded as
 comments at the bottom of `real_history_check_wc.py` and in an Outcome section here after the run.
+
+
+## Outcome (2026-10-09)
+
+**Process deviation, stated first.** This file was not committed before the run: the commit command failed on a wrong
+git path and the run command chained after it executed anyway. Neither the script nor this text changed between being
+written and being run, but the freeze did not happen as registered. They are committed after the fact with the results.
+
+Run once on `prices_daily_asof_2026-10-08.csv`, 320 non-overlapping periods.
+
+| Arm | ir | standalone 90% interval | mean IC | vol tilt | vol rank of picks | ir first / second half |
+|---|---|---|---|---|---|---|
+| wc_current | 0.181 | [-0.13, +0.53] | 0.015 | 0.570 | 0.712 | 0.136 / 0.242 |
+| wc_no_vol | -0.022 | [-0.32, +0.26] | 0.010 | -0.131 | 0.450 | 0.010 / -0.068 |
+| wc_vol_rule | 0.026 | [-0.27, +0.31] | 0.010 | 1.000 | 0.869 | 0.000 / 0.062 |
+
+Paired difference in ir (90% interval): wc_current minus wc_vol_rule [-0.19, +0.54]; wc_no_vol minus wc_vol_rule
+[-0.54, +0.44]; wc_no_vol minus wc_current [-0.55, +0.09].
+
+Rules: all six **False**. Outcome table row: **neither fitted arm has `edge_found`.**
+
+Observations (not rules): inside classes a volatility sort earns almost nothing (ir 0.026), so most of the pooled
+volatility "signal" was a class effect; wc_current's ir of 0.18 is the best point estimate but its interval includes zero;
+this is the fourth fitted variant on this history, so no further variants on it. Next step per the table: no demonstrated
+predictive edge, so the challenge strategy should be transparent and non-predictive, with a decision on class budgets and
+risk limits from the boss.
