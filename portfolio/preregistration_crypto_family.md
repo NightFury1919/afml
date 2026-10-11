@@ -1,6 +1,6 @@
-# Pre-registration: crypto cross-sectional edge test, three horizons (DRAFT)
+# Pre-registration: crypto cross-sectional edge test, three horizons
 
-Status: **DRAFT, written 2026-10-10. Nothing below has been run on returns.** It becomes binding when committed.
+Status: **written 2026-10-10, finalized 2026-10-11. Nothing below has been run on returns.** It becomes binding when committed.
 After the first held-out return is computed, nothing above the Deviations log may change.
 
 Defaults proposed by Claude were accepted by Ethan on 2026-10-11.
