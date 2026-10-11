@@ -21,3 +21,9 @@ pipeline/diagnostics/sensitivity_snapshot_*/sweep_plots/
 pipeline/diagnostics/*_work/
 pipeline/diagnostics/alignment_null_cache.pkl
 pipeline/diagnostics/alignment_null_cache.pkl
+
+# crypto data pulls (hashes are recorded in preregistration_crypto_family.md)
+portfolio/binance_prices_daily_asof_*.csv
+portfolio/binance_ohlcv_daily_asof_*.csv
+portfolio/crypto_prices_daily_asof_*.csv
+portfolio/crypto_ohlcv_daily_asof_*.csv
