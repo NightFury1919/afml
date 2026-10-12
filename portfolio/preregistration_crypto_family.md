@@ -240,3 +240,56 @@ These are observations about the design and the numbers. None has been tested.
 Any later analysis of these results is exploratory and will be recorded below, labelled as such, and does not change the
 verdicts above. A pass here is not a claim that a profitable strategy exists: arm C's "tradable" is a net return relative to
 the universe mean on Kraken's lowest fee tier, over 109 periods, with no test of absolute return.
+
+
+## Exploratory (post-outcome; recorded 2026-10-12; not pre-registered, does not change any verdict above)
+
+Scripts: `crypto_family_audit_AB.py` and `crypto_family_audit_C.py`. They use the same data, the frozen held-out model
+(arms A and B) and the same out-of-fold scores (arm C), changing nothing frozen. Bootstrap lower ends below use 2,000
+resamples (the frozen run used 5,000), so they are approximate. Nothing here was chosen to rescue or sink a verdict.
+
+**1. Sign-matched control (score = low-volatility rank, so the control's sign is the one that predicts).**
+
+| | Arm A | Arm B | Arm C |
+|---|---|---|---|
+| Model mean IC | 0.0810 | 0.0884 | 0.1346 |
+| Low-volatility sort mean IC | 0.0821 | 0.1140 | 0.1320 |
+| Model minus low-vol sort (paired lower end) | -0.0011 (-0.0120) | -0.0256 (-0.0461) | +0.0026 (-0.0057) |
+| Net per period: model / low-vol sort | -0.33% / +0.02% | -0.15% / +0.41% | +1.66% / +1.76% |
+| Rank correlation, model score vs low-vol rank | 0.71 | 0.77 | not computed |
+
+In no arm does the model beat a plain low-volatility sort. In arm B the low-volatility sort is significantly better.
+The frozen control's sign (high volatility first) made "beats its control" a test the model passed by the size of the
+control's own negative IC (observation 1 above). Measured against the sign that predicts, the model adds nothing.
+
+**2. Log against simple returns.** Re-measuring the same books with simple (not log) forward returns:
+
+| | Arm A | Arm B | Arm C |
+|---|---|---|---|
+| Gross active return, log -> simple | 0.106% -> 0.046% | 0.482% -> 0.248% | 2.208% -> 1.319% |
+| Net active return, simple | -0.39% | -0.38% | +0.77% (lower end -0.30%) |
+
+Arm C's net return stays positive but its lower end no longer clears zero, so under simple returns arm C would not meet
+the "tradable" rule. The frozen rule used log returns and its verdict stands as recorded; this shows the verdict depends
+on that measurement choice. Observation 3 above was right in direction: the log measure flatters a low-volatility book.
+
+**3. Absolute return of the long-only book (simple returns).** Arms A and B lose money in absolute terms: the book
+averages -0.03% per day (A) and -0.22% per 5 days (B), against -0.08% and -0.47% for the equal-weight universe. It beats
+the universe by losing less. Arm C averages +4.1% per 21 days (median -1.0%) against +2.8% (median -2.2%) for the
+universe, so its average is carried by a minority of strongly positive periods.
+
+**4. Long and short side.** Holding the bottom-ranked fifth instead, the universe beats it by more than the top fifth
+beats the universe: A 0.093% against 0.046%, B 0.455% against 0.248%, C 2.0% against 1.3%. A long-only book can only
+collect the smaller half, which may account for part of the gap in observation 2 above (ICs large, returns small).
+
+**5. IC by year and tier.** Mean daily IC is positive in every calendar year and every tier in all three arms. Arm A by
+year: 0.096 (2024), 0.087 (2025), 0.068 (2026); arm B: 0.061, 0.103, 0.084; arm C by year (non-overlapping periods): 0.095
+to 0.192 over 2020-2026. By tier: arms A and B are strongest in the lowest-volume tier (A 0.099, 0.085, 0.059 for tiers
+0, 1, 2; B 0.103, 0.106, 0.063) and arm C strongest in the highest (0.110, 0.134, 0.165 for tiers 0, 1, 2). The low-volatility
+sort's IC is similarly positive in every year, so stability does not separate the model from the sort.
+
+**What this does and does not say.** The cross-sectional ordering of coins by volatility (low first) has a stable,
+positive rank correlation with next-period outperformance in this sample. The model's score is largely that ordering. This
+does not show a tradable strategy: arms A and B lose after costs, and arm C's tradable verdict rests on log returns, a
+relative return measure and a minority of large periods. No new hypothesis from this section has been tested on data not
+already used here.
