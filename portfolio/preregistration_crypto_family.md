@@ -190,3 +190,53 @@ detect a mean IC of about 0.03 or more, so a smaller real edge would most likely
 
 ## Deviations log
 (empty)
+
+
+## Outcome (recorded 2026-10-12; appended below the Deviations log, nothing above it changed)
+
+**The run.** Once, on 2026-10-12, with the code and pre-registration as committed (pre-registration `a170d2e` and
+`b42b39a`, code `71057c0`). Before it ran, the six data files matched the hashes in section 2, the three code and
+pre-registration files had no uncommitted changes, and no results file existed. No crash and no change to anything
+frozen, so the Deviations log stays empty. The full printed output is at the bottom of `crypto_family.py`; the numbers are in
+`crypto_family_results.csv`, with per-period series in `crypto_family_{A,B,C}_ic.csv` and `crypto_family_{A,B,C}_active.csv`.
+
+**Results as the pre-registered rules decide them (section 8).**
+
+| | Arm A (1 day) | Arm B (5 days) | Arm C (21 days) |
+|---|---|---|---|
+| Scope, periods | held-out, 729 | held-out, 145 | full-history purged CV, 109 |
+| Mean IC (lower end) | 0.0810 (0.0694) | 0.0884 (0.0684) | 0.1346 (0.1049) |
+| Volatility control mean IC | -0.0821 | -0.1140 | -0.1320 |
+| Model minus control, lower end | 0.1399 | 0.1612 | 0.2036 |
+| Gross active return per period | 0.11% | 0.48% | 2.21% |
+| Net, primary schedule (lower end) | -0.33% (-0.39%) | -0.15% (-0.39%) | +1.66% (+0.77%) |
+| Net, taker sensitivity (lower end) | -0.62% (-0.68%) | -0.57% (-0.80%) | +1.31% (+0.43%) |
+| Mean turnover per period | 0.727 | 1.049 | 0.874 |
+| **edge_found** | **True** | **True** | **True** |
+| **tradable** | **False** | **False** | **True** |
+| **kraken_confirmed** | **False** | **False** | not applicable |
+
+Kraken check, arms A and B (frozen Binance-fitted model, no refit, $100,000 floor, 2025-07-06 onward, median 84 coins a
+date): A has 460 periods, mean IC 0.0574 (lower end 0.0394), mean net active return -0.42%. B has 92 periods, mean IC
+0.0663 (lower end 0.0326), mean net active return -0.52%. In both the IC is positive and costs make the net return
+negative, so the rule fails on its second condition. Arm C, descriptive only: the held-out window alone has 34 periods and
+mean IC 0.1764.
+
+**What these verdicts do not show (noted at recording time, before any further analysis; the verdicts above stand).**
+These are observations about the design and the numbers. None has been tested.
+
+1. The volatility control is signed as frozen (score = volatility rank, high volatility ranks first). Each arm's model IC
+   is about the mirror image of its control IC (A 0.081 against -0.082, B 0.088 against -0.114, C 0.135 against -0.132),
+   so the "beats its control" test is passed by roughly twice the size of the effect. In size, the model is no better
+   than a low-volatility sort. The rule was met as written; it did not test what section 1 says it was for.
+2. Gross return is small for the IC. Section 7 says an IC of 0.03 implies about 0.17% a day; an IC of 0.081 would imply
+   about 0.46% a day, and arm A's gross is 0.11%. Most of the rank information is not reaching the long-only top fifth.
+3. Active return is computed from log returns and measured against the equal-weight mean of all eligible coins, so it is
+   a relative return, not an absolute one. Averaging log returns penalises high-volatility coins by about half their
+   variance, which could favour a low-volatility top fifth. The size of that effect is not measured.
+4. The ICs are several times larger than the smallest detectable values in section 9 (about 0.013 for arm A at the
+   corrected level) and larger than the 0.03 used as an example of a good model in section 7.
+
+Any later analysis of these results is exploratory and will be recorded below, labelled as such, and does not change the
+verdicts above. A pass here is not a claim that a profitable strategy exists: arm C's "tradable" is a net return relative to
+the universe mean on Kraken's lowest fee tier, over 109 periods, with no test of absolute return.

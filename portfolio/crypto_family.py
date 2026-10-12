@@ -501,6 +501,89 @@ if __name__ == "__main__":
 # Real-data check on the Kraken files (counts only, no returns): 633 pairs, 19 excluded, 461 dates with a universe
 #   (2025-07-06 to 2026-10-09), 65 to 124 coins a date (median 84), at least 21 per tier, arm A 460 periods, arm B 92.
 # Full-size synthetic run of the Binance part (700 coins x 3,332 days, no edge): about 52 seconds, 1.2 GB; no arm found an edge.
-# NOT yet run on the real Binance panel. Pre-registered in preregistration_crypto_family.md (commits a170d2e, b42b39a);
-#   the run is once only.
+# REAL RUN, once, 2026-10-12 (code commit 71057c0; pre-registration commits a170d2e, b42b39a). Six data hashes matched
+# the pre-registration, no results file existed, no crash, Deviations log empty. Command:
+#   python crypto_family.py --prices binance_prices_daily_asof_2026-10-10.csv --ohlcv binance_ohlcv_daily_asof_2026-10-10.csv
+#     --kraken-prices crypto_prices_daily_asof_2026-10-10.csv --kraken-ohlcv crypto_ohlcv_daily_asof_2026-10-10.csv
+#     --kraken-manifest crypto_pairs_manifest_asof_2026-10-10.csv
+# Output, in full:
+# Prices: 3332 days x 708 symbols; Kraken: 720 days x 633 pairs
+#
+# ARM A (heldout, horizon 1d, 729 periods, 427,183 rows)
+#   n_periods                729
+#   mean_ic                  0.0810
+#   ic_lower                 0.0694
+#   control_mean_ic          -0.0821
+#   ic_vs_control_lower      0.1399
+#   gross_mean               0.0011
+#   net_mean                 -0.0033
+#   net_lower                -0.0039
+#   mean_turnover            0.7270
+#   control_net_mean         -0.0049
+#   net_taker_mean           -0.0062
+#   net_taker_lower          -0.0068
+#   n_rows                   427183
+#   kraken_n_periods         460
+#   kraken_n_rows            38955
+#   kraken_first_date        2025-07-06
+#   kraken_last_date         2026-10-08
+#   kraken_n_coins_median    84
+#   kraken_mean_ic           0.0574
+#   kraken_ic_lower          0.0394
+#   kraken_gross_mean        0.0002
+#   kraken_net_mean          -0.0042
+#   kraken_net_lower         -0.0051
+#   kraken_mean_turnover     0.7211
+#   kraken_kraken_confirmed  False
+#   RULES: {'edge_found': True, 'tradable': False, 'kraken_confirmed': False}
+#
+# ARM B (heldout, horizon 5d, 145 periods, 426,678 rows)
+#   n_periods                145
+#   mean_ic                  0.0884
+#   ic_lower                 0.0684
+#   control_mean_ic          -0.1140
+#   ic_vs_control_lower      0.1612
+#   gross_mean               0.0048
+#   net_mean                 -0.0015
+#   net_lower                -0.0039
+#   mean_turnover            1.0487
+#   control_net_mean         -0.0191
+#   net_taker_mean           -0.0057
+#   net_taker_lower          -0.0080
+#   n_rows                   426678
+#   kraken_n_periods         92
+#   kraken_n_rows            38465
+#   kraken_first_date        2025-07-06
+#   kraken_last_date         2026-10-04
+#   kraken_n_coins_median    84
+#   kraken_mean_ic           0.0663
+#   kraken_ic_lower          0.0326
+#   kraken_gross_mean        0.0009
+#   kraken_net_mean          -0.0052
+#   kraken_net_lower         -0.0085
+#   kraken_mean_turnover     1.0099
+#   kraken_kraken_confirmed  False
+#   RULES: {'edge_found': True, 'tradable': False, 'kraken_confirmed': False}
+#
+# ARM C (full_cv, horizon 21d, 109 periods, 423,695 rows)
+#   n_periods                109
+#   mean_ic                  0.1346
+#   ic_lower                 0.1049
+#   control_mean_ic          -0.1320
+#   ic_vs_control_lower      0.2036
+#   gross_mean               0.0221
+#   net_mean                 0.0166
+#   net_lower                0.0077
+#   mean_turnover            0.8735
+#   control_net_mean         -0.0360
+#   net_taker_mean           0.0131
+#   net_taker_lower          0.0043
+#   heldout_only_n_periods   34
+#   heldout_only_mean_ic     0.1764
+#   n_rows                   423695
+#   RULES: {'edge_found': True, 'tradable': True, 'kraken_confirmed': None}
+#
+# Saved C:\ws\AFML\portfolio\crypto_family_results.csv
+#
+# What the verdicts do and do not show is recorded in the Outcome section of preregistration_crypto_family.md.
 # ---------------------------------------------------------------------------
