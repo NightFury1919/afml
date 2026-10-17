@@ -27,3 +27,15 @@ portfolio/binance_prices_daily_asof_*.csv
 portfolio/binance_ohlcv_daily_asof_*.csv
 portfolio/crypto_prices_daily_asof_*.csv
 portfolio/crypto_ohlcv_daily_asof_*.csv
+
+# regenerated staging that the scripts themselves say to delete after a run (CLAUDE.md diagnostics convention)
+pipeline/edge_harness/sweep_work*/
+pipeline/edge_harness/trace_work*/
+pipeline/diagnostics/multiwindow_staging/
+
+# derived Kraken snapshots: pooled = concatenation of tracked windows (too big for GitHub), refreshed = original + gap
+pipeline/diagnostics/kraken_snapshot_pooled_*/
+pipeline/diagnostics/kraken_snapshot_*_refreshed_*/
+
+# other Kraken snapshots: only the raw pull is ever kept; anything derived inside is regenerated
+pipeline/diagnostics/kraken_snapshot_*/*
