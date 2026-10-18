@@ -178,3 +178,20 @@ if __name__ == "__main__":
 # any-edge as all, standard error, wrong tilt): all caught after two tests were added for the first survivors.
 # Not yet run in the mlfinlab env. The registered run (Tier A) has not been run.
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# REGISTERED RUN (Ethan's machine, mlfinlab env, 2026-10-17, prices_daily_asof_2026-10-16.csv, 2,000 worlds per beta)
+# $ python noise_test_tier_a.py --prices prices_daily_asof_2026-10-16.csv --workers 4
+#  beta  mean_ir_current  wc_current_edge  wc_no_vol_edge  wc_book_edge  any_edge_found (se)
+#  0.00     -0.016           0.010            0.015           0.010        0.026 (0.004)
+#  0.02      0.150           0.022            0.028           0.020        0.048 (0.005)
+#  0.05      0.399           0.048            0.068           0.047        0.109 (0.007)
+#  0.10      0.811           0.148            0.208           0.148        0.302 (0.010)
+#  0.15      1.215           0.356            0.448           0.350        0.575 (0.011)
+#  0.20      1.610           0.584            0.665           0.584        0.781 (0.009)
+#  0.30      2.357           0.902            0.912           0.902        0.966 (0.004)
+# OUTCOME: criterion 1 (family-wise at beta 0 <= 0.06, each arm <= 0.04) MET. Any-arm power reaches 0.8 near a
+# realized ir of 1.65. Single conditions at beta 0 fire 4.0% to 4.4% (nominal 1.67%): the intervals are narrower than
+# labelled, and only requiring both conditions keeps the rule calibrated. Details in
+# preregistration_noise_test_etf_shadow.md (Outcome section).
+# ---------------------------------------------------------------------------

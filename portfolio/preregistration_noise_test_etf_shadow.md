@@ -40,3 +40,34 @@ produced a single resolved period, so the rule can still be changed. That change
   rate higher than measured. Volatility ranks are static; real ones drift.
 - The planted signal is generic, not the real features. Power numbers say how big an edge the rule needs, not what the
   model has.
+
+## Outcome (appended 2026-10-17 after the registered run; nothing above this line was changed)
+Run on Ethan's machine (mlfinlab env, `prices_daily_asof_2026-10-16.csv`, 2,000 worlds per beta, results in
+`noise_test_tier_a_results.csv`).
+
+Criterion 1, calibration at beta 0: **MET.** Family-wise rate 0.026 (limit 0.06, Monte Carlo SE 0.004). Per-arm
+`edge_found` rates 0.010 (`wc_current`), 0.015 (`wc_no_vol`), 0.010 (`wc_book`) (limit 0.04 each).
+
+| beta | mean ir, wc_current | any-arm edge_found | wc_current edge_found | wc_no_vol | wc_book |
+|---|---|---|---|---|---|
+| 0.00 | -0.02 | 0.026 | 0.010 | 0.015 | 0.010 |
+| 0.02 | 0.15 | 0.048 | 0.022 | 0.028 | 0.020 |
+| 0.05 | 0.40 | 0.109 | 0.048 | 0.068 | 0.047 |
+| 0.10 | 0.81 | 0.302 | 0.148 | 0.208 | 0.148 |
+| 0.15 | 1.22 | 0.575 | 0.356 | 0.448 | 0.350 |
+| 0.20 | 1.61 | 0.781 | 0.584 | 0.665 | 0.584 |
+| 0.30 | 2.36 | 0.966 | 0.902 | 0.912 | 0.902 |
+
+Criterion 2, reported: any-arm power first reaches 0.8 between realized ir 1.61 (0.78) and 2.36 (0.97), about ir 1.65 by
+interpolation. At a realized ir of 0.4 the rule finds the edge in about 11% of worlds, at 0.8 in about 30%.
+
+Observations, not part of the pass rule:
+- The rule passes because it requires BOTH conditions. Each single interval condition is looser than its label: at beta 0
+  `adds_beyond_volatility` fired 4.4% and `positive_alone` 4.0% for `wc_current`, against a nominal one-sided 1.67%. The
+  bootstrap intervals on 36 periods are about as narrow as a 92% interval, not 96.7%. Reading either condition alone
+  as "significant at 96.7%" would be wrong.
+- The rule needs a true ir of roughly 1.6 or more to confirm. The best history result for these arms was an ir near
+  0.2. A forward test of this rule is very unlikely to confirm an edge of the size the history suggests.
+- Limits as registered: independent periods (serial correlation would raise the false-positive rate), static volatility
+  ranks, a generic planted signal. It tests the statistic, not the model.
+No change to the frozen evaluation rule is made on the strength of this result.
