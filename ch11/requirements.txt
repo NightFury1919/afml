@@ -1,0 +1,12 @@
+# Chapter 11 -- The Dangers of Backtesting
+# Reference environment: the mlfinlab conda env (Python 3.10.20, pandas 1.5.3,
+# numpy 1.23.5, scikit-learn 1.2.2). The lines below are minimums, not pins.
+# Found by reading this chapter's imports (.py scripts, tests, notebook).
+# Also imports ch07 and ch10 -- run from a full repo checkout.
+
+numpy>=1.22
+pandas>=1.4
+scipy>=1.8
+scikit-learn>=1.2
+matplotlib>=3.5
+pytest>=7.0
