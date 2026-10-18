@@ -332,6 +332,24 @@ def test_placeholders_still_waiting_on_the_boss_are_listed_in_every_report(tmp_p
     assert rep3["open_placeholders"] == []
 
 
+def test_an_account_equity_far_from_the_config_equity_is_warned_about_because_the_plan_is_sized_on_it(tmp_path):
+    real_shaped(tmp_path)
+    rep = go(tmp_path, equity=99999.70)                       # Alpaca paper accounts start at about $100k, the challenge is $1,000
+    assert any("differs from the config equity" in w for w in rep["warnings"])
+    assert not any("differs from the config equity" in w for w in go(tmp_path, equity=1004.0)["warnings"])
+    assert not any("differs from the config equity" in w for w in go(tmp_path)["warnings"])
+
+
+def test_the_report_says_when_its_plan_numbers_are_a_fresh_calculation_and_not_the_saved_file(tmp_path):
+    real_shaped(tmp_path)
+    first = go(tmp_path)
+    assert first["plan"]["saved_plan_is_this_run"] is True
+    assert "fresh calculation" not in render_report(first)
+    second = go(tmp_path, equity=2000.0)
+    assert second["plan"]["saved_plan_is_this_run"] is False
+    assert "fresh calculation" in render_report(second)
+
+
 def test_a_missing_config_file_is_flagged_in_the_report(tmp_path):
     real_shaped(tmp_path)
     rep = go(tmp_path, config_found=False)
@@ -462,62 +480,68 @@ def test_default_update_rejects_a_fresh_pull_that_disagrees_with_the_history(mon
 # same versions as the mlfinlab env; Yahoo and Alpaca are faked in the tests, nothing here touched either)
 # $ cd portfolio ; pytest test_daily_run.py -v
 #
-# collected 46 items
+# collected 48 items
 # test_daily_run.py::test_clean_data_has_no_issues PASSED                  [  2%]
 # test_daily_run.py::test_saturday_with_a_friday_last_date_is_not_stale PASSED [  4%]
 # test_daily_run.py::test_monday_with_a_friday_last_date_is_not_stale_because_todays_bar_is_not_settled_yet PASSED [  6%]
 # test_daily_run.py::test_lag_is_measured_to_the_last_business_day_so_a_sunday_with_a_thursday_bar_is_one_day_behind_not_two PASSED [  8%]
 # test_daily_run.py::test_two_business_days_behind_is_a_warning_and_a_week_behind_is_an_error PASSED [ 10%]
-# test_daily_run.py::test_the_error_threshold_is_adjustable PASSED         [ 13%]
-# test_daily_run.py::test_duplicate_dates_and_unsorted_dates_are_errors PASSED [ 15%]
-# test_daily_run.py::test_a_non_positive_price_is_an_error_naming_the_ticker PASSED [ 17%]
-# test_daily_run.py::test_spy_without_a_last_day_price_is_an_error_but_another_ticker_is_only_a_warning PASSED [ 19%]
-# test_daily_run.py::test_a_thirty_percent_one_day_move_is_flagged_but_ten_percent_is_not PASSED [ 21%]
-# test_daily_run.py::test_the_jump_threshold_is_adjustable PASSED          [ 23%]
-# test_daily_run.py::test_only_the_recent_lookback_is_scanned_for_big_moves PASSED [ 26%]
-# test_daily_run.py::test_an_empty_frame_is_an_error_not_a_crash PASSED    [ 28%]
-# test_daily_run.py::test_config_hash_is_stable_and_changes_with_every_protocol_field_and_the_start_date PASSED [ 30%]
-# test_daily_run.py::test_equity_is_not_part_of_the_hash_because_it_changes_every_day PASSED [ 32%]
-# test_daily_run.py::test_a_missing_config_file_gives_the_defaults_and_says_so PASSED [ 34%]
-# test_daily_run.py::test_init_config_writes_a_loadable_file_and_never_overwrites PASSED [ 36%]
-# test_daily_run.py::test_an_unknown_key_in_the_config_is_rejected_so_typos_cannot_silently_change_the_protocol PASSED [ 39%]
-# test_daily_run.py::test_protocol_from_config_applies_the_fields_and_validates_them PASSED [ 41%]
-# test_daily_run.py::test_account_to_inputs_takes_equity_and_market_values_as_floats PASSED [ 43%]
-# test_daily_run.py::test_account_with_no_positions_has_empty_holdings PASSED [ 45%]
-# test_daily_run.py::test_a_normal_run_writes_a_plan_and_a_run_report_and_sends_nothing PASSED [ 47%]
-# test_daily_run.py::test_the_steps_are_recorded_in_order PASSED           [ 50%]
-# test_daily_run.py::test_the_update_step_runs_once_with_the_folder_and_its_result_is_recorded PASSED [ 52%]
-# test_daily_run.py::test_a_failed_update_is_recorded_and_the_run_carries_on_with_the_existing_snapshot PASSED [ 54%]
-# test_daily_run.py::test_a_failed_update_on_stale_data_blocks_the_plan_because_the_health_check_catches_it PASSED [ 56%]
-# test_daily_run.py::test_an_error_level_health_issue_blocks_the_plan_and_says_why PASSED [ 58%]
-# test_daily_run.py::test_a_prices_file_that_cannot_be_loaded_blocks_the_run_with_the_reason PASSED [ 60%]
-# test_daily_run.py::test_no_snapshot_at_all_blocks_the_run_instead_of_crashing PASSED [ 63%]
-# test_daily_run.py::test_running_twice_on_the_same_day_keeps_the_first_plan_and_does_not_overwrite_the_first_report PASSED [ 65%]
-# test_daily_run.py::test_a_changed_protocol_between_runs_is_reported_loudly PASSED [ 67%]
-# test_daily_run.py::test_the_scoreboard_start_in_the_future_is_a_note_not_a_crash PASSED [ 69%]
-# test_daily_run.py::test_a_scoreboard_start_with_prices_reports_the_latest_row PASSED [ 71%]
-# test_daily_run.py::test_no_start_date_skips_the_scoreboard PASSED        [ 73%]
-# test_daily_run.py::test_holdings_and_equity_come_from_the_caller_and_a_second_account_changes_the_orders PASSED [ 76%]
-# test_daily_run.py::test_placeholders_still_waiting_on_the_boss_are_listed_in_every_report PASSED [ 78%]
-# test_daily_run.py::test_a_missing_config_file_is_flagged_in_the_report PASSED [ 80%]
-# test_daily_run.py::test_render_report_is_plain_text_that_says_nothing_was_sent_and_lists_issues PASSED [ 82%]
-# test_daily_run.py::test_cli_with_no_update_runs_end_to_end_exits_0_and_prints_a_summary PASSED [ 84%]
-# test_daily_run.py::test_cli_exits_1_when_the_run_is_blocked PASSED       [ 86%]
+# test_daily_run.py::test_the_error_threshold_is_adjustable PASSED         [ 12%]
+# test_daily_run.py::test_duplicate_dates_and_unsorted_dates_are_errors PASSED [ 14%]
+# test_daily_run.py::test_a_non_positive_price_is_an_error_naming_the_ticker PASSED [ 16%]
+# test_daily_run.py::test_spy_without_a_last_day_price_is_an_error_but_another_ticker_is_only_a_warning PASSED [ 18%]
+# test_daily_run.py::test_a_thirty_percent_one_day_move_is_flagged_but_ten_percent_is_not PASSED [ 20%]
+# test_daily_run.py::test_the_jump_threshold_is_adjustable PASSED          [ 22%]
+# test_daily_run.py::test_only_the_recent_lookback_is_scanned_for_big_moves PASSED [ 25%]
+# test_daily_run.py::test_an_empty_frame_is_an_error_not_a_crash PASSED    [ 27%]
+# test_daily_run.py::test_config_hash_is_stable_and_changes_with_every_protocol_field_and_the_start_date PASSED [ 29%]
+# test_daily_run.py::test_equity_is_not_part_of_the_hash_because_it_changes_every_day PASSED [ 31%]
+# test_daily_run.py::test_a_missing_config_file_gives_the_defaults_and_says_so PASSED [ 33%]
+# test_daily_run.py::test_init_config_writes_a_loadable_file_and_never_overwrites PASSED [ 35%]
+# test_daily_run.py::test_an_unknown_key_in_the_config_is_rejected_so_typos_cannot_silently_change_the_protocol PASSED [ 37%]
+# test_daily_run.py::test_protocol_from_config_applies_the_fields_and_validates_them PASSED [ 39%]
+# test_daily_run.py::test_account_to_inputs_takes_equity_and_market_values_as_floats PASSED [ 41%]
+# test_daily_run.py::test_account_with_no_positions_has_empty_holdings PASSED [ 43%]
+# test_daily_run.py::test_a_normal_run_writes_a_plan_and_a_run_report_and_sends_nothing PASSED [ 45%]
+# test_daily_run.py::test_the_steps_are_recorded_in_order PASSED           [ 47%]
+# test_daily_run.py::test_the_update_step_runs_once_with_the_folder_and_its_result_is_recorded PASSED [ 50%]
+# test_daily_run.py::test_a_failed_update_is_recorded_and_the_run_carries_on_with_the_existing_snapshot PASSED [ 52%]
+# test_daily_run.py::test_a_failed_update_on_stale_data_blocks_the_plan_because_the_health_check_catches_it PASSED [ 54%]
+# test_daily_run.py::test_an_error_level_health_issue_blocks_the_plan_and_says_why PASSED [ 56%]
+# test_daily_run.py::test_a_prices_file_that_cannot_be_loaded_blocks_the_run_with_the_reason PASSED [ 58%]
+# test_daily_run.py::test_no_snapshot_at_all_blocks_the_run_instead_of_crashing PASSED [ 60%]
+# test_daily_run.py::test_running_twice_on_the_same_day_keeps_the_first_plan_and_does_not_overwrite_the_first_report PASSED [ 62%]
+# test_daily_run.py::test_a_changed_protocol_between_runs_is_reported_loudly PASSED [ 64%]
+# test_daily_run.py::test_the_scoreboard_start_in_the_future_is_a_note_not_a_crash PASSED [ 66%]
+# test_daily_run.py::test_a_scoreboard_start_with_prices_reports_the_latest_row PASSED [ 68%]
+# test_daily_run.py::test_no_start_date_skips_the_scoreboard PASSED        [ 70%]
+# test_daily_run.py::test_holdings_and_equity_come_from_the_caller_and_a_second_account_changes_the_orders PASSED [ 72%]
+# test_daily_run.py::test_placeholders_still_waiting_on_the_boss_are_listed_in_every_report PASSED [ 75%]
+# test_daily_run.py::test_an_account_equity_far_from_the_config_equity_is_warned_about_because_the_plan_is_sized_on_it PASSED [ 77%]
+# test_daily_run.py::test_the_report_says_when_its_plan_numbers_are_a_fresh_calculation_and_not_the_saved_file PASSED [ 79%]
+# test_daily_run.py::test_a_missing_config_file_is_flagged_in_the_report PASSED [ 81%]
+# test_daily_run.py::test_render_report_is_plain_text_that_says_nothing_was_sent_and_lists_issues PASSED [ 83%]
+# test_daily_run.py::test_cli_with_no_update_runs_end_to_end_exits_0_and_prints_a_summary PASSED [ 85%]
+# test_daily_run.py::test_cli_exits_1_when_the_run_is_blocked PASSED       [ 87%]
 # test_daily_run.py::test_cli_init_config_writes_the_file_once PASSED      [ 89%]
 # test_daily_run.py::test_cli_from_alpaca_uses_the_account_equity_and_positions_read_only PASSED [ 91%]
 # test_daily_run.py::test_cli_from_alpaca_without_keys_exits_2_and_does_nothing PASSED [ 93%]
 # test_daily_run.py::test_the_module_never_places_orders_and_imports_no_trading_client_at_load PASSED [ 95%]
 # test_daily_run.py::test_default_update_appends_the_new_day_saves_a_new_snapshot_and_a_second_call_says_nothing_new PASSED [ 97%]
 # test_daily_run.py::test_default_update_rejects_a_fresh_pull_that_disagrees_with_the_history PASSED [100%]
-# ============================== 46 passed in 2.63s ==============================
+# ============================== 48 passed in 2.47s ==============================
 #
-# Mutation checks (sandbox, 30): stale thresholds, lag measured from today instead of the last business day, bad-index
+# Mutation checks (sandbox, 34): stale thresholds, lag measured from today instead of the last business day, bad-index
 #   / non-positive-price / SPY-missing / stale-ticker / big-move checks, jump and lookback ignored, config hash missing a
 #   field or including equity, unknown config keys accepted, config overwrite, config not validated, failed update fatal,
 #   errors not blocking the plan, plan or report overwritten, protocol change not reported, wrong previous run picked,
 #   future scoreboard start unguarded, confirmed placeholders still listed, equity override ignored, live instead of paper
 #   API, exit codes, missing keys not fatal, no-orders line dropped, unloadable file crashing instead of blocking.
-#   One survived the first pass (lag measured from today); a Sunday-with-a-Thursday-bar test was added and it is caught.
+#   plus: account equity far from config equity not warned, fresh-calculation flag/note wrong. One survived the first pass
+#   (lag measured from today); a Sunday-with-a-Thursday-bar test was added and it is caught.
+# Your Windows run (2026-10-17): --from-alpaca showed the paper account at $99,999.70, not $1,000, so the plan was sized on it and
+#   the report still showed numbers from a plan file saved earlier at $1,000. Both fixed: an equity-mismatch warning and a
+#   "fresh calculation" note, each with a test.
 # Real snapshot (prices_daily_asof_2026-10-08.csv, 48 ETFs + SH, run with --today 2026-10-09 --no-update): status OK, 48
 #   orders, cash after $0.00, SPY 51.0% of the account, a second run saved _r2 and reported the protocol change after the
 #   config gained a start date; scoreboard 2026-09-30 to 2026-10-08 ran (a mechanics check, NOT a finding). A first version
