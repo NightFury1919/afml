@@ -207,3 +207,16 @@ if __name__ == "__main__":
 # within a class). One timing run on a 5-year world: first fit and score 26 s, last 45 s.
 # Not yet run in the mlfinlab env. The registered run (Tier B) has not been run.
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# REGISTERED RUN (Ethan's machine, mlfinlab env, 2026-10-17/18, prices_daily_asof_2026-10-16.csv, 8 worlds)
+# $ python noise_test_tier_b.py --prices prices_daily_asof_2026-10-16.csv --workers 4
+# integrity: True in all 8 worlds. edge_found: 0 of 8 worlds for every arm.
+#   arm          mean ir (se)      mean IC (se)      within 2 se of zero
+#   wc_current   0.115 (0.230)     0.008 (0.020)     yes
+#   wc_no_vol    0.054 (0.208)     0.018 (0.012)     yes
+#   wc_book      0.200 (0.263)     0.007 (0.020)     yes
+# OUTCOME: PASSED (integrity and no skill from noise). Realized vol_tilt of wc_current / wc_book swung from -0.92 to
+# +0.81 across worlds (Tier A assumed a fixed 0.5); wc_no_vol stayed near 0. The signed 0.7 cap lets a strongly negative
+# tilt through. Details in preregistration_noise_test_etf_shadow_tier_b.md (Outcome section).
+# ---------------------------------------------------------------------------
