@@ -1,0 +1,12 @@
+{
+  "spy_share": 0.5,
+  "qf_rule": "inverse_vol",
+  "max_weight": null,
+  "exposure": 1.0,
+  "rebalance_every": 1,
+  "start": "2026-10-16",
+  "equity": 1000.0,
+  "confirmed": []
+  
+   
+}
