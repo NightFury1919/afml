@@ -307,6 +307,65 @@ def test_a_scoreboard_start_with_prices_reports_the_latest_row(tmp_path):
     assert {"spy_value", "qf_value", "qf_minus_spy", "spy_drawdown", "qf_drawdown"} <= set(sb["last_row"])
 
 
+# One-sleeve accounts (2026-10-24): an ETF-only account (spy_share 0) or a SPY-only account (spy_share 1) has no money in
+# the other sleeve, so its value, return and drawdown are not "0" or "nan", they do not exist. The report leaves them out.
+BOTH_KEYS = {"spy_value", "qf_value", "spy_return", "qf_return", "qf_minus_spy", "spy_drawdown", "qf_drawdown"}
+
+
+def scoreboard_run(tmp_path, spy_share):
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    px = real_shaped(tmp_path)
+    start = px.index[-6].date().isoformat()
+    return go(tmp_path, config={**CFG, "spy_share": spy_share, "start": start})
+
+
+def strict_json(path):
+    def refuse(token):
+        raise ValueError(f"not strict JSON: {token}")
+    return json.loads(Path(path).read_text(encoding="utf-8"), parse_constant=refuse)
+
+
+def test_an_etf_only_account_reports_only_the_qf_sleeve_and_no_spy_numbers(tmp_path):
+    rep = scoreboard_run(tmp_path, 0.0)
+    sb = rep["scoreboard"]
+    assert set(sb["last_row"]) == {"qf_value", "qf_return", "qf_drawdown"} and sb["sleeves"] == "qf_only"
+    assert sb["last_row"]["qf_return"] == pytest.approx(sb["last_row"]["qf_value"] / 1000.0 - 1.0)
+
+
+def test_a_spy_only_account_reports_only_the_spy_sleeve_and_no_qf_numbers(tmp_path):
+    rep = scoreboard_run(tmp_path, 1.0)
+    sb = rep["scoreboard"]
+    assert set(sb["last_row"]) == {"spy_value", "spy_return", "spy_drawdown"} and sb["sleeves"] == "spy_only"
+    assert sb["last_row"]["spy_return"] == pytest.approx(sb["last_row"]["spy_value"] / 1000.0 - 1.0)
+
+
+def test_a_split_account_still_reports_every_scoreboard_column(tmp_path):
+    rep = scoreboard_run(tmp_path, 0.5)
+    assert set(rep["scoreboard"]["last_row"]) == BOTH_KEYS and rep["scoreboard"]["sleeves"] == "both"
+
+
+def test_a_tiny_spy_or_qf_share_is_still_a_split_account_not_a_one_sleeve_account(tmp_path):
+    assert scoreboard_run(tmp_path / "a", 0.01)["scoreboard"]["sleeves"] == "both"
+    assert scoreboard_run(tmp_path / "b", 0.99)["scoreboard"]["sleeves"] == "both"
+
+
+def test_the_saved_run_report_is_strict_json_with_no_nan_for_every_kind_of_account(tmp_path):
+    for name, share in (("etf", 0.0), ("spy", 1.0), ("split", 0.5)):
+        rep = scoreboard_run(tmp_path / name, share)
+        assert strict_json(rep["report_path"])["scoreboard"]["last_row"]
+
+
+def test_the_text_report_never_prints_nan_and_says_which_sleeve_an_one_sleeve_account_holds(tmp_path):
+    etf = render_report(scoreboard_run(tmp_path / "etf", 0.0))
+    spy = render_report(scoreboard_run(tmp_path / "spy", 1.0))
+    split = render_report(scoreboard_run(tmp_path / "split", 0.5))
+    for text in (etf, spy, split):
+        assert "nan" not in text.lower()
+    assert "only the QF sleeve" in etf and "only SPY" not in etf and "spy_value" not in etf
+    assert "only SPY" in spy and "only the QF sleeve" not in spy and "qf_value" not in spy
+    assert "only the QF sleeve" not in split and "only SPY" not in split and "qf_minus_spy" in split
+
+
 def test_no_start_date_skips_the_scoreboard(tmp_path):
     real_shaped(tmp_path)
     rep = go(tmp_path)
