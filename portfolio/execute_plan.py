@@ -4,13 +4,20 @@ Run from C:\\ws\\AFML\\portfolio in the mlfinlab env, with the PAPER keys of the
     python execute_plan.py                                   # DRY RUN: checks everything, lists the orders, sends nothing
     python execute_plan.py --execute --confirm 2026-10-16    # place them; --confirm must equal the plan's as_of date
     python execute_plan.py --reconcile                       # compare current positions with the plan's targets, send nothing
+    python execute_plan.py --execute --confirm DATE --holdings-tol 10   # accept up to $10 of price drift per position (see below)
     python execute_plan.py --execute --confirm DATE --allow-closed   # submit while the market is closed (see below)
 
 What it checks before it sends anything (any ERROR refuses the whole run)
     plan is version 2 and at most 4 days old; account ACTIVE and not trading-blocked; account equity within 5% of the
-    plan's equity; no open orders already; positions match the holdings the plan assumed (within $1 each); this plan has
-    not been executed before (an orders/orders_<as_of>.json ledger exists); the market is open (or --allow-closed).
+    plan's equity; no open orders already; positions match the holdings the plan assumed (within $1 each, or within
+    --holdings-tol dollars); this plan has not been executed before (an orders/orders_<as_of>.json ledger exists); the market is open (or --allow-closed).
     Sells are never sent while the market is closed.
+
+Holdings tolerance (--holdings-tol, default 1.0, never more than 50)
+    A plan is made from the account's dollar values while the market is closed. When the market opens those values move
+    with prices, so a large position can drift by more than $1 and the run is refused for no real reason. --holdings-tol
+    lets one run accept a larger drift per position. A value above $1 is shown as a warning and written into the ledger
+    (holdings_tol). Orders are still the plan's own dollar amounts, so a drift only shifts a position by about that much.
 
 How it places orders
     Market orders by dollar amount (notional), time in force DAY, the only kind Alpaca takes for fractional shares.
@@ -38,6 +45,8 @@ import pandas as pd
 
 PLAN_RE = re.compile(r"^plan_v2_(\d{4}-\d{2}-\d{2})\.json$")
 TERMINAL_BAD = {"canceled", "cancelled", "rejected", "expired", "done_for_day", "suspended"}
+DEFAULT_HOLDINGS_TOL = 1.0      # dollars of drift per position the holdings check accepts
+MAX_HOLDINGS_TOL = 50.0         # a looser value would make the holdings check meaningless
 
 
 class ExecutionRefused(Exception):
@@ -50,6 +59,14 @@ class ExecutionRefused(Exception):
 
 def _issue(level, code, message):
     return dict(level=level, code=code, message=message)
+
+
+def check_holdings_tol(tol):
+    """The tolerance as a float, or ValueError if it is negative, not a number, or above MAX_HOLDINGS_TOL."""
+    tol = float(tol)
+    if not 0.0 <= tol <= MAX_HOLDINGS_TOL:                  # also False for nan
+        raise ValueError(f"holdings tolerance must be between 0 and {MAX_HOLDINGS_TOL:g} dollars, got {tol}")
+    return tol
 
 
 # ------------------------------------------------------------------------------------ plan files
@@ -69,8 +86,9 @@ def load_plan(path):
 
 # ------------------------------------------------------------------------------------ checks
 def preflight(plan, account, positions, open_orders, clock, today, ledger_exists=False, max_plan_age_days=4,
-              equity_tol=0.05, holdings_tol=1.0, allow_closed=False):
+              equity_tol=0.05, holdings_tol=DEFAULT_HOLDINGS_TOL, allow_closed=False):
     """List of issues (level 'error' or 'warn'). Any error means: send nothing."""
+    holdings_tol = check_holdings_tol(holdings_tol)
     issues = []
     if plan.get("version") != 2:
         issues.append(_issue("error", "plan_version", f"plan version is {plan.get('version')!r}, expected 2"))
@@ -90,6 +108,9 @@ def preflight(plan, account, positions, open_orders, clock, today, ledger_exists
     off = sorted(s for s in set(assumed) | set(positions) if abs(positions.get(s, 0.0) - assumed.get(s, 0.0)) > holdings_tol)
     if off:
         issues.append(_issue("error", "holdings_changed", "positions differ from what the plan assumed for: " + ", ".join(off)))
+    if holdings_tol > DEFAULT_HOLDINGS_TOL:
+        issues.append(_issue("warn", "holdings_tol_loosened", f"positions may differ from the plan's assumed holdings by up to "
+                             f"${holdings_tol:,.2f} each (the default is ${DEFAULT_HOLDINGS_TOL:,.2f})"))
     if ledger_exists:
         issues.append(_issue("error", "already_executed", f"an order ledger for {plan['as_of']} already exists; a plan is placed once"))
     orders = plan.get("orders", [])
@@ -127,16 +148,18 @@ def _write(path, ledger):
     path.write_text(json.dumps(ledger, indent=2, default=str), encoding="utf-8")
 
 
-def execute(plan, gateway, orders_dir, today, allow_closed=False, fill_timeout=30, poll_seconds=2, sleep=time.sleep):
+def execute(plan, gateway, orders_dir, today, allow_closed=False, fill_timeout=30, poll_seconds=2, sleep=time.sleep,
+            holdings_tol=DEFAULT_HOLDINGS_TOL):
     """Run the checks, then place the plan. Returns the ledger dict. Raises ExecutionRefused before sending anything."""
+    holdings_tol = check_holdings_tol(holdings_tol)
     path = _ledger_path(orders_dir, plan)
     issues = preflight(plan, gateway.account(), gateway.positions(), gateway.open_orders(), gateway.clock(), today,
-                       ledger_exists=path.exists(), allow_closed=allow_closed)
+                       ledger_exists=path.exists(), allow_closed=allow_closed, holdings_tol=holdings_tol)
     if any(i["level"] == "error" for i in issues):
         raise ExecutionRefused(issues)
 
     ledger = dict(as_of=plan["as_of"], started=str(pd.Timestamp.now()), plan_equity=plan["equity"], status="running",
-                  note="", warnings=[i for i in issues if i["level"] == "warn"], entries=[])
+                  holdings_tol=holdings_tol, note="", warnings=[i for i in issues if i["level"] == "warn"], entries=[])
     orders = plan.get("orders", [])
     if not orders:
         ledger["status"] = "nothing_to_do"
@@ -257,8 +280,16 @@ def main():
     ap.add_argument("--confirm", default=None, help="the plan's as_of date, typed out, to allow --execute")
     ap.add_argument("--allow-closed", action="store_true", help="submit while the market is closed (DAY orders queue)")
     ap.add_argument("--reconcile", action="store_true", help="compare positions with the plan's targets and stop")
+    ap.add_argument("--holdings-tol", default=DEFAULT_HOLDINGS_TOL, type=float,
+                    help=f"dollars of drift allowed per position (default {DEFAULT_HOLDINGS_TOL:g}, at most {MAX_HOLDINGS_TOL:g})")
     ap.add_argument("--today", default=None, help="override today's date (YYYY-MM-DD), for testing")
     args = ap.parse_args()
+
+    try:
+        holdings_tol = check_holdings_tol(args.holdings_tol)
+    except ValueError as e:
+        print(f"Refusing: --holdings-tol: {e}")
+        sys.exit(2)
 
     if not (os.environ.get("APCA_API_KEY_ID") and os.environ.get("APCA_API_SECRET_KEY")):
         print("Set APCA_API_KEY_ID and APCA_API_SECRET_KEY (paper keys), as check_account.py does.")
@@ -287,7 +318,8 @@ def main():
 
     if not args.execute:
         issues = preflight(plan, gateway.account(), gateway.positions(), gateway.open_orders(), gateway.clock(), today,
-                           ledger_exists=_ledger_path(args.orders_dir, plan).exists(), allow_closed=args.allow_closed)
+                           ledger_exists=_ledger_path(args.orders_dir, plan).exists(), allow_closed=args.allow_closed,
+                           holdings_tol=holdings_tol)
         print(f"DRY RUN of {plan_path.name} (equity ${plan['equity']:,.2f}). Nothing is sent.")
         _print_issues(issues)
         print("Orders it would place:")
@@ -300,7 +332,7 @@ def main():
         sys.exit(1 if errors else 0)
 
     try:
-        ledger = execute(plan, gateway, args.orders_dir, today, allow_closed=args.allow_closed)
+        ledger = execute(plan, gateway, args.orders_dir, today, allow_closed=args.allow_closed, holdings_tol=holdings_tol)
     except ExecutionRefused as e:
         print("REFUSED, nothing was sent:")
         _print_issues(e.issues)
@@ -317,53 +349,66 @@ if __name__ == "__main__":
     main()
 
 # ---------------------------------------------------------------------------
-# TDD RESULTS (pytest, 2026-10-17; sandbox run: Linux, Python 3.10.20, pandas 1.5.3, numpy 1.23.5,
+# TDD RESULTS (pytest, 2026-10-24; sandbox run: Linux, Python 3.10.20, pandas 1.5.3, numpy 1.23.5,
 # same versions as the mlfinlab env; alpaca-py is faked in every test, so nothing here touched Alpaca)
 # $ cd portfolio ; pytest test_execute_plan.py -v
 #
-# collected 41 items
-# test_execute_plan.py::test_a_healthy_account_and_a_fresh_plan_have_no_issues PASSED [  2%]
-# test_execute_plan.py::test_a_plan_that_is_not_version_2_is_refused PASSED [  4%]
-# test_execute_plan.py::test_an_old_plan_is_refused_and_the_age_limit_is_adjustable PASSED [  7%]
-# test_execute_plan.py::test_an_inactive_or_blocked_account_is_refused PASSED [  9%]
-# test_execute_plan.py::test_account_equity_far_from_the_plan_equity_is_refused_but_a_small_drift_is_fine PASSED [ 12%]
-# test_execute_plan.py::test_open_orders_block_the_run_so_a_double_submit_is_impossible PASSED [ 14%]
-# test_execute_plan.py::test_holdings_that_differ_from_what_the_plan_assumed_are_refused_naming_the_symbols PASSED [ 17%]
-# test_execute_plan.py::test_a_plan_that_assumed_holdings_matches_when_the_account_holds_exactly_those PASSED [ 19%]
-# test_execute_plan.py::test_a_plan_that_was_already_executed_is_refused PASSED [ 21%]
-# test_execute_plan.py::test_a_closed_market_is_an_error_unless_allowed_and_then_a_warning PASSED [ 24%]
-# test_execute_plan.py::test_sells_cannot_be_sent_while_the_market_is_closed_even_if_closed_orders_are_allowed PASSED [ 26%]
-# test_execute_plan.py::test_a_plan_with_no_orders_is_a_warning_not_an_error PASSED [ 29%]
-# test_execute_plan.py::test_a_clean_run_submits_each_order_once_writes_a_ledger_and_reports_complete PASSED [ 31%]
-# test_execute_plan.py::test_a_refused_preflight_raises_and_submits_nothing_and_writes_no_ledger PASSED [ 34%]
-# test_execute_plan.py::test_running_the_same_plan_twice_is_refused_the_second_time PASSED [ 36%]
-# test_execute_plan.py::test_a_rejected_buy_is_recorded_the_others_still_go_and_the_run_is_partial PASSED [ 39%]
-# test_execute_plan.py::test_the_ledger_exists_before_the_first_order_so_a_crash_cannot_allow_a_second_run PASSED [ 41%]
-# test_execute_plan.py::test_sells_go_first_and_buys_wait_until_the_sells_have_filled PASSED [ 43%]
-# test_execute_plan.py::test_if_a_sell_does_not_fill_in_time_no_buy_is_sent PASSED [ 46%]
-# test_execute_plan.py::test_a_rejected_sell_aborts_before_any_buy PASSED  [ 48%]
-# test_execute_plan.py::test_a_sell_that_ends_canceled_or_rejected_aborts_before_any_buy PASSED [ 51%]
-# test_execute_plan.py::test_the_fill_wait_polls_with_the_sleep_function_and_stops_at_the_timeout PASSED [ 53%]
-# test_execute_plan.py::test_a_plan_with_no_orders_does_nothing_and_says_so PASSED [ 56%]
-# test_execute_plan.py::test_a_closed_market_run_needs_allow_closed_and_then_records_the_warning PASSED [ 58%]
-# test_execute_plan.py::test_reconcile_compares_each_target_dollar_amount_with_the_position PASSED [ 60%]
-# test_execute_plan.py::test_reconcile_flags_a_position_the_plan_does_not_want_and_a_target_with_no_position PASSED [ 63%]
-# test_execute_plan.py::test_reconcile_tolerance_is_the_larger_of_a_dollar_and_five_percent_of_target PASSED [ 65%]
-# test_execute_plan.py::test_latest_plan_picks_the_newest_date_and_ignores_other_files PASSED [ 68%]
-# test_execute_plan.py::test_load_plan_reads_the_json PASSED               [ 70%]
-# test_execute_plan.py::test_the_gateway_uses_the_paper_api_and_converts_alpaca_objects_to_plain_values PASSED [ 73%]
-# test_execute_plan.py::test_the_gateway_sends_notional_day_market_orders_and_closes_a_full_exit_with_close_position PASSED [ 75%]
-# test_execute_plan.py::test_cli_default_is_a_dry_run_that_lists_the_orders_and_sends_nothing PASSED [ 78%]
-# test_execute_plan.py::test_cli_dry_run_exits_1_and_says_why_when_a_check_fails PASSED [ 80%]
-# test_execute_plan.py::test_cli_execute_without_the_matching_confirm_date_sends_nothing_and_exits_2 PASSED [ 82%]
-# test_execute_plan.py::test_cli_execute_with_the_right_confirm_places_the_orders_and_exits_0 PASSED [ 85%]
-# test_execute_plan.py::test_cli_a_partial_run_exits_1 PASSED              [ 87%]
-# test_execute_plan.py::test_cli_reconcile_prints_the_table_and_sends_nothing PASSED [ 90%]
-# test_execute_plan.py::test_cli_without_keys_exits_2_and_touches_nothing PASSED [ 92%]
-# test_execute_plan.py::test_cli_with_no_plan_file_exits_2 PASSED          [ 95%]
-# test_execute_plan.py::test_the_module_can_only_reach_the_paper_api_and_never_uses_risky_order_features PASSED [ 97%]
+# collected 54 items
+# test_execute_plan.py::test_a_healthy_account_and_a_fresh_plan_have_no_issues PASSED [  1%]
+# test_execute_plan.py::test_a_plan_that_is_not_version_2_is_refused PASSED [  3%]
+# test_execute_plan.py::test_an_old_plan_is_refused_and_the_age_limit_is_adjustable PASSED [  5%]
+# test_execute_plan.py::test_an_inactive_or_blocked_account_is_refused PASSED [  7%]
+# test_execute_plan.py::test_account_equity_far_from_the_plan_equity_is_refused_but_a_small_drift_is_fine PASSED [  9%]
+# test_execute_plan.py::test_open_orders_block_the_run_so_a_double_submit_is_impossible PASSED [ 11%]
+# test_execute_plan.py::test_holdings_that_differ_from_what_the_plan_assumed_are_refused_naming_the_symbols PASSED [ 12%]
+# test_execute_plan.py::test_a_plan_that_assumed_holdings_matches_when_the_account_holds_exactly_those PASSED [ 14%]
+# test_execute_plan.py::test_a_plan_that_was_already_executed_is_refused PASSED [ 16%]
+# test_execute_plan.py::test_a_closed_market_is_an_error_unless_allowed_and_then_a_warning PASSED [ 18%]
+# test_execute_plan.py::test_sells_cannot_be_sent_while_the_market_is_closed_even_if_closed_orders_are_allowed PASSED [ 20%]
+# test_execute_plan.py::test_a_plan_with_no_orders_is_a_warning_not_an_error PASSED [ 22%]
+# test_execute_plan.py::test_a_clean_run_submits_each_order_once_writes_a_ledger_and_reports_complete PASSED [ 24%]
+# test_execute_plan.py::test_a_refused_preflight_raises_and_submits_nothing_and_writes_no_ledger PASSED [ 25%]
+# test_execute_plan.py::test_running_the_same_plan_twice_is_refused_the_second_time PASSED [ 27%]
+# test_execute_plan.py::test_a_rejected_buy_is_recorded_the_others_still_go_and_the_run_is_partial PASSED [ 29%]
+# test_execute_plan.py::test_the_ledger_exists_before_the_first_order_so_a_crash_cannot_allow_a_second_run PASSED [ 31%]
+# test_execute_plan.py::test_sells_go_first_and_buys_wait_until_the_sells_have_filled PASSED [ 33%]
+# test_execute_plan.py::test_if_a_sell_does_not_fill_in_time_no_buy_is_sent PASSED [ 35%]
+# test_execute_plan.py::test_a_rejected_sell_aborts_before_any_buy PASSED  [ 37%]
+# test_execute_plan.py::test_a_sell_that_ends_canceled_or_rejected_aborts_before_any_buy PASSED [ 38%]
+# test_execute_plan.py::test_the_fill_wait_polls_with_the_sleep_function_and_stops_at_the_timeout PASSED [ 40%]
+# test_execute_plan.py::test_a_plan_with_no_orders_does_nothing_and_says_so PASSED [ 42%]
+# test_execute_plan.py::test_a_closed_market_run_needs_allow_closed_and_then_records_the_warning PASSED [ 44%]
+# test_execute_plan.py::test_reconcile_compares_each_target_dollar_amount_with_the_position PASSED [ 46%]
+# test_execute_plan.py::test_reconcile_flags_a_position_the_plan_does_not_want_and_a_target_with_no_position PASSED [ 48%]
+# test_execute_plan.py::test_reconcile_tolerance_is_the_larger_of_a_dollar_and_five_percent_of_target PASSED [ 50%]
+# test_execute_plan.py::test_latest_plan_picks_the_newest_date_and_ignores_other_files PASSED [ 51%]
+# test_execute_plan.py::test_load_plan_reads_the_json PASSED               [ 53%]
+# test_execute_plan.py::test_the_gateway_uses_the_paper_api_and_converts_alpaca_objects_to_plain_values PASSED [ 55%]
+# test_execute_plan.py::test_the_gateway_sends_notional_day_market_orders_and_closes_a_full_exit_with_close_position PASSED [ 57%]
+# test_execute_plan.py::test_cli_default_is_a_dry_run_that_lists_the_orders_and_sends_nothing PASSED [ 59%]
+# test_execute_plan.py::test_cli_dry_run_exits_1_and_says_why_when_a_check_fails PASSED [ 61%]
+# test_execute_plan.py::test_cli_execute_without_the_matching_confirm_date_sends_nothing_and_exits_2 PASSED [ 62%]
+# test_execute_plan.py::test_cli_execute_with_the_right_confirm_places_the_orders_and_exits_0 PASSED [ 64%]
+# test_execute_plan.py::test_cli_a_partial_run_exits_1 PASSED              [ 66%]
+# test_execute_plan.py::test_cli_reconcile_prints_the_table_and_sends_nothing PASSED [ 68%]
+# test_execute_plan.py::test_cli_without_keys_exits_2_and_touches_nothing PASSED [ 70%]
+# test_execute_plan.py::test_cli_with_no_plan_file_exits_2 PASSED          [ 72%]
+# test_execute_plan.py::test_a_price_move_beyond_the_default_dollar_is_refused_and_a_looser_tolerance_lets_it_through_with_a_warning PASSED [ 74%]
+# test_execute_plan.py::test_a_loosened_tolerance_still_refuses_a_move_larger_than_it_and_names_the_symbol PASSED [ 75%]
+# test_execute_plan.py::test_a_tolerance_applies_to_every_symbol_not_just_the_first_one PASSED [ 77%]
+# test_execute_plan.py::test_a_drift_exactly_equal_to_the_tolerance_is_accepted_and_one_cent_over_is_refused PASSED [ 79%]
+# test_execute_plan.py::test_the_default_tolerance_and_a_tighter_one_add_no_loosened_warning PASSED [ 81%]
+# test_execute_plan.py::test_the_tolerance_is_capped_and_a_negative_or_missing_number_is_rejected PASSED [ 83%]
+# test_execute_plan.py::test_execute_passes_the_tolerance_through_places_the_orders_and_records_it_in_the_ledger PASSED [ 85%]
+# test_execute_plan.py::test_execute_with_the_default_tolerance_still_refuses_the_same_drift_and_sends_nothing PASSED [ 87%]
+# test_execute_plan.py::test_a_default_run_records_the_default_tolerance_in_its_ledger PASSED [ 88%]
+# test_execute_plan.py::test_cli_dry_run_refuses_a_drift_by_default_and_passes_it_with_holdings_tol PASSED [ 90%]
+# test_execute_plan.py::test_cli_execute_with_holdings_tol_places_the_orders_and_the_ledger_remembers_it PASSED [ 92%]
+# test_execute_plan.py::test_cli_execute_without_holdings_tol_is_refused_for_the_same_drift_and_sends_nothing PASSED [ 94%]
+# test_execute_plan.py::test_cli_rejects_a_negative_or_too_large_tolerance_before_touching_the_account PASSED [ 96%]
+# test_execute_plan.py::test_the_module_can_only_reach_the_paper_api_and_never_uses_risky_order_features PASSED [ 98%]
 # test_execute_plan.py::test_no_alpaca_import_happens_at_module_load PASSED [100%]
-# ============================== 41 passed in 0.38s ==============================
+# ============================== 54 passed in 0.41s ==============================
 #
 # Mutation checks (sandbox, 34, run with bytecode caching off): each guard removed or weakened (plan version, plan age,
 #   account status, blocked account, equity mismatch and its tolerance, open orders, holdings change and tolerance,
@@ -373,10 +418,18 @@ if __name__ == "__main__":
 #   required, dry run sending orders, keys not required, partial run exiting 0, reconcile tolerance and unwanted positions,
 #   newest plan picking the oldest) made a test fail. One survived the first pass (a cancelled sell was caught only by the
 #   timeout, not at once); the test now checks the note and that it does not wait.
+# Holdings tolerance (2026-10-24): --holdings-tol added, tests written first (7 of the 12 new ones failed before the change).
+#   Default stays $1; a looser value is warned about (holdings_tol_loosened), recorded in the ledger (holdings_tol) and
+#   capped at $50. Mutation checks (sandbox, 17, run with bytecode caching off), all caught: tolerance ignored in
+#   execute / CLI dry run / CLI execute, no warning, warning on the default or on a tighter value, no upper cap, negative
+#   allowed, cap boundary excluded, cap or default constant changed, ledger not recording it, > turned into >=, only held
+#   symbols checked, CLI or preflight not validating, CLI default changed. One was missing a test at first (the exact
+#   boundary); a boundary test was added.
 # Bytecode note: a same-length mutation made within one second can leave a stale .pyc that a later run reuses (one false
 #   test failure showed it). The mutation scripts now clear __pycache__ and run with PYTHONDONTWRITEBYTECODE=1; the
 #   mutation checks for check_fractionable.py and daily_run.py were re-run that way and still catch everything.
 # Real plan (plan_v2_2026-10-08.json from the real snapshot): 48 buys, $1,000.00 total, executed against a fake gateway and
 #   reconciled with every target within tolerance. That is a format check only.
-# NOT YET RUN against the Alpaca paper API. Do the dry run first: python execute_plan.py
+# Run against the Alpaca paper API on 2026-10-20: the first 48 buys were placed and reconciled (all within 8 cents).
+# The SELL path has NOT yet run live. Do the dry run first: python execute_plan.py
 # ---------------------------------------------------------------------------

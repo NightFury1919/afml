@@ -416,6 +416,114 @@ def test_cli_with_no_plan_file_exits_2(monkeypatch, tmp_path, capsys):
     assert "no plan_v2" in capsys.readouterr().out
 
 
+# ----------------------------------------------------------------------------------- holdings tolerance (2026-10-24)
+# Why: the plan is made from the account's dollar values when the market is closed. Once it opens, a $500 SPY position
+# moves by more than the default $1 within minutes, and the run would be refused for no real reason. --holdings-tol
+# lets ONE run accept a larger drift. The default stays $1, a looser value is warned about and recorded, and it is capped.
+DRIFT_PLAN = {**PLAN, "holdings": {"SPY": 500.0}, "orders": [dict(symbol="SPY", side="sell", notional=490.0),
+                                                              dict(symbol="QQQ", side="buy", notional=490.0)]}
+
+
+def test_a_price_move_beyond_the_default_dollar_is_refused_and_a_looser_tolerance_lets_it_through_with_a_warning():
+    gw = FakeGateway(positions={"SPY": 506.0})
+    assert "holdings_changed" in codes(pre(plan=DRIFT_PLAN, gw=gw), "error")                     # default $1: refused
+    loose = pre(plan=DRIFT_PLAN, gw=gw, holdings_tol=10.0)
+    assert codes(loose, "error") == []
+    assert "holdings_tol_loosened" in codes(loose, "warn")
+
+
+def test_a_loosened_tolerance_still_refuses_a_move_larger_than_it_and_names_the_symbol():
+    issues = pre(plan=DRIFT_PLAN, gw=FakeGateway(positions={"SPY": 520.0}), holdings_tol=10.0)
+    bad = next(i for i in issues if i["code"] == "holdings_changed")
+    assert bad["level"] == "error" and "SPY" in bad["message"]
+
+
+def test_a_tolerance_applies_to_every_symbol_not_just_the_first_one():
+    plan = {**DRIFT_PLAN, "holdings": {"SPY": 500.0, "GLD": 20.0}}
+    issues = pre(plan=plan, gw=FakeGateway(positions={"SPY": 504.0, "GLD": 31.0}), holdings_tol=10.0)
+    bad = next(i for i in issues if i["code"] == "holdings_changed")
+    assert "GLD" in bad["message"] and "SPY" not in bad["message"]
+
+
+def test_a_drift_exactly_equal_to_the_tolerance_is_accepted_and_one_cent_over_is_refused():
+    assert "holdings_changed" not in codes(pre(plan=DRIFT_PLAN, gw=FakeGateway(positions={"SPY": 510.0}), holdings_tol=10.0))
+    assert "holdings_changed" in codes(pre(plan=DRIFT_PLAN, gw=FakeGateway(positions={"SPY": 510.01}), holdings_tol=10.0), "error")
+
+
+def test_the_default_tolerance_and_a_tighter_one_add_no_loosened_warning():
+    gw = FakeGateway(positions={"SPY": 500.0})
+    assert "holdings_tol_loosened" not in codes(pre(plan=DRIFT_PLAN, gw=gw))
+    assert "holdings_tol_loosened" not in codes(pre(plan=DRIFT_PLAN, gw=gw, holdings_tol=1.0))
+    assert "holdings_tol_loosened" not in codes(pre(plan=DRIFT_PLAN, gw=gw, holdings_tol=0.5))
+    assert "holdings_changed" in codes(pre(plan=DRIFT_PLAN, gw=FakeGateway(positions={"SPY": 500.8}), holdings_tol=0.5), "error")
+
+
+def test_the_tolerance_is_capped_and_a_negative_or_missing_number_is_rejected():
+    from execute_plan import MAX_HOLDINGS_TOL, check_holdings_tol
+    assert MAX_HOLDINGS_TOL == 50.0
+    assert check_holdings_tol(0) == 0.0 and check_holdings_tol(50) == 50.0 and check_holdings_tol("12.5") == 12.5
+    for bad in (-0.01, 50.01, 1000, float("nan"), float("inf")):
+        with pytest.raises(ValueError):
+            check_holdings_tol(bad)
+    with pytest.raises(ValueError):
+        pre(plan=DRIFT_PLAN, gw=FakeGateway(positions={"SPY": 500.0}), holdings_tol=51.0)        # preflight enforces it too
+
+
+def test_execute_passes_the_tolerance_through_places_the_orders_and_records_it_in_the_ledger(tmp_path):
+    gw, ledger = run(tmp_path, plan=DRIFT_PLAN, gw=FakeGateway(positions={"SPY": 506.0}), holdings_tol=10.0)
+    assert ledger["status"] == "complete" and len(gw.submitted) == 2
+    assert ledger["holdings_tol"] == 10.0
+    assert "holdings_tol_loosened" in [w["code"] for w in ledger["warnings"]]
+    saved = json.loads((tmp_path / "orders" / "orders_2026-10-16.json").read_text(encoding="utf-8"))
+    assert saved["holdings_tol"] == 10.0
+
+
+def test_execute_with_the_default_tolerance_still_refuses_the_same_drift_and_sends_nothing(tmp_path):
+    gw = FakeGateway(positions={"SPY": 506.0})
+    with pytest.raises(ExecutionRefused):
+        run(tmp_path, plan=DRIFT_PLAN, gw=gw)
+    assert gw.submitted == [] and not (tmp_path / "orders").exists()
+
+
+def test_a_default_run_records_the_default_tolerance_in_its_ledger(tmp_path):
+    _, ledger = run(tmp_path)
+    assert ledger["holdings_tol"] == 1.0 and ledger["warnings"] == []
+
+
+def test_cli_dry_run_refuses_a_drift_by_default_and_passes_it_with_holdings_tol(monkeypatch, tmp_path, capsys):
+    write_plan_file(tmp_path, DRIFT_PLAN)
+    assert run_cli(monkeypatch, tmp_path, FakeGateway(positions={"SPY": 506.0})) == 1
+    assert "holdings_changed" in capsys.readouterr().out
+    assert run_cli(monkeypatch, tmp_path, FakeGateway(positions={"SPY": 506.0}), "--holdings-tol", "10") == 0
+    out = capsys.readouterr().out
+    assert "holdings_tol_loosened" in out and "All checks pass" in out
+
+
+def test_cli_execute_with_holdings_tol_places_the_orders_and_the_ledger_remembers_it(monkeypatch, tmp_path, capsys):
+    write_plan_file(tmp_path, DRIFT_PLAN)
+    gw = FakeGateway(positions={"SPY": 506.0})
+    assert run_cli(monkeypatch, tmp_path, gw, "--execute", "--confirm", "2026-10-16", "--holdings-tol", "10") == 0
+    assert len(gw.submitted) == 2
+    saved = json.loads((tmp_path / "orders" / "orders_2026-10-16.json").read_text(encoding="utf-8"))
+    assert saved["holdings_tol"] == 10.0
+
+
+def test_cli_execute_without_holdings_tol_is_refused_for_the_same_drift_and_sends_nothing(monkeypatch, tmp_path, capsys):
+    write_plan_file(tmp_path, DRIFT_PLAN)
+    gw = FakeGateway(positions={"SPY": 506.0})
+    assert run_cli(monkeypatch, tmp_path, gw, "--execute", "--confirm", "2026-10-16") == 1
+    assert gw.submitted == [] and "REFUSED" in capsys.readouterr().out
+
+
+def test_cli_rejects_a_negative_or_too_large_tolerance_before_touching_the_account(monkeypatch, tmp_path, capsys):
+    write_plan_file(tmp_path, DRIFT_PLAN)
+    for bad in ("-1", "50.5", "nan"):
+        gw = FakeGateway(positions={"SPY": 506.0})
+        assert run_cli(monkeypatch, tmp_path, gw, "--execute", "--confirm", "2026-10-16", "--holdings-tol", bad) == 2
+        assert gw.submitted == [] and gw.calls == []
+    assert "holdings-tol" in capsys.readouterr().out
+
+
 # ----------------------------------------------------------------------------------- source guards
 def test_the_module_can_only_reach_the_paper_api_and_never_uses_risky_order_features():
     src = (Path(__file__).resolve().parent / "execute_plan.py").read_text(encoding="utf-8")
