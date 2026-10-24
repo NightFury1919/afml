@@ -39,3 +39,14 @@ pipeline/diagnostics/kraken_snapshot_*_refreshed_*/
 
 # other Kraken snapshots: only the raw pull is ever kept; anything derived inside is regenerated
 pipeline/diagnostics/kraken_snapshot_*/*
+!pipeline/diagnostics/kraken_snapshot_*/raw_trades.parquet
+
+pipeline/diagnostics/kraken_snapshot_*/raw_trades.parquet
+# paper accounts and demo output
+*.mp4
+portfolio/demo_output_*.txt
+portfolio/demo_dryrun_*.txt
+portfolio/accounts/*/daily_stdout.txt
+portfolio/runs/daily_stdout.txt
+portfolio/shadow/nightly_stdout.txt
+portfolio/noise_test_tier_b/world_*/
