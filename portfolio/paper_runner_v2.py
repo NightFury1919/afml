@@ -62,6 +62,7 @@ class ProtocolV2:
     mode: str = "fractional"        # "fractional" (dollars) or "whole" (shares)
     min_notional: float = 1.0       # smallest dollar order worth sending
     max_stale_days: int = 5         # warn if the last price date is older than this
+    exclude: tuple = ()             # ETFs never bought (e.g. K-1 funds, or SPY so it stays a clean benchmark)
 
 
 PROTOCOL = ProtocolV2()
@@ -80,6 +81,9 @@ def validate(protocol):
         raise ValueError("window must be a whole number of days >= 1")
     if int(protocol.rebalance_every) != protocol.rebalance_every or protocol.rebalance_every < 1:
         raise ValueError("rebalance_every must be a whole number of days >= 1")
+    ex = protocol.exclude
+    if not isinstance(ex, (tuple, list)) or not all(isinstance(t, str) and t.strip() for t in ex):
+        raise ValueError("exclude must be a list of non-empty ticker strings")
 
 
 def qf_weights(prices, protocol=PROTOCOL, groups=CLASS_OF):
@@ -92,7 +96,12 @@ def qf_weights(prices, protocol=PROTOCOL, groups=CLASS_OF):
     px = drop_hedge(prices)
     need = protocol.window + 1
     tail = px.iloc[-need:]
-    tickers = [t for t in px.columns if t in groups and len(tail) == need and tail[t].notna().all()]
+    unknown = sorted(t for t in protocol.exclude if t not in groups)
+    if unknown:
+        raise ValueError(f"exclude names ETFs that are not in the universe: {', '.join(unknown)}")
+    skip = set(protocol.exclude)
+    tickers = [t for t in px.columns
+               if t in groups and t not in skip and len(tail) == need and tail[t].notna().all()]
     if not tickers:
         raise ValueError(f"no ETF has a full window of {need} prices")
 
@@ -256,11 +265,12 @@ def main():
     ap.add_argument("--max-weight", type=float, default=PROTOCOL.max_weight, help="per-ETF cap, share of the QF sleeve")
     ap.add_argument("--exposure", type=float, default=PROTOCOL.exposure)
     ap.add_argument("--rebalance-every", type=int, default=PROTOCOL.rebalance_every)
+    ap.add_argument("--exclude", nargs="*", default=[], help="ETFs never bought (e.g. DBC DBA UUP SPY)")
     ap.add_argument("--start", default=None, help="also print the scoreboard from this date (YYYY-MM-DD)")
     args = ap.parse_args()
     protocol = dataclasses.replace(PROTOCOL, spy_share=args.spy_share, qf_rule=args.qf_rule,
                                    max_weight=args.max_weight, exposure=args.exposure,
-                                   rebalance_every=args.rebalance_every)
+                                   rebalance_every=args.rebalance_every, exclude=tuple(args.exclude))
 
     src = latest_snapshot(args.folder)
     prices = load_prices(src)
@@ -307,49 +317,69 @@ if __name__ == "__main__":
 # scikit-learn 1.2.2, the same versions as the mlfinlab env)
 # $ cd portfolio ; pytest test_paper_runner_v2.py -v
 #
-# collected 41 items
-# test_paper_runner_v2.py::test_size_rule_holds_every_etf_equally PASSED   [  2%]
-# test_paper_runner_v2.py::test_equal_rule_gives_each_class_the_same_share_then_splits_it_equally PASSED [  4%]
-# test_paper_runner_v2.py::test_size_rule_on_unequal_classes_is_plain_equal_weight PASSED [  7%]
-# test_paper_runner_v2.py::test_inverse_vol_gives_the_calmer_class_the_larger_budget PASSED [  9%]
-# test_paper_runner_v2.py::test_inverse_vol_uses_only_the_trailing_window PASSED [ 12%]
-# test_paper_runner_v2.py::test_hrp_rule_is_the_repo_hrp_weights_over_the_trailing_window PASSED [ 14%]
-# test_paper_runner_v2.py::test_an_unknown_rule_is_rejected PASSED         [ 17%]
-# test_paper_runner_v2.py::test_an_etf_without_a_full_window_of_prices_is_left_out PASSED [ 19%]
-# test_paper_runner_v2.py::test_cap_moves_the_excess_to_the_others_in_proportion PASSED [ 21%]
-# test_paper_runner_v2.py::test_exposure_scales_the_sleeve_and_the_cap_applies_to_the_final_weights PASSED [ 24%]
-# test_paper_runner_v2.py::test_hrp_rule_honours_exposure_and_cap_too PASSED [ 26%]
-# test_paper_runner_v2.py::test_combined_weights_add_the_spy_sleeve_to_the_scaled_qf_sleeve PASSED [ 29%]
-# test_paper_runner_v2.py::test_all_spy_sleeve_is_just_spy_and_no_spy_sleeve_is_just_the_qf_book PASSED [ 31%]
-# test_paper_runner_v2.py::test_cap_is_a_share_of_the_qf_sleeve_not_of_the_account PASSED [ 34%]
-# test_paper_runner_v2.py::test_cash_left_by_exposure_stays_outside_both_sleeves PASSED [ 36%]
-# test_paper_runner_v2.py::test_empty_account_plan_buys_both_sleeves_and_spends_all_the_cash PASSED [ 39%]
-# test_paper_runner_v2.py::test_cent_rounding_never_spends_more_than_the_account_holds PASSED [ 41%]
-# test_paper_runner_v2.py::test_the_cent_trim_leaves_an_exact_account_alone PASSED [ 43%]
-# test_paper_runner_v2.py::test_running_again_with_the_resulting_holdings_orders_nothing PASSED [ 46%]
-# test_paper_runner_v2.py::test_the_hedge_is_never_bought_and_a_held_hedge_is_closed PASSED [ 48%]
-# test_paper_runner_v2.py::test_bad_settings_and_inputs_are_rejected PASSED [ 51%]
-# test_paper_runner_v2.py::test_a_spy_sleeve_needs_a_spy_price_on_the_last_date PASSED [ 53%]
-# test_paper_runner_v2.py::test_stale_data_produces_a_warning_but_still_a_plan PASSED [ 56%]
-# test_paper_runner_v2.py::test_the_plan_records_the_protocol_it_was_made_under PASSED [ 58%]
-# test_paper_runner_v2.py::test_making_a_plan_never_loads_any_trading_client PASSED [ 60%]
-# test_paper_runner_v2.py::test_write_plan_round_trips_and_never_overwrites PASSED [ 63%]
-# test_paper_runner_v2.py::test_first_row_is_the_start_date_with_each_sleeve_at_its_share_of_equity PASSED [ 65%]
-# test_paper_runner_v2.py::test_the_sleeves_start_unequal_when_the_split_is_unequal PASSED [ 68%]
-# test_paper_runner_v2.py::test_spy_sleeve_compounds_spy_and_a_daily_rebalanced_qf_sleeve_compounds_the_blend PASSED [ 70%]
-# test_paper_runner_v2.py::test_without_rebalancing_the_qf_sleeve_drifts_with_the_winner PASSED [ 73%]
-# test_paper_runner_v2.py::test_rebalancing_every_third_day_resets_the_weights_on_those_days PASSED [ 75%]
-# test_paper_runner_v2.py::test_drawdown_is_the_fall_from_the_running_peak PASSED [ 78%]
-# test_paper_runner_v2.py::test_the_scoreboard_never_looks_ahead PASSED    [ 80%]
-# test_paper_runner_v2.py::test_scoreboard_matches_an_independent_day_by_day_reference PASSED [ 82%]
-# test_paper_runner_v2.py::test_scoreboard_start_must_exist_and_inputs_are_checked PASSED [ 85%]
-# test_paper_runner_v2.py::test_a_missing_price_while_holding_is_an_error_not_a_silent_zero PASSED [ 87%]
-# test_paper_runner_v2.py::test_an_all_spy_split_leaves_the_qf_columns_undefined_not_divided_by_zero PASSED [ 90%]
-# test_paper_runner_v2.py::test_whole_share_mode_spends_no_more_than_equity PASSED [ 92%]
-# test_paper_runner_v2.py::test_cli_prints_the_plan_and_saves_it PASSED    [ 95%]
-# test_paper_runner_v2.py::test_cli_scoreboard_with_a_start_date_that_has_prices_prints_rows PASSED [ 97%]
-# test_paper_runner_v2.py::test_cli_says_so_instead_of_crashing_when_the_scoreboard_start_is_in_the_future PASSED [100%]
-# ============================== 41 passed in 1.30s ==============================
+# collected 53 items
+# test_paper_runner_v2.py::test_size_rule_holds_every_etf_equally PASSED   [  1%]
+# test_paper_runner_v2.py::test_equal_rule_gives_each_class_the_same_share_then_splits_it_equally PASSED [  3%]
+# test_paper_runner_v2.py::test_size_rule_on_unequal_classes_is_plain_equal_weight PASSED [  5%]
+# test_paper_runner_v2.py::test_inverse_vol_gives_the_calmer_class_the_larger_budget PASSED [  7%]
+# test_paper_runner_v2.py::test_inverse_vol_uses_only_the_trailing_window PASSED [  9%]
+# test_paper_runner_v2.py::test_hrp_rule_is_the_repo_hrp_weights_over_the_trailing_window PASSED [ 11%]
+# test_paper_runner_v2.py::test_an_unknown_rule_is_rejected PASSED         [ 13%]
+# test_paper_runner_v2.py::test_an_etf_without_a_full_window_of_prices_is_left_out PASSED [ 15%]
+# test_paper_runner_v2.py::test_cap_moves_the_excess_to_the_others_in_proportion PASSED [ 16%]
+# test_paper_runner_v2.py::test_exposure_scales_the_sleeve_and_the_cap_applies_to_the_final_weights PASSED [ 18%]
+# test_paper_runner_v2.py::test_hrp_rule_honours_exposure_and_cap_too PASSED [ 20%]
+# test_paper_runner_v2.py::test_combined_weights_add_the_spy_sleeve_to_the_scaled_qf_sleeve PASSED [ 22%]
+# test_paper_runner_v2.py::test_all_spy_sleeve_is_just_spy_and_no_spy_sleeve_is_just_the_qf_book PASSED [ 24%]
+# test_paper_runner_v2.py::test_cap_is_a_share_of_the_qf_sleeve_not_of_the_account PASSED [ 26%]
+# test_paper_runner_v2.py::test_cash_left_by_exposure_stays_outside_both_sleeves PASSED [ 28%]
+# test_paper_runner_v2.py::test_empty_account_plan_buys_both_sleeves_and_spends_all_the_cash PASSED [ 30%]
+# test_paper_runner_v2.py::test_cent_rounding_never_spends_more_than_the_account_holds PASSED [ 32%]
+# test_paper_runner_v2.py::test_the_cent_trim_leaves_an_exact_account_alone PASSED [ 33%]
+# test_paper_runner_v2.py::test_running_again_with_the_resulting_holdings_orders_nothing PASSED [ 35%]
+# test_paper_runner_v2.py::test_the_hedge_is_never_bought_and_a_held_hedge_is_closed PASSED [ 37%]
+# test_paper_runner_v2.py::test_bad_settings_and_inputs_are_rejected PASSED [ 39%]
+# test_paper_runner_v2.py::test_a_spy_sleeve_needs_a_spy_price_on_the_last_date PASSED [ 41%]
+# test_paper_runner_v2.py::test_stale_data_produces_a_warning_but_still_a_plan PASSED [ 43%]
+# test_paper_runner_v2.py::test_the_plan_records_the_protocol_it_was_made_under PASSED [ 45%]
+# test_paper_runner_v2.py::test_making_a_plan_never_loads_any_trading_client PASSED [ 47%]
+# test_paper_runner_v2.py::test_write_plan_round_trips_and_never_overwrites PASSED [ 49%]
+# test_paper_runner_v2.py::test_first_row_is_the_start_date_with_each_sleeve_at_its_share_of_equity PASSED [ 50%]
+# test_paper_runner_v2.py::test_the_sleeves_start_unequal_when_the_split_is_unequal PASSED [ 52%]
+# test_paper_runner_v2.py::test_spy_sleeve_compounds_spy_and_a_daily_rebalanced_qf_sleeve_compounds_the_blend PASSED [ 54%]
+# test_paper_runner_v2.py::test_without_rebalancing_the_qf_sleeve_drifts_with_the_winner PASSED [ 56%]
+# test_paper_runner_v2.py::test_rebalancing_every_third_day_resets_the_weights_on_those_days PASSED [ 58%]
+# test_paper_runner_v2.py::test_drawdown_is_the_fall_from_the_running_peak PASSED [ 60%]
+# test_paper_runner_v2.py::test_the_scoreboard_never_looks_ahead PASSED    [ 62%]
+# test_paper_runner_v2.py::test_scoreboard_matches_an_independent_day_by_day_reference PASSED [ 64%]
+# test_paper_runner_v2.py::test_scoreboard_start_must_exist_and_inputs_are_checked PASSED [ 66%]
+# test_paper_runner_v2.py::test_a_missing_price_while_holding_is_an_error_not_a_silent_zero PASSED [ 67%]
+# test_paper_runner_v2.py::test_an_all_spy_split_leaves_the_qf_columns_undefined_not_divided_by_zero PASSED [ 69%]
+# test_paper_runner_v2.py::test_whole_share_mode_spends_no_more_than_equity PASSED [ 71%]
+# test_paper_runner_v2.py::test_cli_prints_the_plan_and_saves_it PASSED    [ 73%]
+# test_paper_runner_v2.py::test_cli_scoreboard_with_a_start_date_that_has_prices_prints_rows PASSED [ 75%]
+# test_paper_runner_v2.py::test_cli_says_so_instead_of_crashing_when_the_scoreboard_start_is_in_the_future PASSED [ 77%]
+# test_paper_runner_v2.py::test_exclude_defaults_to_nothing_and_changes_no_weights PASSED [ 79%]
+#
+# exclude option (2026-10-24, sandbox): 12 new tests in test_paper_runner_v2.py (known values: G31 minus E2 -> SPY/E1/B1 at 1/3 each; equal rule
+#   -> 0.25/0.25/0.5; SPY excludable; typo and non-list exclude rejected; held excluded ETF sold in full; scoreboard ignores it; CLI --exclude)
+#   and 5 in test_daily_run.py (default [], old configs load, hash unchanged when empty and order-independent, protocol_from_config validation,
+#   full run on the real-shaped 48 ETFs). Mutation checks: 10 of 12 caught; the 2 survivors (empty/whitespace ticker, plain string instead of a
+#   list) are rejected anyway by the later 'not in the universe' check, so they raise the same error either way.
+# Real prices (2026-10-19 snapshot, spy_share 0, inverse_vol, cap 0.10, exclude DBA DBC SPY UUP, from the 50/50 holdings): 44 ETFs, class mix
+#   Bonds 42.4%, Currencies 20.0%, US equity 14.4%, Intl developed 12.0%, Emerging 7.2%, Commodities 4.0%; 4 sells (all close_all), 44 buys, cash $0.11.
+# test_paper_runner_v2.py::test_excluding_an_etf_reweights_the_rest_as_if_it_were_not_in_the_universe PASSED [ 81%]
+# test_paper_runner_v2.py::test_excluding_follows_the_class_rule_too PASSED [ 83%]
+# test_paper_runner_v2.py::test_spy_can_be_excluded_from_the_qf_sleeve PASSED [ 84%]
+# test_paper_runner_v2.py::test_exclusion_works_with_hrp_and_with_the_cap PASSED [ 86%]
+# test_paper_runner_v2.py::test_excluding_a_name_that_is_not_in_the_universe_is_an_error_not_a_silent_no_op PASSED [ 88%]
+# test_paper_runner_v2.py::test_exclude_must_be_a_list_of_nonempty_ticker_strings PASSED [ 90%]
+# test_paper_runner_v2.py::test_excluding_everything_is_an_error PASSED    [ 92%]
+# test_paper_runner_v2.py::test_a_held_excluded_etf_is_sold_in_full_by_the_plan_and_the_plan_records_the_exclusion PASSED [ 94%]
+# test_paper_runner_v2.py::test_the_spy_sleeve_still_buys_spy_when_spy_is_excluded_from_the_qf_sleeve PASSED [ 96%]
+# test_paper_runner_v2.py::test_the_scoreboard_never_holds_an_excluded_etf PASSED [ 98%]
+# test_paper_runner_v2.py::test_cli_exclude_flag_drops_those_etfs_from_the_saved_plan PASSED [100%]
+# ============================== 53 passed in 1.65s ==============================
 #
 # Mutation checks (sandbox, 19): SPY slice overwritten instead of added, QF weights not scaled by (1 - spy_share),
 #   HRP ignoring exposure, HRP ignoring the cap, class rules ignoring exposure, class rules ignoring the cap, HRP

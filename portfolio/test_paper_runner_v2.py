@@ -401,6 +401,87 @@ def test_cli_says_so_instead_of_crashing_when_the_scoreboard_start_is_in_the_fut
     assert "Saved" in out                                              # the plan was still written
     assert "no scoreboard yet" in out and future in out
 
+# ------------------------------------------------------------------------------- exclude
+# An excluded ETF is never bought and the remaining ETFs are weighted as if it were not in the universe.
+def test_exclude_defaults_to_nothing_and_changes_no_weights():
+    assert PROTOCOL.exclude == ()
+    assert qf_weights(PX4, P(), G4) == qf_weights(PX4, P(exclude=()), G4)
+
+
+def test_excluding_an_etf_reweights_the_rest_as_if_it_were_not_in_the_universe():
+    px = flat(list(G31))
+    w = qf_weights(px, P(qf_rule="size", exclude=("E2",)), G31)
+    assert w == pytest.approx({"SPY": 1 / 3, "E1": 1 / 3, "B1": 1 / 3})      # hand count: 3 ETFs left, equal size
+    assert "E2" not in w
+
+
+def test_excluding_follows_the_class_rule_too():
+    px = flat(list(G31))
+    w = qf_weights(px, P(qf_rule="equal", exclude=("E2",)), G31)
+    assert w == pytest.approx({"SPY": 0.25, "E1": 0.25, "B1": 0.5})          # two classes, half each; equity split in 2
+
+
+def test_spy_can_be_excluded_from_the_qf_sleeve():
+    w = qf_weights(PX4, P(exclude=("SPY",)), G4)
+    assert "SPY" not in w
+    assert w == pytest.approx({"E1": 1 / 3, "B1": 1 / 3, "B2": 1 / 3})
+
+
+def test_exclusion_works_with_hrp_and_with_the_cap():
+    px = random_prices(list(G4), n=60, seed=3)
+    assert "B2" not in qf_weights(px, P(qf_rule="hrp", window=40, exclude=("B2",)), G4)
+    w = qf_weights(flat(list(G31)), P(qf_rule="equal", max_weight=0.3, exclude=("E2",)), G31)
+    assert "E2" not in w and max(w.values()) <= 0.3 + 1e-12
+
+
+def test_excluding_a_name_that_is_not_in_the_universe_is_an_error_not_a_silent_no_op():
+    with pytest.raises(ValueError, match="exclude"):
+        qf_weights(PX4, P(exclude=("TYPO",)), G4)
+
+
+def test_exclude_must_be_a_list_of_nonempty_ticker_strings():
+    for bad in ("SPY", ("",), (1,), None):
+        with pytest.raises(ValueError, match="exclude"):
+            qf_weights(PX4, P(exclude=bad), G4)
+
+
+def test_excluding_everything_is_an_error():
+    with pytest.raises(ValueError):
+        qf_weights(PX4, P(exclude=tuple(G4)), G4)
+
+
+def test_a_held_excluded_etf_is_sold_in_full_by_the_plan_and_the_plan_records_the_exclusion():
+    plan = make_plan(PX4, {"E1": 250.0, "B1": 250.0, "B2": 250.0, "SPY": 250.0}, 1000.0,
+                     P(spy_share=0.0, exclude=("E1",)), today=TODAY, groups=G4)
+    assert "E1" not in plan["weights"]
+    assert {"symbol": "E1", "side": "sell", "close_all": True} in plan["orders"]
+    assert plan["protocol"]["exclude"] == ["E1"] or plan["protocol"]["exclude"] == ("E1",)
+    json.dumps(plan)                                                          # still plain JSON
+
+
+def test_the_spy_sleeve_still_buys_spy_when_spy_is_excluded_from_the_qf_sleeve():
+    plan = make_plan(PX4, {}, 1000.0, P(spy_share=0.4, exclude=("SPY",)), today=TODAY, groups=G4)
+    assert plan["weights"]["SPY"] == pytest.approx(0.4)
+
+
+def test_the_scoreboard_never_holds_an_excluded_etf():
+    px = prices_from_returns({"SPY": [0.01] * 12, "E1": [0.50] * 12, "B1": [0.0] * 12, "B2": [0.0] * 12})
+    g = {"SPY": "eq", "E1": "eq", "B1": "bd", "B2": "bd"}
+    base = scoreboard(px, px.index[7], P(spy_share=0.0, qf_rule="size"), 1000.0, g)
+    excl = scoreboard(px, px.index[7], P(spy_share=0.0, qf_rule="size", exclude=("E1",)), 1000.0, g)
+    assert base["qf_value"].iloc[-1] > excl["qf_value"].iloc[-1] + 1.0         # E1 soared; leaving it out costs that gain
+    assert excl["qf_return"].iloc[-1] < 0.05                                   # only SPY (+1%/day) at 1/3 weight, rest flat
+
+
+
+
+def test_cli_exclude_flag_drops_those_etfs_from_the_saved_plan(monkeypatch, tmp_path, capsys):
+    path, px = _write_real_shaped_snapshot(tmp_path)
+    _run_cli(monkeypatch, tmp_path, "--spy-share", "0", "--exclude", "DBC", "DBA", "UUP", "SPY")
+    plan = json.loads((tmp_path / "plans" / f"plan_v2_{px.index[-1].date().isoformat()}.json").read_text())
+    assert not {"DBC", "DBA", "UUP", "SPY"} & set(plan["weights"])
+    assert len(plan["weights"]) == 44
+
 # ---------------------------------------------------------------------------
 # TDD RESULTS (pytest, 2026-10-17; sandbox run: Linux, Python 3.10.20, pandas 1.5.3, numpy 1.23.5,
 # scikit-learn 1.2.2, the same versions as the mlfinlab env)

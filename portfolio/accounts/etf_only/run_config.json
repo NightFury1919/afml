@@ -1,1 +1,1 @@
-{"spy_share":0.0,"qf_rule":"inverse_vol","max_weight":0.1,"exposure":1.0,"rebalance_every":1,"start":"2026-10-26","equity":1000.0,"confirmed":[]}
+{"exclude": ["DBA", "DBC", "SPY", "UUP"], "spy_share":0.0,"qf_rule":"inverse_vol","max_weight":0.1,"exposure":1.0,"rebalance_every":21,"start":"2026-10-26","equity":1000.0,"confirmed":[]} 

@@ -35,10 +35,12 @@ import numpy as np
 import pandas as pd
 
 from paper_runner_v2 import PROTOCOL, make_plan, scoreboard, validate, write_plan
+from etf_classes import CLASS_OF
+from execute_plan import DEFAULT_EQUITY_FLOOR, check_equity_floor
 from panel_data import load_prices
 
 DEFAULTS = dict(spy_share=0.5, qf_rule="size", max_weight=None, exposure=1.0, rebalance_every=1,
-                start=None, equity=1000.0, confirmed=[])
+                start=None, equity=1000.0, confirmed=[], exclude=[], equity_floor=DEFAULT_EQUITY_FLOOR)
 HASH_FIELDS = ("spy_share", "qf_rule", "max_weight", "exposure", "rebalance_every", "start")
 PLACEHOLDERS = ("spy_share", "max_weight")      # settings still waiting on the boss's answer
 RUN_RE = re.compile(r"^run_(\d{4}-\d{2}-\d{2})(?:_r(\d+))?\.json$")
@@ -117,14 +119,53 @@ def init_config(path):
 
 def config_hash(cfg):
     core = {k: cfg.get(k) for k in HASH_FIELDS}
+    if cfg.get("exclude"):                                  # only when used, so older configs keep their hash
+        core["exclude"] = sorted(cfg["exclude"])
     return hashlib.sha256(json.dumps(core, sort_keys=True).encode()).hexdigest()[:12]
+
+
+# The protocol fields that change what a plan buys and sells. rebalance_every only drives the scoreboard replay, and
+# max_stale_days only a warning, so changing them does not make a saved plan out of date.
+PLAN_FIELDS = ("spy_share", "qf_rule", "max_weight", "exposure", "window", "mode", "min_notional", "exclude")
+
+
+def plan_mismatch(saved_path, protocol):
+    """Names of the settings on which the saved plan file differs from `protocol` (empty = it matches).
+    ["unreadable"] if the file cannot be read, ["no_protocol"] if it records no settings. A plan saved before a setting
+    existed counts as having that setting at its default (so one saved before `exclude` excluded nothing)."""
+    try:
+        saved = json.loads(Path(saved_path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ["unreadable"]
+    if not isinstance(saved, dict) or not isinstance(saved.get("protocol"), dict):
+        return ["no_protocol"]
+    now = json.loads(json.dumps(dataclasses.asdict(protocol)))
+    default = json.loads(json.dumps(dataclasses.asdict(PROTOCOL)))
+    out = []
+    for k in PLAN_FIELDS:
+        a, b = saved["protocol"].get(k, default[k]), now[k]
+        if k == "exclude":
+            a, b = sorted(a or []), sorted(b or [])
+        if a != b:
+            out.append(k)
+    return out
+
+
+def _exclude_tuple(cfg):
+    ex = cfg.get("exclude", [])
+    if not isinstance(ex, (list, tuple)):
+        raise ValueError("exclude must be a list of ticker strings")
+    return tuple(ex)
 
 
 def protocol_from_config(cfg):
     protocol = dataclasses.replace(PROTOCOL, spy_share=cfg["spy_share"], qf_rule=cfg["qf_rule"],
                                    max_weight=cfg["max_weight"], exposure=cfg["exposure"],
-                                   rebalance_every=cfg["rebalance_every"])
+                                   rebalance_every=cfg["rebalance_every"], exclude=_exclude_tuple(cfg))
     validate(protocol)
+    unknown = sorted(t for t in protocol.exclude if t not in CLASS_OF)
+    if unknown:
+        raise ValueError(f"exclude names ETFs that are not in the universe: {', '.join(unknown)}")
     return protocol
 
 
@@ -225,6 +266,7 @@ def run_daily(folder, plans_dir, runs_dir, config, today, holdings=None, update_
 
     protocol = protocol_from_config(config)
     config_equity = float(config["equity"])
+    equity_floor = check_equity_floor(config.get("equity_floor", DEFAULT_EQUITY_FLOOR))
     equity = float(config_equity if equity is None else equity)
     holdings = holdings or {}
     today = pd.Timestamp(today).normalize()
@@ -232,6 +274,10 @@ def run_daily(folder, plans_dir, runs_dir, config, today, holdings=None, update_
     if abs(equity / config_equity - 1.0) > 0.05:
         warnings.append(f"account equity ${equity:,.2f} differs from the config equity ${config_equity:,.2f} by more than 5%; "
                         "the plan is sized on the account equity")
+    below_floor = not equity >= equity_floor
+    if below_floor:
+        warnings.insert(0, f"account equity ${equity:,.2f} is below the equity floor of ${equity_floor:,.2f}: "
+                           "execute_plan.py will refuse to send any order (buys or sells) until a person decides what to do")
     if not config_found:
         warnings.append("no run_config.json found: using the protocol defaults (run --init-config to write one)")
 
@@ -259,6 +305,7 @@ def run_daily(folder, plans_dir, runs_dir, config, today, holdings=None, update_
 
     as_of = prices.index[-1].date().isoformat() if prices is not None and len(prices) else None
     plan_summary = None
+    mismatch = []
     if errors:
         steps.append(_step("plan", "skipped", "skipped: the health check found errors"))
     else:
@@ -271,6 +318,13 @@ def run_daily(folder, plans_dir, runs_dir, config, today, holdings=None, update_
         except FileExistsError:
             saved_now = False
             path = Path(plans_dir) / f"plan_v2_{plan['as_of']}.json"
+            mismatch = plan_mismatch(path, protocol)
+            if mismatch:
+                what = {"unreadable": "it could not be read", "no_protocol": "it records no settings"}
+                why = what.get(mismatch[0]) if mismatch[0] in what else "it was made with different settings: " + ", ".join(mismatch)
+                warnings.insert(0, f"the saved plan {path.name} does not match the config ({why}). Plans are never "
+                                   "overwritten, so execute_plan.py would trade the saved plan. Move it aside and run again "
+                                   "to make a new one, or change the config back.")
             steps.append(_step("plan", "skipped", f"plan already exists for {plan['as_of']}; it was not overwritten"))
         plan_summary = dict(equity=plan["equity"], spy_dollars=plan["spy_dollars"], qf_dollars=plan["qf_dollars"],
                             n_orders=len(plan["orders"]), cash_after=plan["cash_after"], plan_path=str(path),
@@ -303,7 +357,8 @@ def run_daily(folder, plans_dir, runs_dir, config, today, holdings=None, update_
                   previous_config_hash=prev, config_changed=changed,
                   open_placeholders=sorted(set(PLACEHOLDERS) - set(config.get("confirmed", []))),
                   steps=steps, health=health, warnings=warnings, plan=plan_summary, scoreboard=sb_summary,
-                  orders_sent=0)
+                  orders_sent=0, below_equity_floor=below_floor, equity_floor=equity_floor,
+                  saved_plan_mismatch=mismatch, saved_plan_path=plan_summary and plan_summary["plan_path"])
     path = _report_path(runs_dir, as_of or f"nodata_{today.date().isoformat()}")
     report["report_path"] = str(path)
     path.write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
@@ -314,6 +369,11 @@ def run_daily(folder, plans_dir, runs_dir, config, today, holdings=None, update_
 def render_report(r):
     lines = [f"# Daily run {r['run_date']}  (prices as of {r['as_of']})", "",
              f"Status: {r['status'].upper()}.  No orders were sent: this run only plans and records.", ""]
+    if r.get("saved_plan_mismatch"):
+        lines += [f"**SAVED PLAN DOES NOT MATCH THE CONFIG** ({', '.join(r['saved_plan_mismatch'])}). "
+                  f"The file {Path(r['saved_plan_path']).name} is what execute_plan.py would trade.", ""]
+    if r.get("below_equity_floor"):
+        lines += [f"**BELOW THE EQUITY FLOOR of ${r['equity_floor']:,.2f}.** Trading is halted until a person decides what to do.", ""]
     lines += ["## Steps"] + [f"- {s['name']}: {s['status']}" + (f" ({s['detail']})" if s["detail"] else "") for s in r["steps"]]
     if r["health"]:
         lines += ["", "## Data health"] + [f"- {i['level'].upper()} {i['code']}: {i['message']}" for i in r["health"]]
@@ -336,6 +396,7 @@ def render_report(r):
         lines += [f"- {k}: {v:.4f}" for k, v in s["last_row"].items()]
     lines += ["", "## Protocol", f"- hash {r['config_hash']}" + ("  (CHANGED since the previous run)" if r["config_changed"] else ""),
               "- " + ", ".join(f"{k} {r['config'].get(k)}" for k in HASH_FIELDS),
+              *([f"- exclude: {', '.join(r['config']['exclude'])}"] if r["config"].get("exclude") else []),
               "- still waiting on the boss: " + (", ".join(r["open_placeholders"]) or "nothing")]
     return "\n".join(lines) + "\n"
 
@@ -380,6 +441,11 @@ def main():
                     config_found=found, equity=equity)
 
     print(f"DAILY RUN {rep['run_date']}: {rep['status'].upper()}" + ("" if rep["status"] == "ok" else " (BLOCKED, no plan made)"))
+    if rep.get("saved_plan_mismatch"):
+        print(f"*** SAVED PLAN DOES NOT MATCH THE CONFIG ({', '.join(rep['saved_plan_mismatch'])}): "
+              "do not execute it until a person has looked ***")
+    if rep.get("below_equity_floor"):
+        print(f"*** BELOW THE EQUITY FLOOR of ${rep['equity_floor']:,.2f}: trading is halted until a person decides ***")
     print("No orders were sent. This run only plans and records.\n")
     print(render_report(rep))
     print(f"Saved {rep['report_path']}")
@@ -394,62 +460,96 @@ if __name__ == "__main__":
 # same versions as the mlfinlab env; Yahoo and Alpaca are faked in the tests, nothing here touched either)
 # $ cd portfolio ; pytest test_daily_run.py -v
 #
-# collected 54 items
+# collected 77 items
 # test_daily_run.py::test_clean_data_has_no_issues PASSED                  [  1%]
-# test_daily_run.py::test_saturday_with_a_friday_last_date_is_not_stale PASSED [  3%]
-# test_daily_run.py::test_monday_with_a_friday_last_date_is_not_stale_because_todays_bar_is_not_settled_yet PASSED [  5%]
-# test_daily_run.py::test_lag_is_measured_to_the_last_business_day_so_a_sunday_with_a_thursday_bar_is_one_day_behind_not_two PASSED [  7%]
-# test_daily_run.py::test_two_business_days_behind_is_a_warning_and_a_week_behind_is_an_error PASSED [  9%]
-# test_daily_run.py::test_the_error_threshold_is_adjustable PASSED         [ 11%]
-# test_daily_run.py::test_duplicate_dates_and_unsorted_dates_are_errors PASSED [ 12%]
-# test_daily_run.py::test_a_non_positive_price_is_an_error_naming_the_ticker PASSED [ 14%]
-# test_daily_run.py::test_spy_without_a_last_day_price_is_an_error_but_another_ticker_is_only_a_warning PASSED [ 16%]
-# test_daily_run.py::test_a_thirty_percent_one_day_move_is_flagged_but_ten_percent_is_not PASSED [ 18%]
-# test_daily_run.py::test_the_jump_threshold_is_adjustable PASSED          [ 20%]
-# test_daily_run.py::test_only_the_recent_lookback_is_scanned_for_big_moves PASSED [ 22%]
-# test_daily_run.py::test_an_empty_frame_is_an_error_not_a_crash PASSED    [ 24%]
-# test_daily_run.py::test_config_hash_is_stable_and_changes_with_every_protocol_field_and_the_start_date PASSED [ 25%]
-# test_daily_run.py::test_equity_is_not_part_of_the_hash_because_it_changes_every_day PASSED [ 27%]
-# test_daily_run.py::test_a_missing_config_file_gives_the_defaults_and_says_so PASSED [ 29%]
-# test_daily_run.py::test_init_config_writes_a_loadable_file_and_never_overwrites PASSED [ 31%]
-# test_daily_run.py::test_an_unknown_key_in_the_config_is_rejected_so_typos_cannot_silently_change_the_protocol PASSED [ 33%]
-# test_daily_run.py::test_protocol_from_config_applies_the_fields_and_validates_them PASSED [ 35%]
-# test_daily_run.py::test_account_to_inputs_takes_equity_and_market_values_as_floats PASSED [ 37%]
-# test_daily_run.py::test_account_with_no_positions_has_empty_holdings PASSED [ 38%]
-# test_daily_run.py::test_a_normal_run_writes_a_plan_and_a_run_report_and_sends_nothing PASSED [ 40%]
-# test_daily_run.py::test_the_steps_are_recorded_in_order PASSED           [ 42%]
-# test_daily_run.py::test_the_update_step_runs_once_with_the_folder_and_its_result_is_recorded PASSED [ 44%]
-# test_daily_run.py::test_a_failed_update_is_recorded_and_the_run_carries_on_with_the_existing_snapshot PASSED [ 46%]
-# test_daily_run.py::test_a_failed_update_on_stale_data_blocks_the_plan_because_the_health_check_catches_it PASSED [ 48%]
-# test_daily_run.py::test_an_error_level_health_issue_blocks_the_plan_and_says_why PASSED [ 50%]
-# test_daily_run.py::test_a_prices_file_that_cannot_be_loaded_blocks_the_run_with_the_reason PASSED [ 51%]
-# test_daily_run.py::test_no_snapshot_at_all_blocks_the_run_instead_of_crashing PASSED [ 53%]
-# test_daily_run.py::test_running_twice_on_the_same_day_keeps_the_first_plan_and_does_not_overwrite_the_first_report PASSED [ 55%]
-# test_daily_run.py::test_a_changed_protocol_between_runs_is_reported_loudly PASSED [ 57%]
-# test_daily_run.py::test_the_scoreboard_start_in_the_future_is_a_note_not_a_crash PASSED [ 59%]
-# test_daily_run.py::test_a_scoreboard_start_with_prices_reports_the_latest_row PASSED [ 61%]
-# test_daily_run.py::test_an_etf_only_account_reports_only_the_qf_sleeve_and_no_spy_numbers PASSED [ 62%]
-# test_daily_run.py::test_a_spy_only_account_reports_only_the_spy_sleeve_and_no_qf_numbers PASSED [ 64%]
-# test_daily_run.py::test_a_split_account_still_reports_every_scoreboard_column PASSED [ 66%]
-# test_daily_run.py::test_a_tiny_spy_or_qf_share_is_still_a_split_account_not_a_one_sleeve_account PASSED [ 68%]
-# test_daily_run.py::test_the_saved_run_report_is_strict_json_with_no_nan_for_every_kind_of_account PASSED [ 70%]
-# test_daily_run.py::test_the_text_report_never_prints_nan_and_says_which_sleeve_an_one_sleeve_account_holds PASSED [ 72%]
-# test_daily_run.py::test_no_start_date_skips_the_scoreboard PASSED        [ 74%]
-# test_daily_run.py::test_holdings_and_equity_come_from_the_caller_and_a_second_account_changes_the_orders PASSED [ 75%]
-# test_daily_run.py::test_placeholders_still_waiting_on_the_boss_are_listed_in_every_report PASSED [ 77%]
-# test_daily_run.py::test_an_account_equity_far_from_the_config_equity_is_warned_about_because_the_plan_is_sized_on_it PASSED [ 79%]
-# test_daily_run.py::test_the_report_says_when_its_plan_numbers_are_a_fresh_calculation_and_not_the_saved_file PASSED [ 81%]
-# test_daily_run.py::test_a_missing_config_file_is_flagged_in_the_report PASSED [ 83%]
-# test_daily_run.py::test_render_report_is_plain_text_that_says_nothing_was_sent_and_lists_issues PASSED [ 85%]
-# test_daily_run.py::test_cli_with_no_update_runs_end_to_end_exits_0_and_prints_a_summary PASSED [ 87%]
-# test_daily_run.py::test_cli_exits_1_when_the_run_is_blocked PASSED       [ 88%]
-# test_daily_run.py::test_cli_init_config_writes_the_file_once PASSED      [ 90%]
-# test_daily_run.py::test_cli_from_alpaca_uses_the_account_equity_and_positions_read_only PASSED [ 92%]
-# test_daily_run.py::test_cli_from_alpaca_without_keys_exits_2_and_does_nothing PASSED [ 94%]
-# test_daily_run.py::test_the_module_never_places_orders_and_imports_no_trading_client_at_load PASSED [ 96%]
-# test_daily_run.py::test_default_update_appends_the_new_day_saves_a_new_snapshot_and_a_second_call_says_nothing_new PASSED [ 98%]
-# test_daily_run.py::test_default_update_rejects_a_fresh_pull_that_disagrees_with_the_history PASSED [100%]
-# ============================== 54 passed in 3.34s ==============================
+# test_daily_run.py::test_saturday_with_a_friday_last_date_is_not_stale PASSED [  2%]
+# test_daily_run.py::test_monday_with_a_friday_last_date_is_not_stale_because_todays_bar_is_not_settled_yet PASSED [  3%]
+# test_daily_run.py::test_lag_is_measured_to_the_last_business_day_so_a_sunday_with_a_thursday_bar_is_one_day_behind_not_two PASSED [  5%]
+# test_daily_run.py::test_two_business_days_behind_is_a_warning_and_a_week_behind_is_an_error PASSED [  6%]
+# test_daily_run.py::test_the_error_threshold_is_adjustable PASSED         [  7%]
+# test_daily_run.py::test_duplicate_dates_and_unsorted_dates_are_errors PASSED [  9%]
+# test_daily_run.py::test_a_non_positive_price_is_an_error_naming_the_ticker PASSED [ 10%]
+# test_daily_run.py::test_spy_without_a_last_day_price_is_an_error_but_another_ticker_is_only_a_warning PASSED [ 11%]
+# test_daily_run.py::test_a_thirty_percent_one_day_move_is_flagged_but_ten_percent_is_not PASSED [ 12%]
+# test_daily_run.py::test_the_jump_threshold_is_adjustable PASSED          [ 14%]
+# test_daily_run.py::test_only_the_recent_lookback_is_scanned_for_big_moves PASSED [ 15%]
+# test_daily_run.py::test_an_empty_frame_is_an_error_not_a_crash PASSED    [ 16%]
+# test_daily_run.py::test_config_hash_is_stable_and_changes_with_every_protocol_field_and_the_start_date PASSED [ 18%]
+# test_daily_run.py::test_equity_is_not_part_of_the_hash_because_it_changes_every_day PASSED [ 19%]
+# test_daily_run.py::test_a_missing_config_file_gives_the_defaults_and_says_so PASSED [ 20%]
+# test_daily_run.py::test_init_config_writes_a_loadable_file_and_never_overwrites PASSED [ 22%]
+# test_daily_run.py::test_an_unknown_key_in_the_config_is_rejected_so_typos_cannot_silently_change_the_protocol PASSED [ 23%]
+# test_daily_run.py::test_protocol_from_config_applies_the_fields_and_validates_them PASSED [ 24%]
+# test_daily_run.py::test_account_to_inputs_takes_equity_and_market_values_as_floats PASSED [ 25%]
+# test_daily_run.py::test_account_with_no_positions_has_empty_holdings PASSED [ 27%]
+# test_daily_run.py::test_a_normal_run_writes_a_plan_and_a_run_report_and_sends_nothing PASSED [ 28%]
+# test_daily_run.py::test_the_steps_are_recorded_in_order PASSED           [ 29%]
+# test_daily_run.py::test_the_update_step_runs_once_with_the_folder_and_its_result_is_recorded PASSED [ 31%]
+# test_daily_run.py::test_a_failed_update_is_recorded_and_the_run_carries_on_with_the_existing_snapshot PASSED [ 32%]
+# test_daily_run.py::test_a_failed_update_on_stale_data_blocks_the_plan_because_the_health_check_catches_it PASSED [ 33%]
+# test_daily_run.py::test_an_error_level_health_issue_blocks_the_plan_and_says_why PASSED [ 35%]
+# test_daily_run.py::test_a_prices_file_that_cannot_be_loaded_blocks_the_run_with_the_reason PASSED [ 36%]
+# test_daily_run.py::test_no_snapshot_at_all_blocks_the_run_instead_of_crashing PASSED [ 37%]
+# test_daily_run.py::test_running_twice_on_the_same_day_keeps_the_first_plan_and_does_not_overwrite_the_first_report PASSED [ 38%]
+# test_daily_run.py::test_a_changed_protocol_between_runs_is_reported_loudly PASSED [ 40%]
+# test_daily_run.py::test_the_scoreboard_start_in_the_future_is_a_note_not_a_crash PASSED [ 41%]
+# test_daily_run.py::test_a_scoreboard_start_with_prices_reports_the_latest_row PASSED [ 42%]
+# test_daily_run.py::test_an_etf_only_account_reports_only_the_qf_sleeve_and_no_spy_numbers PASSED [ 44%]
+# test_daily_run.py::test_a_spy_only_account_reports_only_the_spy_sleeve_and_no_qf_numbers PASSED [ 45%]
+# test_daily_run.py::test_a_split_account_still_reports_every_scoreboard_column PASSED [ 46%]
+# test_daily_run.py::test_a_tiny_spy_or_qf_share_is_still_a_split_account_not_a_one_sleeve_account PASSED [ 48%]
+# test_daily_run.py::test_the_saved_run_report_is_strict_json_with_no_nan_for_every_kind_of_account PASSED [ 49%]
+# test_daily_run.py::test_the_text_report_never_prints_nan_and_says_which_sleeve_an_one_sleeve_account_holds PASSED [ 50%]
+# test_daily_run.py::test_no_start_date_skips_the_scoreboard PASSED        [ 51%]
+# test_daily_run.py::test_holdings_and_equity_come_from_the_caller_and_a_second_account_changes_the_orders PASSED [ 53%]
+# test_daily_run.py::test_placeholders_still_waiting_on_the_boss_are_listed_in_every_report PASSED [ 54%]
+# test_daily_run.py::test_an_account_equity_far_from_the_config_equity_is_warned_about_because_the_plan_is_sized_on_it PASSED [ 55%]
+# test_daily_run.py::test_the_report_says_when_its_plan_numbers_are_a_fresh_calculation_and_not_the_saved_file PASSED [ 57%]
+# test_daily_run.py::test_a_missing_config_file_is_flagged_in_the_report PASSED [ 58%]
+# test_daily_run.py::test_render_report_is_plain_text_that_says_nothing_was_sent_and_lists_issues PASSED [ 59%]
+# test_daily_run.py::test_cli_with_no_update_runs_end_to_end_exits_0_and_prints_a_summary PASSED [ 61%]
+# test_daily_run.py::test_cli_exits_1_when_the_run_is_blocked PASSED       [ 62%]
+# test_daily_run.py::test_cli_init_config_writes_the_file_once PASSED      [ 63%]
+# test_daily_run.py::test_cli_from_alpaca_uses_the_account_equity_and_positions_read_only PASSED [ 64%]
+# test_daily_run.py::test_cli_from_alpaca_without_keys_exits_2_and_does_nothing PASSED [ 66%]
+# test_daily_run.py::test_the_module_never_places_orders_and_imports_no_trading_client_at_load PASSED [ 67%]
+# test_daily_run.py::test_default_update_appends_the_new_day_saves_a_new_snapshot_and_a_second_call_says_nothing_new PASSED [ 68%]
+# test_daily_run.py::test_default_update_rejects_a_fresh_pull_that_disagrees_with_the_history PASSED [ 70%]
+# test_daily_run.py::test_exclude_defaults_to_nothing_and_old_configs_without_it_still_load PASSED [ 71%]
+# test_daily_run.py::test_exclude_is_part_of_the_hash_but_an_empty_list_keeps_the_old_hash_and_order_does_not_matter PASSED [ 72%]
+# test_daily_run.py::test_protocol_from_config_applies_exclude_and_rejects_names_outside_the_universe PASSED [ 74%]
+# test_daily_run.py::test_a_run_with_exclude_plans_without_those_etfs_sells_a_held_one_and_reports_the_exclusion PASSED [ 75%]
+# test_daily_run.py::test_changing_exclude_changes_the_config_hash_of_a_run PASSED [ 76%]
+# test_daily_run.py::test_the_config_floor_defaults_to_the_same_900_that_execute_plan_uses PASSED [ 77%]
+# test_daily_run.py::test_the_floor_is_not_part_of_the_protocol_hash PASSED [ 79%]
+# test_daily_run.py::test_equity_below_the_floor_is_flagged_in_the_report_and_the_plan_is_still_made PASSED [ 80%]
+# test_daily_run.py::test_equity_at_or_above_the_floor_is_not_flagged PASSED [ 81%]
+# test_daily_run.py::test_a_lower_floor_in_the_config_is_respected_and_zero_turns_the_flag_off PASSED [ 83%]
+# test_daily_run.py::test_a_bad_floor_in_the_config_is_an_error_not_a_silent_off_switch PASSED [ 84%]
+# test_daily_run.py::test_cli_prints_a_loud_line_when_the_equity_is_below_the_floor_and_still_exits_0 PASSED [ 85%]
+# test_daily_run.py::test_the_floor_warning_comes_before_the_other_warnings PASSED [ 87%]
+# test_daily_run.py::test_a_fresh_plan_and_a_rerun_with_the_same_config_have_no_mismatch PASSED [ 88%]
+# test_daily_run.py::test_a_config_change_after_the_plan_was_saved_is_flagged_first_and_the_plan_is_not_overwritten PASSED [ 89%]
+# test_daily_run.py::test_every_protocol_field_that_differs_is_listed_in_a_stable_order PASSED [ 90%]
+# test_daily_run.py::test_exclude_order_does_not_matter_but_the_set_does PASSED [ 92%]
+# test_daily_run.py::test_a_plan_saved_before_the_exclude_option_existed_counts_as_excluding_nothing PASSED [ 93%]
+# test_daily_run.py::test_a_saved_plan_that_cannot_be_read_or_has_no_protocol_is_flagged_not_a_crash PASSED [ 94%]
+# test_daily_run.py::test_the_mismatch_and_the_equity_floor_warnings_can_both_show PASSED [ 96%]
+# test_daily_run.py::test_cli_prints_a_loud_line_for_a_mismatch_and_still_exits_0 PASSED [ 97%]
+# test_daily_run.py::test_changing_only_the_rebalance_every_setting_does_not_flag_the_saved_plan PASSED [ 98%]
+# test_daily_run.py::test_an_older_plan_missing_other_settings_counts_them_as_defaults_and_the_mismatch_warning_comes_first PASSED [100%]
+# ============================== 77 passed in 5.30s ==============================
+#
+# saved plan vs config (2026-10-24, sandbox): 10 new tests. A plan is never overwritten, so after a config change the OLD file on disk is what execute_plan.py trades.
+#   The run now compares the saved plan's order-affecting settings (spy_share, qf_rule, max_weight, exposure, window, mode, min_notional, exclude; not
+#   rebalance_every) with the config. A difference puts a first-in-list warning, a SAVED PLAN DOES NOT MATCH banner and a *** nightly line, and sets
+#   saved_plan_mismatch in the report; an unreadable plan gives ['unreadable'], one with no settings ['no_protocol']; a plan from before a setting existed
+#   counts as that setting's default. Exit code stays 0. Mutation checks (17): 17 caught. Real prices (2026-10-19, 48 ETFs saved, then exclude added):
+#   mismatch ['exclude'] flagged and the file was not overwritten.
+#
+# equity floor (2026-10-24, sandbox): config key equity_floor (default 900, shared with execute_plan.py, not part of the protocol hash). Equity
+#   below it adds a first-in-list warning, a BELOW THE EQUITY FLOOR line at the top of the report, report fields below_equity_floor and
+#   equity_floor, and a *** line in the nightly stdout. The run still exits 0: the nightly job cannot halt anything, execute_plan.py does.
 #
 # Mutation checks (sandbox, 34): stale thresholds, lag measured from today instead of the last business day, bad-index
 #   / non-positive-price / SPY-missing / stale-ticker / big-move checks, jump and lookback ignored, config hash missing a

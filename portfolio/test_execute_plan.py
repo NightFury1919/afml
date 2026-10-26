@@ -19,8 +19,9 @@ class FakeGateway:
     """Stands in for AlpacaGateway: no network, records every call."""
 
     def __init__(self, equity=1000.0, status="active", blocked=False, positions=None, open_orders=(), is_open=True,
-                 fail=(), final_status="filled"):
-        self._acct = SimpleNamespace(status=status, equity=equity, cash=equity, trading_blocked=blocked)
+                 fail=(), final_status="filled", cash=None, status_by_symbol=None):
+        self._acct = SimpleNamespace(status=status, equity=equity, cash=equity if cash is None else cash, trading_blocked=blocked)
+        self.status_by_symbol, self.symbol_of = dict(status_by_symbol or {}), {}
         self._pos, self._open, self._is_open = dict(positions or {}), list(open_orders), is_open
         self.fail, self.final_status = set(fail), final_status
         self.calls, self.submitted = [], []
@@ -46,11 +47,13 @@ class FakeGateway:
         if order["symbol"] in self.fail:
             raise RuntimeError(f"rejected {order['symbol']}")
         self.submitted.append(order)
-        return dict(id=f"id-{len(self.submitted)}", status="accepted")
+        oid = f"id-{len(self.submitted)}"
+        self.symbol_of[oid] = order["symbol"]
+        return dict(id=oid, status="accepted")
 
     def order_status(self, order_id):
         self.calls.append(("status", order_id))
-        return self.final_status
+        return self.status_by_symbol.get(self.symbol_of.get(order_id), self.final_status)
 
 
 def codes(issues, level=None):
@@ -603,3 +606,243 @@ def test_no_alpaca_import_happens_at_module_load():
 #   reconciled with every target within tolerance. That is a format check only.
 # NOT YET RUN against the Alpaca paper API. Do the dry run first: python execute_plan.py
 # ---------------------------------------------------------------------------
+
+
+# ----------------------------------------------------------------------------------- equity floor (2026-10-24)
+# Why: Ethan's rule for the real-money account is "halt if equity drops below $900". The check is on the ACCOUNT's equity,
+# not the plan's, and it stops everything (sells too): below the floor a person decides what to do, not the script.
+def test_the_default_floor_is_900_and_an_account_at_or_above_it_is_not_stopped():
+    from execute_plan import DEFAULT_EQUITY_FLOOR
+    assert DEFAULT_EQUITY_FLOOR == 900.0
+    assert "below_equity_floor" not in codes(pre(plan={**PLAN, "equity": 900.0}, gw=FakeGateway(equity=900.0)))   # exactly 900: fine
+    assert "below_equity_floor" not in codes(pre())                                                          # 1,000: fine
+
+
+def test_equity_below_the_floor_is_refused_even_by_a_cent():
+    issues = pre(plan={**PLAN, "equity": 899.99}, gw=FakeGateway(equity=899.99))
+    assert "below_equity_floor" in codes(issues, "error")
+    msg = [i["message"] for i in issues if i["code"] == "below_equity_floor"][0]
+    assert "899.99" in msg and "900.00" in msg
+
+
+def test_the_floor_applies_when_the_account_is_far_below_the_plan_too():
+    issues = pre(gw=FakeGateway(equity=850.0))                                   # plan says 1,000
+    assert {"below_equity_floor", "equity_mismatch"} <= set(codes(issues, "error"))
+
+
+def test_the_floor_is_adjustable_and_lowering_it_is_a_warning():
+    gw = FakeGateway(equity=880.0)
+    plan = {**PLAN, "equity": 880.0}
+    issues = pre(plan=plan, gw=gw, equity_floor=800.0)
+    assert "below_equity_floor" not in codes(issues, "error")
+    assert "equity_floor_lowered" in codes(issues, "warn")
+    assert "below_equity_floor" in codes(pre(plan=plan, gw=gw, equity_floor=881.0), "error")        # raising it also works
+    assert "equity_floor_lowered" not in codes(pre(equity_floor=900.0))
+    assert "equity_floor_lowered" not in codes(pre(equity_floor=950.0))
+
+
+def test_a_floor_of_zero_turns_it_off_and_says_so():
+    issues = pre(plan={**PLAN, "equity": 500.0}, gw=FakeGateway(equity=500.0), equity_floor=0)
+    assert "below_equity_floor" not in codes(issues, "error")
+    assert "equity_floor_lowered" in codes(issues, "warn")
+
+
+def test_bad_floor_values_are_rejected():
+    from execute_plan import check_equity_floor
+    assert check_equity_floor(0) == 0.0 and check_equity_floor("900") == 900.0 and check_equity_floor(1250.5) == 1250.5
+    for bad in (-1, float("nan"), float("inf"), "abc", None, True):
+        with pytest.raises(ValueError):
+            check_equity_floor(bad)
+    with pytest.raises(ValueError):
+        pre(equity_floor=-5)                                                     # preflight enforces it too
+
+
+def test_an_account_equity_that_is_not_a_number_is_refused():
+    for bad in (float("nan"),):
+        issues = pre(gw=FakeGateway(equity=bad))
+        assert "below_equity_floor" in codes(issues, "error")
+
+
+def test_execute_below_the_floor_sends_nothing_not_even_sells_and_writes_no_ledger(tmp_path):
+    plan = {**PLAN, "equity": 880.0, "holdings": {"QQQ": 100.0},
+            "orders": [dict(symbol="QQQ", side="sell", close_all=True), dict(symbol="SPY", side="buy", notional=880.0)]}
+    gw = FakeGateway(equity=880.0, positions={"QQQ": 100.0})
+    import execute_plan                                        # an earlier test reloads the module, so ask it for the class now
+    with pytest.raises(execute_plan.ExecutionRefused) as e:
+        run(tmp_path, plan=plan, gw=gw)
+    assert "below_equity_floor" in str(e.value)
+    assert gw.submitted == [] and not (tmp_path / "orders").exists()
+
+
+def test_execute_records_the_floor_in_the_ledger_and_a_lowered_floor_in_its_warnings(tmp_path):
+    _, ledger = run(tmp_path)
+    assert ledger["equity_floor"] == 900.0 and ledger["warnings"] == []
+    gw = FakeGateway(equity=880.0)
+    _, ledger = run(tmp_path / "b", plan={**PLAN, "equity": 880.0}, gw=gw, equity_floor=800.0)
+    assert ledger["equity_floor"] == 800.0
+    assert "equity_floor_lowered" in [w["code"] for w in ledger["warnings"]]
+    saved = json.loads(next((tmp_path / "b" / "orders").glob("orders_*.json")).read_text())
+    assert saved["equity_floor"] == 800.0
+
+
+def test_cli_dry_run_below_the_floor_is_refused_and_a_lower_floor_passes(monkeypatch, tmp_path, capsys):
+    plan = {**PLAN, "equity": 880.0}
+    write_plan_file(tmp_path, plan)
+    assert run_cli(monkeypatch, tmp_path, FakeGateway(equity=880.0)) == 1
+    assert "below_equity_floor" in capsys.readouterr().out
+    assert run_cli(monkeypatch, tmp_path, FakeGateway(equity=880.0), "--equity-floor", "800") == 0
+    assert "equity_floor_lowered" in capsys.readouterr().out
+
+
+def test_cli_execute_below_the_floor_sends_nothing(monkeypatch, tmp_path, capsys):
+    write_plan_file(tmp_path, {**PLAN, "equity": 880.0})
+    gw = FakeGateway(equity=880.0)
+    assert run_cli(monkeypatch, tmp_path, gw, "--execute", "--confirm", "2026-10-16") == 1
+    assert gw.submitted == [] and not (tmp_path / "orders").exists()
+    assert "below_equity_floor" in capsys.readouterr().out
+
+
+def test_cli_rejects_a_bad_equity_floor_before_touching_the_account(monkeypatch, tmp_path, capsys):
+    write_plan_file(tmp_path)
+    for bad in ("-1", "nan"):
+        gw = FakeGateway()
+        assert run_cli(monkeypatch, tmp_path, gw, "--equity-floor", bad) == 2
+        assert gw.calls == []
+        assert "equity-floor" in capsys.readouterr().out
+    gw = FakeGateway()
+    assert run_cli(monkeypatch, tmp_path, gw, "--equity-floor", "abc") == 2         # argparse's own refusal
+    assert gw.calls == []
+
+
+# ----------------------------------------------------------------------------------- buy side checks (2026-10-24)
+# Review of the sell path found two gaps. (1) The buys were never checked after they were sent, so an order Alpaca
+# accepted and then rejected would still show "complete". (2) Buys are fixed dollar amounts, but sell proceeds move with
+# the price between the plan and the fill, so the last buy could be a few dollars more than the cash that is there.
+SELL_BUY = {**PLAN, "equity": 1000.0, "holdings": {"SPY": 500.0},
+            "orders": [dict(symbol="SPY", side="sell", close_all=True),
+                       dict(symbol="QQQ", side="buy", notional=300.0), dict(symbol="GLD", side="buy", notional=200.0)]}
+
+
+def sent(gw, symbol):
+    return [o for o in gw.submitted if o["symbol"] == symbol][0]
+
+
+def test_buys_that_fit_the_cash_are_sent_exactly_as_planned_and_cash_to_spare_is_not_spent(tmp_path):
+    gw, led = run(tmp_path, plan=SELL_BUY, gw=FakeGateway(positions={"SPY": 500.0}, cash=900.0))
+    assert sent(gw, "QQQ")["notional"] == 300.0 and sent(gw, "GLD")["notional"] == 200.0
+    assert led["status"] == "complete" and "trimmed" not in led or led.get("trimmed") == []
+
+
+def test_cash_exactly_equal_to_the_buys_needs_no_trim(tmp_path):
+    gw, led = run(tmp_path, plan=SELL_BUY, gw=FakeGateway(positions={"SPY": 500.0}, cash=500.0))
+    assert sent(gw, "QQQ")["notional"] == 300.0 and led.get("trimmed", []) == []
+
+
+def test_a_small_shortfall_is_taken_off_the_largest_buy_only_to_the_cent_and_recorded(tmp_path):
+    gw, led = run(tmp_path, plan=SELL_BUY, gw=FakeGateway(positions={"SPY": 500.0}, cash=497.35))
+    assert sent(gw, "QQQ")["notional"] == pytest.approx(297.35) and sent(gw, "GLD")["notional"] == 200.0
+    assert led["trimmed"] == [dict(symbol="QQQ", planned=300.0, sent=pytest.approx(297.35))]
+    assert led["status"] == "complete"
+    assert sum(o["notional"] for o in gw.submitted if o["side"] == "buy") <= 497.35 + 1e-9
+
+
+def test_a_shortfall_that_is_not_a_whole_cent_is_rounded_up_so_the_buys_never_exceed_the_cash(tmp_path):
+    gw, led = run(tmp_path, plan=SELL_BUY, gw=FakeGateway(positions={"SPY": 500.0}, cash=499.996))
+    assert sum(o["notional"] for o in gw.submitted if o["side"] == "buy") <= 499.996
+
+
+def test_with_equal_largest_buys_the_trim_is_deterministic(tmp_path):
+    plan = {**SELL_BUY, "orders": [dict(symbol="SPY", side="sell", close_all=True),
+                                   dict(symbol="AAA", side="buy", notional=250.0), dict(symbol="BBB", side="buy", notional=250.0)]}
+    gw, led = run(tmp_path, plan=plan, gw=FakeGateway(positions={"SPY": 500.0}, cash=498.0))
+    assert led["trimmed"][0]["symbol"] == "BBB" and sent(gw, "AAA")["notional"] == 250.0
+
+
+def test_a_shortfall_over_two_percent_of_the_buys_sends_no_buy_and_stops_for_a_person(tmp_path):
+    gw, led = run(tmp_path, plan=SELL_BUY, gw=FakeGateway(positions={"SPY": 500.0}, cash=480.0))     # short $20 = 4%
+    assert [o["side"] for o in gw.submitted] == ["sell"]
+    assert led["status"] == "aborted" and "short" in led["note"] and "20.00" in led["note"]
+
+
+def test_the_cut_off_is_exactly_two_percent(tmp_path):
+    gw, led = run(tmp_path, plan=SELL_BUY, gw=FakeGateway(positions={"SPY": 500.0}, cash=490.0))     # short $10 = 2%
+    assert led["status"] == "complete" and led["trimmed"][0]["sent"] == pytest.approx(290.0)
+    (tmp_path / "x").mkdir()
+    gw, led = run(tmp_path / "x", plan=SELL_BUY, gw=FakeGateway(positions={"SPY": 500.0}, cash=489.99))   # short $10.01
+    assert led["status"] == "aborted"
+
+
+def test_buys_are_checked_after_they_are_sent_and_a_rejected_one_makes_the_run_partial(tmp_path):
+    gw, led = run(tmp_path, plan=SELL_BUY,
+                  gw=FakeGateway(positions={"SPY": 500.0}, cash=500.0, status_by_symbol={"GLD": "rejected"}))
+    by = {e["symbol"]: e for e in led["entries"]}
+    assert by["QQQ"]["status"] == "filled" and by["GLD"]["status"] == "rejected"
+    assert led["status"] == "partial" and "GLD" in led["note"]
+
+
+def test_a_canceled_or_expired_buy_is_also_partial(tmp_path):
+    for bad in ("canceled", "expired"):
+        d = tmp_path / bad
+        d.mkdir()
+        gw, led = run(d, plan=SELL_BUY, gw=FakeGateway(positions={"SPY": 500.0}, cash=500.0, status_by_symbol={"QQQ": bad}))
+        assert led["status"] == "partial" and "QQQ" in led["note"]
+
+
+def test_a_buy_still_working_after_the_wait_is_not_a_failure_but_is_noted_and_the_wait_is_bounded(tmp_path):
+    slept = []
+    gw, led = run(tmp_path, plan=SELL_BUY, sleep=slept.append, fill_timeout=4,
+                  gw=FakeGateway(positions={"SPY": 500.0}, cash=500.0, status_by_symbol={"GLD": "new"}))
+    assert led["status"] == "complete" and "GLD" in led["note"] and "not filled" in led["note"]
+    assert sum(slept) <= 4 + 2
+    saved = json.loads(next(tmp_path.glob("orders/orders_*.json")).read_text())
+    assert saved["status"] == "complete" and saved["note"] == led["note"]
+
+
+def test_buys_only_plans_are_checked_too(tmp_path):
+    gw, led = run(tmp_path, gw=FakeGateway(status_by_symbol={"SPY": "rejected"}))                   # PLAN is two buys
+    assert led["status"] == "partial" and "SPY" in led["note"]
+    d = tmp_path / "ok"
+    d.mkdir()
+    assert run(d)[1]["status"] == "complete"
+
+
+def test_a_buy_error_at_submit_and_a_later_rejection_are_both_named(tmp_path):
+    gw, led = run(tmp_path, plan=SELL_BUY, gw=FakeGateway(positions={"SPY": 500.0}, cash=500.0, fail=["GLD"],
+                                                           status_by_symbol={"QQQ": "rejected"}))
+    assert led["status"] == "partial" and "GLD" in led["note"] and "QQQ" in led["note"]
+
+
+def test_a_rejected_buy_ends_the_wait_at_once_and_is_not_also_listed_as_not_filled(tmp_path):
+    slept = []
+    gw, led = run(tmp_path, plan=SELL_BUY, sleep=slept.append,
+                  gw=FakeGateway(positions={"SPY": 500.0}, cash=500.0, status_by_symbol={"GLD": "rejected"}))
+    assert slept == [] and "not filled" not in led["note"]
+
+
+# ----------------------------------------------------------------------------------- what the plan was made under
+# A dry run now says which settings the plan was made under, so a plan left over from an old config is visible
+# when you read the dry run, not only in the nightly report.
+def test_describe_plan_names_the_settings_the_positions_and_the_exclusions():
+    import execute_plan
+    plan = {**PLAN, "weights": {"A": 0.5, "B": 0.5},
+            "protocol": dict(spy_share=0.0, qf_rule="inverse_vol", max_weight=0.1, exposure=1.0, exclude=["DBC", "SPY"])}
+    text = execute_plan.describe_plan(plan)
+    assert "spy_share 0.0" in text and "inverse_vol" in text and "cap 0.1" in text and "exclude DBC, SPY" in text
+    assert "2 positions" in text
+
+
+def test_describe_plan_says_none_when_nothing_is_excluded_and_handles_plans_without_settings():
+    import execute_plan
+    base = dict(spy_share=0.5, qf_rule="size", max_weight=None, exposure=1.0)
+    assert "exclude none" in execute_plan.describe_plan({**PLAN, "protocol": base})
+    assert "cap none" in execute_plan.describe_plan({**PLAN, "protocol": base})
+    assert "no settings recorded" in execute_plan.describe_plan({k: v for k, v in PLAN.items() if k != "protocol"})
+
+
+def test_cli_dry_run_prints_the_plan_settings_line(monkeypatch, tmp_path, capsys):
+    plan = {**PLAN, "weights": {"SPY": 0.6, "QQQ": 0.4},
+            "protocol": dict(spy_share=0.0, qf_rule="inverse_vol", max_weight=0.1, exposure=1.0, exclude=["DBC"])}
+    write_plan_file(tmp_path, plan)
+    assert run_cli(monkeypatch, tmp_path, FakeGateway()) == 0
+    out = capsys.readouterr().out
+    assert "Plan settings:" in out and "exclude DBC" in out and "inverse_vol" in out

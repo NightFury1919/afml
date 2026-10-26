@@ -608,3 +608,222 @@ def test_default_update_rejects_a_fresh_pull_that_disagrees_with_the_history(mon
 #   the last 10 rows, since the aim is to catch a bad NEW bar.
 # NOT YET RUN on your machine against live Yahoo (default_update) or the Alpaca paper account (--from-alpaca).
 # ---------------------------------------------------------------------------
+
+
+# ------------------------------------------------------------------------------------ exclude
+def test_exclude_defaults_to_nothing_and_old_configs_without_it_still_load():
+    cfg, _ = load_config(Path("does_not_exist.json"))
+    assert cfg["exclude"] == []
+    assert protocol_from_config({k: v for k, v in cfg.items() if k != "exclude"}).exclude == ()
+
+
+def test_exclude_is_part_of_the_hash_but_an_empty_list_keeps_the_old_hash_and_order_does_not_matter():
+    base = dict(spy_share=0.5, qf_rule="size", max_weight=None, exposure=1.0, rebalance_every=1, start=None)
+    assert config_hash({**base, "exclude": []}) == config_hash(base)
+    assert config_hash({**base, "exclude": ["DBC"]}) != config_hash(base)
+    assert config_hash({**base, "exclude": ["DBC", "DBA"]}) == config_hash({**base, "exclude": ["DBA", "DBC"]})
+
+
+def test_protocol_from_config_applies_exclude_and_rejects_names_outside_the_universe():
+    cfg, _ = load_config(Path("does_not_exist.json"))
+    assert protocol_from_config({**cfg, "exclude": ["DBC", "SPY"]}).exclude == ("DBC", "SPY")
+    with pytest.raises(ValueError, match="exclude"):
+        protocol_from_config({**cfg, "exclude": ["NOPE"]})
+    with pytest.raises(ValueError, match="exclude"):
+        protocol_from_config({**cfg, "exclude": "SPY"})
+
+
+def test_a_run_with_exclude_plans_without_those_etfs_sells_a_held_one_and_reports_the_exclusion(tmp_path):
+    real_shaped(tmp_path)
+    cfg = {**CFG, "spy_share": 0.0, "exclude": ["DBC", "DBA", "UUP", "SPY"]}
+    rep = go(tmp_path, config=cfg, holdings={"SPY": 500.0, "DBC": 100.0})
+    plan = json.loads((tmp_path / "plans" / "plan_v2_2026-10-16.json").read_text())
+    assert not {"DBC", "DBA", "UUP", "SPY"} & set(plan["weights"]) and len(plan["weights"]) == 44
+    assert {"symbol": "SPY", "side": "sell", "close_all": True} in plan["orders"]
+    assert {"symbol": "DBC", "side": "sell", "close_all": True} in plan["orders"]
+    text = render_report(rep)
+    assert "exclude" in text and "DBC" in text
+    json.loads(json.dumps(rep, allow_nan=False))
+
+
+def test_changing_exclude_changes_the_config_hash_of_a_run(tmp_path):
+    real_shaped(tmp_path)
+    a = go(tmp_path, config={**CFG, "spy_share": 0.0})
+    b = go(tmp_path, config={**CFG, "spy_share": 0.0, "exclude": ["DBC"]}, today="2026-10-17")
+    assert a["config_hash"] != b["config_hash"]
+
+
+# ------------------------------------------------------------------------------------ equity floor
+# The nightly job places no orders, so it cannot halt anything. What it can do is say, loudly and in the saved report,
+# that the account is below the floor execute_plan.py will refuse to trade under.
+def test_the_config_floor_defaults_to_the_same_900_that_execute_plan_uses():
+    from execute_plan import DEFAULT_EQUITY_FLOOR
+    cfg, _ = load_config(Path("does_not_exist.json"))
+    assert cfg["equity_floor"] == DEFAULT_EQUITY_FLOOR == 900.0
+
+
+def test_the_floor_is_not_part_of_the_protocol_hash():
+    base = dict(spy_share=0.5, qf_rule="size", max_weight=None, exposure=1.0, rebalance_every=1, start=None)
+    assert config_hash({**base, "equity_floor": 800.0}) == config_hash(base)
+
+
+def test_equity_below_the_floor_is_flagged_in_the_report_and_the_plan_is_still_made(tmp_path):
+    real_shaped(tmp_path)
+    rep = go(tmp_path, config={**CFG, "equity": 880.0}, equity=880.0)
+    assert rep["below_equity_floor"] is True and rep["status"] == "ok"
+    assert any("below the equity floor" in w and "880.00" in w and "900.00" in w for w in rep["warnings"])
+    assert "below the equity floor" in rep["warnings"][0]                            # first in the list, not buried
+    text = render_report(rep)
+    assert text.index("BELOW THE EQUITY FLOOR") < text.index("## Steps")             # impossible to miss: before the steps
+    assert (tmp_path / "plans" / "plan_v2_2026-10-16.json").exists()
+    json.loads(json.dumps(rep, allow_nan=False))
+
+
+def test_equity_at_or_above_the_floor_is_not_flagged(tmp_path):
+    for n, eq in enumerate((900.0, 994.68, 1000.0)):
+        folder = tmp_path / f"r{n}"
+        folder.mkdir()
+        real_shaped(folder)
+        rep = go(folder, config={**CFG, "equity": eq}, equity=eq)
+        assert rep["below_equity_floor"] is False and "BELOW THE EQUITY FLOOR" not in render_report(rep)
+        assert not any("equity floor" in w for w in rep["warnings"])
+
+
+def test_a_lower_floor_in_the_config_is_respected_and_zero_turns_the_flag_off(tmp_path):
+    real_shaped(tmp_path)
+    assert go(tmp_path, config={**CFG, "equity": 880.0, "equity_floor": 850.0}, equity=880.0)["below_equity_floor"] is False
+    (tmp_path / "b").mkdir()
+    real_shaped(tmp_path / "b")
+    assert go(tmp_path / "b", config={**CFG, "equity": 700.0, "equity_floor": 0}, equity=700.0)["below_equity_floor"] is False
+    (tmp_path / "c").mkdir()
+    real_shaped(tmp_path / "c")
+    assert go(tmp_path / "c", config={**CFG, "equity": 1000.0, "equity_floor": 1100.0}, equity=1000.0)["below_equity_floor"] is True
+
+
+def test_a_bad_floor_in_the_config_is_an_error_not_a_silent_off_switch(tmp_path):
+    real_shaped(tmp_path)
+    for bad in (-1, "abc", None, float("nan")):
+        with pytest.raises(ValueError, match="equity"):
+            go(tmp_path, config={**CFG, "equity_floor": bad})
+
+
+def test_cli_prints_a_loud_line_when_the_equity_is_below_the_floor_and_still_exits_0(monkeypatch, tmp_path, capsys):
+    real_shaped(tmp_path)
+    (tmp_path / "run_config.json").write_text(json.dumps({"equity": 880.0}), encoding="utf-8")
+    assert run_cli(monkeypatch, tmp_path, "--no-update") == 0                       # the nightly job must not look "failed"
+    out = capsys.readouterr().out
+    assert "*** BELOW THE EQUITY FLOOR of $900.00" in out
+    (tmp_path / "ok").mkdir()
+
+
+def test_the_floor_warning_comes_before_the_other_warnings(tmp_path):
+    real_shaped(tmp_path)
+    rep = go(tmp_path, equity=880.0)                            # config says 1,000, so the 5% mismatch warning exists too
+    assert len(rep["warnings"]) >= 2 and "below the equity floor" in rep["warnings"][0]
+
+
+# ------------------------------------------------------------------------------------ saved plan vs config
+# A saved plan is never overwritten, so a config change made after tonight's plan was saved leaves the OLD plan on disk,
+# and that is the file execute_plan.py will trade. The run now compares the saved plan's settings with the config.
+def saved_plan(tmp_path, date="2026-10-16"):
+    return json.loads((tmp_path / "plans" / f"plan_v2_{date}.json").read_text())
+
+
+def test_a_fresh_plan_and_a_rerun_with_the_same_config_have_no_mismatch(tmp_path):
+    real_shaped(tmp_path)
+    first = go(tmp_path)
+    again = go(tmp_path)
+    assert first["saved_plan_mismatch"] == [] and again["saved_plan_mismatch"] == []
+    assert not any("saved plan" in w.lower() for w in again["warnings"])
+    assert "DOES NOT MATCH" not in render_report(again)
+
+
+def test_a_config_change_after_the_plan_was_saved_is_flagged_first_and_the_plan_is_not_overwritten(tmp_path):
+    real_shaped(tmp_path)
+    go(tmp_path, config={**CFG, "spy_share": 0.0})
+    before = (tmp_path / "plans" / "plan_v2_2026-10-16.json").read_text()
+    rep = go(tmp_path, config={**CFG, "spy_share": 0.0, "exclude": ["DBC", "SPY"]})
+    assert rep["saved_plan_mismatch"] == ["exclude"]
+    assert "saved plan" in rep["warnings"][0].lower() and "exclude" in rep["warnings"][0]
+    assert (tmp_path / "plans" / "plan_v2_2026-10-16.json").read_text() == before
+    text = render_report(rep)
+    assert text.index("SAVED PLAN DOES NOT MATCH") < text.index("## Steps")
+    assert "plan_v2_2026-10-16.json" in text
+
+
+def test_every_protocol_field_that_differs_is_listed_in_a_stable_order(tmp_path):
+    real_shaped(tmp_path)
+    go(tmp_path, config={**CFG, "spy_share": 0.5, "qf_rule": "size", "max_weight": None, "exposure": 1.0})
+    rep = go(tmp_path, config={**CFG, "spy_share": 0.0, "qf_rule": "inverse_vol", "max_weight": 0.1, "exposure": 0.9})
+    assert rep["saved_plan_mismatch"] == ["spy_share", "qf_rule", "max_weight", "exposure"]
+    assert all(f in rep["warnings"][0] for f in rep["saved_plan_mismatch"])
+
+
+def test_exclude_order_does_not_matter_but_the_set_does(tmp_path):
+    real_shaped(tmp_path)
+    go(tmp_path, config={**CFG, "exclude": ["DBC", "DBA"]})
+    assert go(tmp_path, config={**CFG, "exclude": ["DBA", "DBC"]})["saved_plan_mismatch"] == []
+    assert go(tmp_path, config={**CFG, "exclude": ["DBA"]})["saved_plan_mismatch"] == ["exclude"]
+
+
+def test_a_plan_saved_before_the_exclude_option_existed_counts_as_excluding_nothing(tmp_path):
+    real_shaped(tmp_path)
+    go(tmp_path)
+    path = tmp_path / "plans" / "plan_v2_2026-10-16.json"
+    plan = json.loads(path.read_text())
+    del plan["protocol"]["exclude"]
+    path.write_text(json.dumps(plan))
+    assert go(tmp_path)["saved_plan_mismatch"] == []
+    assert go(tmp_path, config={**CFG, "exclude": ["DBC"]})["saved_plan_mismatch"] == ["exclude"]
+
+
+def test_a_saved_plan_that_cannot_be_read_or_has_no_protocol_is_flagged_not_a_crash(tmp_path):
+    real_shaped(tmp_path)
+    go(tmp_path)
+    path = tmp_path / "plans" / "plan_v2_2026-10-16.json"
+    path.write_text("{ not json")
+    rep = go(tmp_path)
+    assert rep["status"] == "ok" and rep["saved_plan_mismatch"] == ["unreadable"]
+    assert "saved plan" in rep["warnings"][0].lower()
+    path.write_text(json.dumps({"version": 2, "as_of": "2026-10-16"}))
+    rep = go(tmp_path)
+    assert rep["saved_plan_mismatch"] == ["no_protocol"]
+
+
+def test_the_mismatch_and_the_equity_floor_warnings_can_both_show(tmp_path):
+    real_shaped(tmp_path)
+    go(tmp_path)
+    rep = go(tmp_path, config={**CFG, "spy_share": 0.0}, equity=880.0)
+    assert rep["below_equity_floor"] is True and rep["saved_plan_mismatch"] == ["spy_share"]
+    text = render_report(rep)
+    assert "BELOW THE EQUITY FLOOR" in text and "SAVED PLAN DOES NOT MATCH" in text
+    json.loads(json.dumps(rep, allow_nan=False))
+
+
+def test_cli_prints_a_loud_line_for_a_mismatch_and_still_exits_0(monkeypatch, tmp_path, capsys):
+    real_shaped(tmp_path)
+    assert run_cli(monkeypatch, tmp_path, "--no-update") == 0
+    capsys.readouterr()
+    (tmp_path / "run_config.json").write_text(json.dumps({"spy_share": 0.0}), encoding="utf-8")
+    assert run_cli(monkeypatch, tmp_path, "--no-update") == 0
+    out = capsys.readouterr().out
+    assert "*** SAVED PLAN DOES NOT MATCH THE CONFIG" in out and "spy_share" in out
+
+
+def test_changing_only_the_rebalance_every_setting_does_not_flag_the_saved_plan(tmp_path):
+    real_shaped(tmp_path)
+    go(tmp_path)
+    assert go(tmp_path, config={**CFG, "rebalance_every": 21})["saved_plan_mismatch"] == []
+
+
+def test_an_older_plan_missing_other_settings_counts_them_as_defaults_and_the_mismatch_warning_comes_first(tmp_path):
+    real_shaped(tmp_path)
+    go(tmp_path)
+    path = tmp_path / "plans" / "plan_v2_2026-10-16.json"
+    plan = json.loads(path.read_text())
+    for k in ("mode", "min_notional", "window", "exclude"):
+        del plan["protocol"][k]
+    path.write_text(json.dumps(plan))
+    assert go(tmp_path)["saved_plan_mismatch"] == []
+    rep = go(tmp_path, config={**CFG, "spy_share": 0.0}, equity=1100.0)       # also trips the 5% equity-difference warning
+    assert len(rep["warnings"]) >= 2 and "saved plan" in rep["warnings"][0].lower()
