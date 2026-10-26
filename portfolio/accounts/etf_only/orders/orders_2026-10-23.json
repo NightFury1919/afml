@@ -1,0 +1,457 @@
+{
+  "as_of": "2026-10-23",
+  "started": "2026-10-26 10:39:53.544998",
+  "plan_equity": 997.59,
+  "status": "complete",
+  "holdings_tol": 10.0,
+  "equity_floor": 900.0,
+  "note": "",
+  "warnings": [
+    {
+      "level": "warn",
+      "code": "holdings_tol_loosened",
+      "message": "positions may differ from the plan's assumed holdings by up to $10.00 each (the default is $1.00)"
+    }
+  ],
+  "entries": [
+    {
+      "symbol": "DBA",
+      "side": "sell",
+      "notional": null,
+      "close_all": true,
+      "order_id": "a5bb6a39-46a8-4db6-bbed-c430df982462",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "DBC",
+      "side": "sell",
+      "notional": null,
+      "close_all": true,
+      "order_id": "364828bc-cc88-4368-843f-427f85111787",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "SPY",
+      "side": "sell",
+      "notional": null,
+      "close_all": true,
+      "order_id": "1342098d-7d20-468d-aa43-d1746d818e59",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "UUP",
+      "side": "sell",
+      "notional": null,
+      "close_all": true,
+      "order_id": "ad0cae1c-e449-43e8-ad5b-5a70cb348a1f",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "EEM",
+      "side": "buy",
+      "notional": 8.29,
+      "close_all": false,
+      "order_id": "dd08bccd-3a4d-4f34-8de7-a6ff4b0f22ed",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "EFA",
+      "side": "buy",
+      "notional": 11.79,
+      "close_all": false,
+      "order_id": "bd1b5472-8bc4-4788-897e-341ace20f7ab",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "EMB",
+      "side": "buy",
+      "notional": 35.31,
+      "close_all": false,
+      "order_id": "a9c20e4d-81df-4c2c-9cc5-c8aad97b1e9d",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "EWA",
+      "side": "buy",
+      "notional": 11.74,
+      "close_all": false,
+      "order_id": "dc2a46d3-605a-4aef-b153-888431c36d3e",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "EWC",
+      "side": "buy",
+      "notional": 11.75,
+      "close_all": false,
+      "order_id": "88ab3cbb-8ad2-454a-9bc6-a9922d0360f7",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "EWG",
+      "side": "buy",
+      "notional": 11.78,
+      "close_all": false,
+      "order_id": "9c4ac0a8-1c68-487d-9604-673215092249",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "EWJ",
+      "side": "buy",
+      "notional": 11.82,
+      "close_all": false,
+      "order_id": "c5650599-7a73-4fe9-beec-f656f023ef31",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "EWL",
+      "side": "buy",
+      "notional": 11.75,
+      "close_all": false,
+      "order_id": "26050a55-72a0-43b6-b8a5-6d212d32947b",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "EWT",
+      "side": "buy",
+      "notional": 8.26,
+      "close_all": false,
+      "order_id": "8ae30a77-0166-4c75-b662-627e62e15742",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "EWU",
+      "side": "buy",
+      "notional": 11.77,
+      "close_all": false,
+      "order_id": "8a29dc69-7a59-4c4c-9580-3c8012583cc8",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "EWW",
+      "side": "buy",
+      "notional": 8.2,
+      "close_all": false,
+      "order_id": "5f3aecd7-6a69-47c9-bf60-fe4d87bfc74d",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "EWY",
+      "side": "buy",
+      "notional": 8.22,
+      "close_all": false,
+      "order_id": "57984ea7-01be-4cfc-af47-c5e8534c563c",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "EWZ",
+      "side": "buy",
+      "notional": 9.02,
+      "close_all": false,
+      "order_id": "a6126c58-b6db-4555-ad97-6e82726cc8e4",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "FXE",
+      "side": "buy",
+      "notional": 22.52,
+      "close_all": false,
+      "order_id": "26924475-e797-412e-86cc-8f8c1f4b4302",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "FXI",
+      "side": "buy",
+      "notional": 8.32,
+      "close_all": false,
+      "order_id": "87f51a57-6b32-4c6d-ab71-a02c081f3c5a",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "FXY",
+      "side": "buy",
+      "notional": 21.8,
+      "close_all": false,
+      "order_id": "8cc78968-d172-40eb-a8ac-e3367ce8de54",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "GDX",
+      "side": "buy",
+      "notional": 5.48,
+      "close_all": false,
+      "order_id": "64512d0c-30a9-4e1a-ba70-478a74904419",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "GLD",
+      "side": "buy",
+      "notional": 14.83,
+      "close_all": false,
+      "order_id": "3939f433-57e7-4677-bb95-28cfafb8ed59",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "HYG",
+      "side": "buy",
+      "notional": 35.23,
+      "close_all": false,
+      "order_id": "e883feaa-5565-4244-9d68-0e8614ca523b",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "IEF",
+      "side": "buy",
+      "notional": 35.21,
+      "close_all": false,
+      "order_id": "bf406259-fa1f-4581-a469-aecbb41503ce",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "IWD",
+      "side": "buy",
+      "notional": 5.32,
+      "close_all": false,
+      "order_id": "688ebc47-9a02-4037-a3ac-5508e97db000",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "IWF",
+      "side": "buy",
+      "notional": 5.36,
+      "close_all": false,
+      "order_id": "e7eba076-30a0-441c-9d6f-f5d8a046af11",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "IWM",
+      "side": "buy",
+      "notional": 5.32,
+      "close_all": false,
+      "order_id": "7038a4e8-57c2-49cb-ba73-b2956c8e6180",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "IYR",
+      "side": "buy",
+      "notional": 5.31,
+      "close_all": false,
+      "order_id": "728f5e8e-0cba-41ca-a7bc-4a0386893b95",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "KRE",
+      "side": "buy",
+      "notional": 5.25,
+      "close_all": false,
+      "order_id": "65f9ec1a-4836-4254-869c-a4d515a375f2",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "LQD",
+      "side": "buy",
+      "notional": 35.23,
+      "close_all": false,
+      "order_id": "24d6ae97-5540-4c56-887b-df2c5051e145",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "MDY",
+      "side": "buy",
+      "notional": 5.33,
+      "close_all": false,
+      "order_id": "26ae5bd3-764b-44b4-9278-9392d036d9fd",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "MUB",
+      "side": "buy",
+      "notional": 35.16,
+      "close_all": false,
+      "order_id": "db6a9149-934e-4f15-aab9-081807980fbd",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "QQQ",
+      "side": "buy",
+      "notional": 5.35,
+      "close_all": false,
+      "order_id": "b1acf06a-0475-4136-aa12-7bff83f9a024",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "SHY",
+      "side": "buy",
+      "notional": 35.3,
+      "close_all": false,
+      "order_id": "80998fea-9ab8-43f3-88f8-93be4c34051d",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "SLV",
+      "side": "buy",
+      "notional": 15.06,
+      "close_all": false,
+      "order_id": "ea4d9ff5-4651-48f5-a7b8-a8b155c3147b",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "TIP",
+      "side": "buy",
+      "notional": 35.24,
+      "close_all": false,
+      "order_id": "9d89cbca-bc6d-4de7-b313-166b26281196",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "TLT",
+      "side": "buy",
+      "notional": 35.02,
+      "close_all": false,
+      "order_id": "58ca2558-0aca-4a50-b522-8f210e227f27",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "XBI",
+      "side": "buy",
+      "notional": 5.37,
+      "close_all": false,
+      "order_id": "4d2d3374-7298-42fe-b8de-f144874796f4",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "XHB",
+      "side": "buy",
+      "notional": 5.28,
+      "close_all": false,
+      "order_id": "d3fbe4b4-2d32-415f-870c-70b74bb22d85",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "XLB",
+      "side": "buy",
+      "notional": 5.32,
+      "close_all": false,
+      "order_id": "ac8df19a-6fa1-4a1a-9a58-92e2bc77a6e4",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "XLE",
+      "side": "buy",
+      "notional": 5.27,
+      "close_all": false,
+      "order_id": "a1d8d007-011f-4b34-aee6-8ebcc89df1fa",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "XLF",
+      "side": "buy",
+      "notional": 5.31,
+      "close_all": false,
+      "order_id": "f668d765-ee39-4e53-abe0-c4ac6c1cb852",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "XLI",
+      "side": "buy",
+      "notional": 5.33,
+      "close_all": false,
+      "order_id": "d9e8603d-8c5a-4eb8-aa6e-168b0a12a673",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "XLK",
+      "side": "buy",
+      "notional": 5.32,
+      "close_all": false,
+      "order_id": "18cf92e1-091c-422f-8eb0-f4fdb508da4f",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "XLP",
+      "side": "buy",
+      "notional": 5.33,
+      "close_all": false,
+      "order_id": "d6b60f48-da39-4e61-9691-f257b94fa895",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "XLU",
+      "side": "buy",
+      "notional": 5.29,
+      "close_all": false,
+      "order_id": "15d8c388-d2db-4aef-bbea-786c37cf8230",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "XLV",
+      "side": "buy",
+      "notional": 5.34,
+      "close_all": false,
+      "order_id": "458259b6-13d1-4786-81cc-c79d2e79c26a",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "XLY",
+      "side": "buy",
+      "notional": 5.35,
+      "close_all": false,
+      "order_id": "f7d3b9ea-d9bf-4c99-9212-409edaebb5bd",
+      "status": "filled",
+      "error": null
+    }
+  ],
+  "trimmed": [
+    {
+      "symbol": "HYG",
+      "planned": 35.31,
+      "sent": 35.23
+    }
+  ]
+}

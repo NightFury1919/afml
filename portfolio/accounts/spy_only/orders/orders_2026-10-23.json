@@ -1,0 +1,28 @@
+{
+  "as_of": "2026-10-23",
+  "started": "2026-10-26 10:40:36.866184",
+  "plan_equity": 1000.0,
+  "status": "complete",
+  "holdings_tol": 10.0,
+  "equity_floor": 900.0,
+  "note": "",
+  "warnings": [
+    {
+      "level": "warn",
+      "code": "holdings_tol_loosened",
+      "message": "positions may differ from the plan's assumed holdings by up to $10.00 each (the default is $1.00)"
+    }
+  ],
+  "entries": [
+    {
+      "symbol": "SPY",
+      "side": "buy",
+      "notional": 1000.0,
+      "close_all": false,
+      "order_id": "bd224c8a-ae03-407d-9d3f-0eb6a0ccc092",
+      "status": "filled",
+      "error": null
+    }
+  ],
+  "trimmed": []
+}

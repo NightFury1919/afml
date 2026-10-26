@@ -1,0 +1,66 @@
+{
+  "status": "ok",
+  "run_date": "2026-10-23",
+  "as_of": "2026-10-22",
+  "snapshot": "prices_daily_asof_2026-10-22.csv",
+  "config": {
+    "spy_share": 0.0,
+    "qf_rule": "inverse_vol",
+    "max_weight": 0.1,
+    "exposure": 1.0,
+    "rebalance_every": 1,
+    "start": "2026-10-26",
+    "equity": 1000.0,
+    "confirmed": []
+  },
+  "config_hash": "fc8e4c95f4e2",
+  "previous_config_hash": null,
+  "config_changed": false,
+  "open_placeholders": [
+    "max_weight",
+    "spy_share"
+  ],
+  "steps": [
+    {
+      "name": "update_prices",
+      "status": "skipped",
+      "detail": "not requested"
+    },
+    {
+      "name": "health_check",
+      "status": "ok",
+      "detail": "0 error(s), 0 warning(s)"
+    },
+    {
+      "name": "plan",
+      "status": "ok",
+      "detail": "saved plan_v2_2026-10-22.json"
+    },
+    {
+      "name": "scoreboard",
+      "status": "skipped",
+      "detail": "no scoreboard yet: start 2026-10-26 is after the last price date 2026-10-22"
+    }
+  ],
+  "health": [],
+  "warnings": [],
+  "plan": {
+    "equity": 994.64,
+    "spy_dollars": 0.0,
+    "qf_dollars": 994.64,
+    "n_orders": 48,
+    "cash_after": -0.0,
+    "plan_path": "accounts\\etf_only\\plans\\plan_v2_2026-10-22.json",
+    "saved_plan_is_this_run": true,
+    "top_weights": {
+      "FXE": 0.1,
+      "FXY": 0.1,
+      "UUP": 0.1,
+      "EMB": 0.0440650651125088,
+      "HYG": 0.0440650651125088
+    }
+  },
+  "scoreboard": null,
+  "orders_sent": 0,
+  "report_path": "accounts\\etf_only\\runs\\run_2026-10-22.json"
+}
