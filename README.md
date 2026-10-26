@@ -10,7 +10,7 @@ is evidence of a trading edge.**
 
 | Part | What it is |
 |---|---|
-| `ch02` to `ch09`, `ch16` | One folder per book chapter: implementation, pytest tests with hand-worked expected values, a script and a notebook that run on real data, and a README. Covers bars, labeling, sample weights, fractional differentiation, ensembles, purged cross-validation, feature importance, hyper-parameter tuning, and hierarchical risk parity. |
+| `ch02` to `ch22` | One folder per book chapter, covering the whole book: implementation, pytest tests with hand-worked expected values, a script and a notebook that run on real data, and a README. Topics include bars, labeling, sample weights, fractional differentiation, ensembles, purged cross-validation, feature importance, hyper-parameter tuning, bet sizing, backtesting, backtest statistics and hierarchical risk parity. |
 | `portfolio/` | The paper-trading system: price updates and health checks, a rules-based planner, a scoreboard, guarded order execution, and nightly reports. |
 | `utils/` | Shared helpers (for example multiprocessing). |
 
@@ -49,15 +49,12 @@ confirm the tests notice. Full `pytest -v` output is embedded at the bottom of e
 
 The forward test is set up so the result can be trusted whichever way it goes:
 
-- **Frozen in advance.** The portfolio rules were fixed before the test started (26 Oct 2026). Changing them mid-test
-  would be recorded as a new trial, not hidden.
+- **Frozen in advance.** The shadow model (an ETF scoring model that does not trade) was frozen and pre-registered on 16 Oct 2026, with its refit schedule and evaluation rule written down before any result existed. The live portfolio's rules were fixed before its start on 26 Oct 2026. Changes are made only through dated amendments, and logs are never overwritten.
 - **Honest yardsticks.** SPY ("just buy the market") and SHY (a cash-like Treasury ETF) are shown beside every result.
 - **Risk first.** `performance_page.py` reports volatility, worst fall from a peak, and distance from the loss floor next
   to return, and it refuses to print an annualized return until there are 126 trading days of history.
-- **Controls.** A positive control (a planted signal the pipeline must find) and negative controls (noise it must not
-  find anything in) check that the testing machinery itself is sound.
-- **A scheduled evaluation.** A frozen model is scored out of sample at a date set in advance (2029), with the number of
-  trials counted so the result can be adjusted for multiple testing (deflated Sharpe ratio, Chapter 14 of the book).
+- **Controls.** Noise tests check that the testing machinery does not invent an edge where none exists, and a positive control checks that it can find a planted one.
+- **A scheduled evaluation.** The formal check of the shadow model needs 36 resolved 21-trading-day periods, so it happens around October 2029. The rule is a pre-registered bootstrap interval (96.7%, 20,000 resamples). Anything short of a pass means "edge not shown". Two noise tests passed first: with no edge present, the chance of falsely finding one was 2.6% (limit 6%). The deflated Sharpe ratio (Chapter 14) is planned as an add-on.
 
 ## What the data shows so far
 
