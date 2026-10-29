@@ -4,7 +4,7 @@
 #     .\set_account_keys.ps1 spy        # AFML SPY     -> APCA_SPY_*
 #     .\set_account_keys.ps1 short      # AFML2K       -> APCA_SHORT_*
 # It asks for the key id, then the secret (hidden). Nothing is printed or saved to command history.
-param([Parameter(Mandatory)][ValidateSet('etf', 'spy', 'short')][string]$Name)
+param([Parameter(Mandatory)][ValidateSet('etf', 'spy', 'short', 'mom')][string]$Name)
 
 $prefix = "APCA_$($Name.ToUpper())"
 $id = (Read-Host "Key id for '$Name' (starts with PK)").Trim()

@@ -1,5 +1,5 @@
 function Use-Account {
-    param([Parameter(Mandatory)][ValidateSet('etf','spy','short')]$Name)
+    param([Parameter(Mandatory)][ValidateSet('etf','spy','short','mom')]$Name)
     $p = "APCA_$($Name.ToUpper())"
     $env:APCA_API_KEY_ID     = [Environment]::GetEnvironmentVariable("${p}_KEY_ID", "User")
     $env:APCA_API_SECRET_KEY = [Environment]::GetEnvironmentVariable("${p}_SECRET", "User")
