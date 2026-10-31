@@ -17,8 +17,8 @@ This check asks a narrower, answerable question: if we add a momentum sleeve on 
 7-week outcomes change as the sleeve gets bigger, and at what size does the chance of hitting the $900 floor become too high?
 
 ## Data
-The newest `prices_daily_asof_*.csv` at freeze (2026-10-30 or later; adjusted closes).
-SHA-256: FILL_IN_AT_FREEZE
+`prices_daily_asof_2026-10-30.csv` (adjusted closes), committed together with this file.
+SHA-256: dff1a011fee8a8f662d94d166f58c6ddd685a9d5ac819407e3970f1d2160b30c
 Universe: every ETF in the file
 except **SH** (inverse fund) and **SPY** (it is the core holding and the benchmark). Point in time: an ETF is eligible on a
 date only if it has a price on that date and 273 trading days earlier. No ETF is added or dropped by hindsight.
