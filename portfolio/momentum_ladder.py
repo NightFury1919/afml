@@ -226,3 +226,86 @@ def block_bootstrap_interval(diff, block=4, n_resamples=5000, seed=0, level=0.90
 # test_momentum_ladder.py::test_block_bootstrap_is_deterministic_for_a_seed PASSED [ 96%]
 # test_momentum_ladder.py::test_block_bootstrap_interval_covers_the_true_mean_for_a_clear_edge PASSED [100%]
 # ============================== 27 passed in 0.42s ==============================
+
+# =============================================================================
+# RESULTS OF THE PRE-REGISTERED RUN (2026-10-31, Ethan's Windows PC, mlfinlab env)
+# Command: python run_momentum_ladder.py --prices prices_daily_asof_2026-10-30.csv   (run once; results in momentum_results/)
+# Pre-registration: preregistration_momentum_ladder.md. Its frozen text was committed in 9e9c2a6.
+# PROCESS NOTE (disclosed): the run executed BEFORE commit 9e9c2a6. The working-copy pre-registration already said
+# 'Status: FROZEN' with the unchanged price-file hash, but the earlier commit d1b3581 held the DRAFT text by mistake, and the
+# frozen text was committed only after the run. No rule, variant or file was changed after the results were seen
+# (the 9e9c2a6 diff is the freeze edit itself). Treat the freeze as a few minutes late, not as a changed test.
+# Column 'share_gt_10' in the table is truncated: it is the share of windows ending above +100% (2x).
+# =============================================================================
+# SUMMARY (plain English; the pre-registered rules were applied, nothing else was tested)
+#  * Risk screen (touch rate <= 2x SPY's 8.6% = 17.2%, worst window >= -50%): all 8 variants pass.
+#  * Beats SPY (lower end of the 90% interval > 0): NONE. Every interval spans 0 (D50 -1.5% to +2.3% a year; C100 -4.7% to +7.1%).
+#  * Median 7-week window above SPY's: D10, D25, D50, C10, C25, C50 (by 0.1 to 0.2 points); not D100 or C100.
+#  * Mechanical pick by rule 3: D50 and C50. By the outcome table, a rung is offered only if it ALSO beats SPY. None does,
+#    so the registered answer is: more risk did not buy a demonstrable edge; SPY stays the better holding.
+#  * No variant ended any 7-week window at 2x (share ending above +100% is 0.000 for all). Best single window: C100 +59.8%.
+#  * Since 2016-01-04 every variant is below SPY on annual return (SPY 14.9%; D10 14.5%, D100 10.9%, C10 14.8%, C100 12.1%)
+#    and ends ahead of SPY in only 42% to 44% of windows.
+#  * Descriptive only (not a tested claim): D100's worst fall was -38.2% against SPY's -55.2% over the full range.
+# =============================================================================
+# Momentum risk ladder: results (price file prices_daily_asof_2026-10-30.csv, SHA-256 dff1a011fee8a8f662d94d166f58c6ddd685a9d5ac819407e3970f1d2160b30c)
+# First trade date 2001-06-28; 'since' range starts 2016-01-04
+#
+# == range=full cost ==
+# name         worst         p05      median         p95        best share_gt_10 end_below_f touch_floor  touch_hard  ann_return     ann_vol max_drawdow  beat_share   diff_ci(ann, 90%)
+# SPY         -0.335      -0.088       0.021       0.091       0.286       0.000       0.037       0.086       0.000       0.094       0.189      -0.552       0.000   [+0.000, +0.000]
+# D10         -0.320      -0.085       0.022       0.090       0.285       0.000       0.036       0.083       0.000       0.096       0.184      -0.528       0.514   [-0.003, +0.005]
+# D25         -0.300      -0.082       0.022       0.089       0.285       0.000       0.033       0.083       0.000       0.098       0.177      -0.492       0.513   [-0.007, +0.012]
+# D50         -0.298      -0.082       0.022       0.090       0.283       0.000       0.031       0.083       0.000       0.101       0.171      -0.434       0.512   [-0.015, +0.023]
+# D100        -0.293      -0.090       0.020       0.103       0.284       0.000       0.041       0.095       0.000       0.104       0.180      -0.382       0.510   [-0.029, +0.047]
+# C10         -0.329      -0.085       0.022       0.090       0.281       0.000       0.035       0.084       0.000       0.096       0.185      -0.542       0.507   [-0.005, +0.007]
+# C25         -0.320      -0.085       0.023       0.090       0.275       0.000       0.034       0.088       0.000       0.099       0.182      -0.529       0.506   [-0.012, +0.018]
+# C50         -0.305      -0.090       0.022       0.098       0.289       0.000       0.038       0.103       0.000       0.101       0.189      -0.515       0.503   [-0.024, +0.036]
+# C100        -0.280      -0.111       0.020       0.134       0.597       0.000       0.065       0.155       0.000       0.097       0.238      -0.551       0.499   [-0.047, +0.071]
+#
+# == range=full nocost ==
+# name         worst         p05      median         p95        best share_gt_10 end_below_f touch_floor  touch_hard  ann_return     ann_vol max_drawdow  beat_share   diff_ci(ann, 90%)
+# SPY         -0.335      -0.088       0.021       0.091       0.286       0.000       0.037       0.086       0.000       0.094       0.189      -0.552       0.000   [+0.000, +0.000]
+# D10         -0.320      -0.085       0.022       0.090       0.285       0.000       0.036       0.083       0.000       0.096       0.184      -0.528       0.519   [-0.003, +0.005]
+# D25         -0.300      -0.082       0.023       0.089       0.285       0.000       0.033       0.082       0.000       0.099       0.177      -0.491       0.518   [-0.007, +0.012]
+# D50         -0.297      -0.082       0.023       0.090       0.284       0.000       0.031       0.083       0.000       0.103       0.171      -0.433       0.517   [-0.013, +0.025]
+# D100        -0.293      -0.090       0.020       0.103       0.285       0.000       0.040       0.095       0.000       0.107       0.180      -0.380       0.514   [-0.026, +0.049]
+# C10         -0.329      -0.085       0.022       0.090       0.282       0.000       0.035       0.084       0.000       0.097       0.185      -0.542       0.513   [-0.004, +0.008]
+# C25         -0.320      -0.085       0.023       0.091       0.275       0.000       0.034       0.088       0.000       0.100       0.182      -0.529       0.512   [-0.011, +0.019]
+# C50         -0.305      -0.089       0.023       0.098       0.289       0.000       0.038       0.102       0.000       0.103       0.189      -0.514       0.510   [-0.022, +0.038]
+# C100        -0.279      -0.111       0.021       0.135       0.598       0.000       0.065       0.155       0.000       0.102       0.238      -0.548       0.506   [-0.043, +0.075]
+#
+# == range=since cost ==
+# name         worst         p05      median         p95        best share_gt_10 end_below_f touch_floor  touch_hard  ann_return     ann_vol max_drawdow  beat_share   diff_ci(ann, 90%)
+# SPY         -0.303      -0.071       0.028       0.097       0.286       0.000       0.029       0.065       0.000       0.149       0.177      -0.337       0.000   [+0.000, +0.000]
+# D10         -0.302      -0.069       0.028       0.095       0.285       0.000       0.028       0.063       0.000       0.145       0.174      -0.336       0.419   [-0.008, +0.002]
+# D25         -0.300      -0.068       0.027       0.093       0.285       0.000       0.023       0.060       0.000       0.140       0.170      -0.335       0.418   [-0.019, +0.006]
+# D50         -0.298      -0.064       0.024       0.092       0.283       0.000       0.018       0.059       0.000       0.130       0.168      -0.333       0.417   [-0.038, +0.012]
+# D100        -0.293      -0.064       0.019       0.104       0.281       0.000       0.019       0.051       0.000       0.109       0.179      -0.329       0.416   [-0.075, +0.024]
+# C10         -0.300      -0.067       0.028       0.094       0.281       0.000       0.025       0.061       0.000       0.148       0.175      -0.334       0.444   [-0.010, +0.010]
+# C25         -0.295      -0.065       0.025       0.097       0.275       0.000       0.020       0.058       0.000       0.145       0.177      -0.328       0.443   [-0.024, +0.025]
+# C50         -0.287      -0.067       0.024       0.109       0.289       0.000       0.019       0.069       0.000       0.140       0.192      -0.320       0.441   [-0.048, +0.050]
+# C100        -0.275      -0.100       0.021       0.150       0.597       0.000       0.049       0.128       0.000       0.121       0.251      -0.306       0.436   [-0.096, +0.101]
+#
+# == range=since nocost ==
+# name         worst         p05      median         p95        best share_gt_10 end_below_f touch_floor  touch_hard  ann_return     ann_vol max_drawdow  beat_share   diff_ci(ann, 90%)
+# SPY         -0.303      -0.071       0.028       0.097       0.286       0.000       0.029       0.065       0.000       0.149       0.177      -0.337       0.000   [+0.000, +0.000]
+# D10         -0.302      -0.069       0.028       0.095       0.285       0.000       0.028       0.063       0.000       0.146       0.174      -0.336       0.422   [-0.007, +0.003]
+# D25         -0.300      -0.068       0.027       0.094       0.285       0.000       0.023       0.060       0.000       0.141       0.170      -0.335       0.422   [-0.018, +0.007]
+# D50         -0.297      -0.064       0.024       0.092       0.284       0.000       0.018       0.058       0.000       0.132       0.168      -0.333       0.420   [-0.036, +0.013]
+# D100        -0.293      -0.063       0.019       0.104       0.282       0.000       0.018       0.051       0.000       0.112       0.179      -0.329       0.419   [-0.072, +0.027]
+# C10         -0.300      -0.067       0.028       0.094       0.282       0.000       0.025       0.061       0.000       0.148       0.175      -0.334       0.448   [-0.009, +0.011]
+# C25         -0.295      -0.065       0.025       0.097       0.275       0.000       0.020       0.058       0.000       0.147       0.177      -0.328       0.447   [-0.023, +0.026]
+# C50         -0.287      -0.067       0.024       0.110       0.289       0.000       0.019       0.068       0.000       0.142       0.192      -0.320       0.445   [-0.046, +0.053]
+# C100        -0.274      -0.099       0.021       0.151       0.598       0.000       0.048       0.127       0.000       0.125       0.251      -0.302       0.440   [-0.092, +0.105]
+#
+# Rules applied to range=full cost. Touch-floor limit = 0.172
+# D10    risk_eligible=True  beats_spy=False  median_above_spy=True
+# D25    risk_eligible=True  beats_spy=False  median_above_spy=True
+# D50    risk_eligible=True  beats_spy=False  median_above_spy=True
+# D100   risk_eligible=True  beats_spy=False  median_above_spy=False
+# C10    risk_eligible=True  beats_spy=False  median_above_spy=True
+# C25    risk_eligible=True  beats_spy=False  median_above_spy=True
+# C50    risk_eligible=True  beats_spy=False  median_above_spy=True
+# C100   risk_eligible=True  beats_spy=False  median_above_spy=False
+# Recommended rung per sleeve: {'D': 'D50', 'C': 'C50'}

@@ -61,10 +61,10 @@ def check_frozen(prereg_text, price_sha):
     """Refuse unless the pre-registration says FROZEN and names this exact price file's hash."""
     if not re.search(r"(?m)^Status: FROZEN\s*$", prereg_text):
         raise RuntimeError("pre-registration is not frozen (needs a line 'Status: FROZEN')")
-    m = re.search(r"SHA-256:\s*`?([0-9a-f]{64})`?", prereg_text)
+    m = re.search(r"SHA-256:\s*`?([0-9a-fA-F]{64})`?", prereg_text)
     if not m:
         raise RuntimeError("pre-registration has no 'SHA-256: <64 hex>' line for the price file")
-    if m.group(1) != price_sha:
+    if m.group(1).lower() != price_sha.lower():
         raise RuntimeError("the price file is different from the one frozen in the pre-registration")
 
 
@@ -289,3 +289,35 @@ if __name__ == "__main__":
 # test_run_momentum_ladder.py::test_main_refuses_a_draft_before_touching_anything PASSED [ 97%]
 # test_run_momentum_ladder.py::test_run_constants_match_preregistration PASSED [100%]
 # === 47 passed in 1.96s ===
+
+# =============================================================================
+# LATER CHANGE (2026-10-31, after the Windows run above): check_frozen now compares the hash case-insensitively,
+# because PowerShell's Get-FileHash prints UPPERCASE. One test added (test_hash_comparison_ignores_case_...).
+# Sandbox: 48 passed (Python 3.11.18). Windows re-run of the 48: DONE 2026-10-31, 48 passed (below).
+# =============================================================================
+# Windows re-run, run_momentum_ladder tests only shown (the 28 in test_momentum_ladder.py also PASSED; 48 passed in 2.02s):
+# platform win32 -- Python 3.10.20, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\earob\miniconda3\envs\mlfinlab\python.exe
+# rootdir: C:\ws\AFML\portfolio
+# collected 48 items
+# test_run_momentum_ladder.py::test_load_prices_drops_spy_and_sh_from_universe PASSED [ 58%]
+# test_run_momentum_ladder.py::test_newest_price_file_picks_latest_date PASSED [ 60%]
+# test_run_momentum_ladder.py::test_sha256_of_known_bytes PASSED [ 62%]
+# test_run_momentum_ladder.py::test_refuses_when_preregistration_is_a_draft PASSED [ 64%]
+# test_run_momentum_ladder.py::test_draft_that_merely_mentions_the_frozen_line_is_still_refused PASSED [ 66%]
+# test_run_momentum_ladder.py::test_hash_comparison_ignores_case_because_powershell_prints_uppercase PASSED [ 68%]
+# test_run_momentum_ladder.py::test_refuses_when_hash_line_missing PASSED [ 70%]
+# test_run_momentum_ladder.py::test_refuses_when_price_file_differs_from_the_frozen_hash PASSED [ 72%]
+# test_run_momentum_ladder.py::test_accepts_frozen_with_matching_hash PASSED [ 75%]
+# test_run_momentum_ladder.py::test_max_drawdown_hand_checked PASSED [ 77%]
+# test_run_momentum_ladder.py::test_annual_stats_constant_growth PASSED [ 79%]
+# test_run_momentum_ladder.py::test_beat_spy_share_and_average PASSED [ 81%]
+# test_run_momentum_ladder.py::test_evaluate_reports_both_floors_and_bootstrap_for_a_flat_world PASSED [ 83%]
+# test_run_momentum_ladder.py::test_evaluate_hard_floor_vs_soft_floor PASSED [ 85%]
+# test_run_momentum_ladder.py::test_decide_risk_eligibility_and_beats PASSED [ 87%]
+# test_run_momentum_ladder.py::test_decide_recommends_largest_qualifying_rung_per_sleeve PASSED [ 89%]
+# test_run_momentum_ladder.py::test_run_all_builds_every_variant_range_and_cost PASSED [ 91%]
+# test_run_momentum_ladder.py::test_since_range_starts_at_or_after_the_date PASSED [ 93%]
+# test_run_momentum_ladder.py::test_write_results_then_refuses_second_run PASSED [ 95%]
+# test_run_momentum_ladder.py::test_main_refuses_a_draft_before_touching_anything PASSED [ 97%]
+# test_run_momentum_ladder.py::test_run_constants_match_preregistration PASSED [100%]
+# === 48 passed in 2.02s ===

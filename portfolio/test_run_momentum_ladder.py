@@ -73,6 +73,10 @@ def test_draft_that_merely_mentions_the_frozen_line_is_still_refused():
         rn.check_frozen(text, GOOD_SHA)
 
 
+def test_hash_comparison_ignores_case_because_powershell_prints_uppercase():
+    rn.check_frozen(f"Status: FROZEN\nSHA-256: {GOOD_SHA.upper()}\n", GOOD_SHA)
+
+
 def test_refuses_when_hash_line_missing():
     with pytest.raises(RuntimeError, match="SHA-256"):
         rn.check_frozen("Status: FROZEN\n", GOOD_SHA)
