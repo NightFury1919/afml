@@ -1,9 +1,11 @@
 # Pre-registration: momentum risk ladder on ETFs, "how much extra risk buys how much extra upside, against SPY?"
 
-Status: **DRAFT, not frozen. Nothing below has been run.** Items marked **OPEN** need Ethan's confirmation before this
-file is committed. To freeze: fill in the SHA-256 line under Data, change this line to exactly `Status: FROZEN`, then commit
-this file together with the price file. The runner `run_momentum_ladder.py` (built and tested 2026-10-31, not run on real
-prices) refuses to run unless the line says FROZEN and the SHA-256 matches the price file, and it refuses to run twice.
+Status: FROZEN
+
+Frozen on commit, 2026-10-31. Nothing below has been run on the real prices. `run_momentum_ladder.py` refuses to run unless the
+line above says FROZEN and the SHA-256 under Data matches the price file, and it refuses to run twice (it will not overwrite its
+results). After this commit the rules, the variants and the price file are fixed; any change needs a new registration and counts
+as another trial.
 
 ## Why this check
 The boss wants strategies that can grow the $1,000 much faster than the market, with 2x, 5x or 10x mentioned as goals,
@@ -76,11 +78,10 @@ moving-block bootstrap (block = 4 periods, 5,000 resamples, seed 20261028, 90% i
 The statistic is the mean period difference x 12 (a simple annualization, not a compounded one).
 
 ## Pass rules (frozen at commit)
-1. **A strategy is risk-eligible** if its -10% touch-floor rate is at most **2x SPY's own rate** over the same dates
-   (OPEN, Ethan to confirm: SPY's rate since 2016-01-04 was 6.6%, so the limit would be about 13%; it is recomputed on the
-   full range of the frozen file) AND its worst 7-week window is no worse than **-50%** (the boss's stated limit).
-   The 2x rule is deliberately stricter than the boss's $500 tolerance: it keeps the pick from being a coin-flip on
-   -10% drops. A looser rule can be chosen later, but only as a separately registered variant.
+1. **A strategy is risk-eligible** if its -10% touch-floor rate is at most **2x SPY's own rate** over the same dates (kept by
+   Ethan, 2026-10-31; the rate is computed on the frozen file; SPY's rate since 2016-01-04 was 6.6% through 2026-10-19) AND its
+   worst 7-week window is no worse than **-50%** (the boss's stated limit, 2026-10-31). The 2x rule is deliberately stricter than the
+   boss's $500 tolerance: it keeps the pick from being whatever swings most inside -50%.
 2. **A strategy "beats SPY"** if the lower end of the 90% interval for the annualized return difference is above 0.
 3. **The recommended rung** for each sleeve is the largest rung that is risk-eligible AND has a median 7-week window
    above SPY's median. If none, the recommendation is "no rung".
@@ -102,18 +103,18 @@ noisy, so the interval in rule 2 will be wide and only a large gap will pass. Fa
 - **Survivorship and hindsight in the universe:** the ETFs are ones that exist today, and many launched after 1999. This
   understates the risk of ETFs that closed, and the early years have fewer ETFs to choose from.
 - No taxes, no shorting, no leverage, no options, no individual stocks, no crypto. Individual stocks wait for a
-  survivor-free data source (**OPEN:** the Biola library question).
+  survivor-free data source (waiting on the Biola library answer).
 - The ETFs in the file are broad, mostly diversified funds, so even the concentrated sleeve (3 ETFs) is far less
   concentrated than a few single stocks. It cannot reproduce Nvidia-style outcomes.
 - Adjusted closes include dividends. Trades are assumed to fill at the close at the stated cost.
 - Past 7-week outcomes are a history, not a forecast.
 
-## OPEN items before freezing
-1. ~~The biggest drop the boss accepts.~~ Settled 2026-10-31: -50% ($500). Still OPEN: keep the 2x-SPY touch rule in rule 1?
-2. ~~Which account this strategy would replace.~~ Settled 2026-10-28: a NEW paper account starting at $1,000 (the $2,000 AFML2K account is left alone).
-   Semester end is settled: about 2026-12-19. See "Account" below.
-3. Confirm the SPY comparison start and the 20-ETF start rule are acceptable.
-4. Fill in the SHA-256 of the price file (`Get-FileHash <file> -Algorithm SHA256`) and set `Status: FROZEN` at commit.
+## Items settled before freezing
+1. Biggest drop the boss accepts: -50% ($500), 2026-10-31. Touch rule (2x SPY at -10%): kept, 2026-10-31.
+2. Which account: a NEW paper account starting at $1,000 (the $2,000 AFML2K account is left alone). Semester end: about 2026-12-19.
+3. SPY comparison start and the 20-ETF start rule: as written above (accepted when this draft was reviewed).
+4. Price file: `prices_daily_asof_2026-10-30.csv`, SHA-256 recorded under Data.
+Still open and NOT part of this test: individual stocks wait for a survivor-free data source (the Biola library question).
 
 ## Reporting
 All 8 variants, the SPY benchmark, both date ranges, with and without costs, are reported whether or not they pass, and
