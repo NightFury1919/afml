@@ -207,7 +207,7 @@ if __name__ == "__main__":
 # TDD RESULTS (2026-10-31)  python 3.11.18, numpy 1.23.5, pandas 1.5.3  (sandbox, Linux)
 # Command: python -m pytest test_run_momentum_ladder.py -v   (47 tests with test_momentum_ladder.py all pass)
 # Smoke run on a made-up world only (never on the real prices): full pipeline OK, second run refused.
-# The real draft pre-registration is refused by check_frozen. Real-machine confirmation: PENDING.
+# The real draft pre-registration is refused by check_frozen. Real-machine confirmation: DONE 2026-10-31, see the Windows block at the bottom.
 # =============================================================================
 # platform linux -- Python 3.11.18, pytest-9.2.0, pluggy-1.7.0 -- python
 # collecting ... collected 20 items
@@ -232,3 +232,60 @@ if __name__ == "__main__":
 # test_run_momentum_ladder.py::test_main_refuses_a_draft_before_touching_anything PASSED [ 95%]
 # test_run_momentum_ladder.py::test_run_constants_match_preregistration PASSED [100%]
 # ============================== 20 passed in 0.74s ==============================
+
+
+# =============================================================================
+# REAL-MACHINE RESULT (2026-10-31, Ethan's Windows PC, mlfinlab env), from C:\ws\AFML\portfolio
+# Command: python -m pytest test_momentum_ladder.py test_run_momentum_ladder.py -v
+# =============================================================================
+# platform win32 -- Python 3.10.20, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\earob\miniconda3\envs\mlfinlab\python.exe
+# rootdir: C:\ws\AFML\portfolio
+# collected 47 items
+# test_momentum_ladder.py::test_defaults_match_preregistration PASSED [ 2%]
+# test_momentum_ladder.py::test_momentum_score_value_and_warmup PASSED [ 4%]
+# test_momentum_ladder.py::test_momentum_score_needs_price_today_and_lookback_ago PASSED [ 6%]
+# test_momentum_ladder.py::test_momentum_score_uses_no_future_prices PASSED [ 8%]
+# test_momentum_ladder.py::test_select_top_n_orders_by_score PASSED [ 10%]
+# test_momentum_ladder.py::test_select_top_n_ties_broken_by_name PASSED [ 12%]
+# test_momentum_ladder.py::test_select_top_n_skips_nan_and_handles_short_universe PASSED [ 14%]
+# test_momentum_ladder.py::test_first_signal_position_needs_min_eligible PASSED [ 17%]
+# test_momentum_ladder.py::test_first_signal_position_none_when_never_enough PASSED [ 19%]
+# test_momentum_ladder.py::test_sleeve_only_earns_best_etf_growth_after_trade_date PASSED [ 21%]
+# test_momentum_ladder.py::test_zero_sleeve_equals_spy PASSED [ 23%]
+# test_momentum_ladder.py::test_half_and_half_resets_at_each_rebalance PASSED [ 25%]
+# test_momentum_ladder.py::test_holdings_use_only_data_up_to_signal_date PASSED [ 27%]
+# test_momentum_ladder.py::test_equal_weight_across_n_holdings PASSED [ 29%]
+# test_momentum_ladder.py::test_first_purchase_cost_charged_on_traded_value PASSED [ 31%]
+# test_momentum_ladder.py::test_no_cost_when_rebalance_changes_nothing PASSED [ 34%]
+# test_momentum_ladder.py::test_switching_holdings_charges_the_turnover PASSED [ 36%]
+# test_momentum_ladder.py::test_window_outcomes_hand_checked PASSED [ 38%]
+# test_momentum_ladder.py::test_window_summary_hand_checked PASSED [ 40%]
+# test_momentum_ladder.py::test_touch_counts_exactly_at_the_floor PASSED [ 42%]
+# test_momentum_ladder.py::test_simulate_defaults_match_preregistration PASSED [ 44%]
+# test_momentum_ladder.py::test_window_summary_matches_spy_script_method PASSED [ 46%]
+# test_momentum_ladder.py::test_window_summary_too_short_series PASSED [ 48%]
+# test_momentum_ladder.py::test_period_returns_every_21_rows PASSED [ 51%]
+# test_momentum_ladder.py::test_block_bootstrap_constant_difference_gives_that_constant PASSED [ 53%]
+# test_momentum_ladder.py::test_block_bootstrap_is_deterministic_for_a_seed PASSED [ 55%]
+# test_momentum_ladder.py::test_block_bootstrap_interval_covers_the_true_mean_for_a_clear_edge PASSED [ 57%]
+# test_run_momentum_ladder.py::test_load_prices_drops_spy_and_sh_from_universe PASSED [ 59%]
+# test_run_momentum_ladder.py::test_newest_price_file_picks_latest_date PASSED [ 61%]
+# test_run_momentum_ladder.py::test_sha256_of_known_bytes PASSED [ 63%]
+# test_run_momentum_ladder.py::test_refuses_when_preregistration_is_a_draft PASSED [ 65%]
+# test_run_momentum_ladder.py::test_draft_that_merely_mentions_the_frozen_line_is_still_refused PASSED [ 68%]
+# test_run_momentum_ladder.py::test_refuses_when_hash_line_missing PASSED [ 70%]
+# test_run_momentum_ladder.py::test_refuses_when_price_file_differs_from_the_frozen_hash PASSED [ 72%]
+# test_run_momentum_ladder.py::test_accepts_frozen_with_matching_hash PASSED [ 74%]
+# test_run_momentum_ladder.py::test_max_drawdown_hand_checked PASSED [ 76%]
+# test_run_momentum_ladder.py::test_annual_stats_constant_growth PASSED [ 78%]
+# test_run_momentum_ladder.py::test_beat_spy_share_and_average PASSED [ 80%]
+# test_run_momentum_ladder.py::test_evaluate_reports_both_floors_and_bootstrap_for_a_flat_world PASSED [ 82%]
+# test_run_momentum_ladder.py::test_evaluate_hard_floor_vs_soft_floor PASSED [ 85%]
+# test_run_momentum_ladder.py::test_decide_risk_eligibility_and_beats PASSED [ 87%]
+# test_run_momentum_ladder.py::test_decide_recommends_largest_qualifying_rung_per_sleeve PASSED [ 89%]
+# test_run_momentum_ladder.py::test_run_all_builds_every_variant_range_and_cost PASSED [ 91%]
+# test_run_momentum_ladder.py::test_since_range_starts_at_or_after_the_date PASSED [ 93%]
+# test_run_momentum_ladder.py::test_write_results_then_refuses_second_run PASSED [ 95%]
+# test_run_momentum_ladder.py::test_main_refuses_a_draft_before_touching_anything PASSED [ 97%]
+# test_run_momentum_ladder.py::test_run_constants_match_preregistration PASSED [100%]
+# === 47 passed in 1.96s ===
