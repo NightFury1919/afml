@@ -1,0 +1,9 @@
+{
+  "sleeve_n": null,
+  "sleeve_share": null,
+  "every": 21,
+  "start": null,
+  "equity": 1000.0,
+  "equity_floor": 500.0,
+  "min_notional": 1.0
+}
