@@ -1,9 +1,8 @@
 """Momentum risk ladder on ETFs: the building blocks.
 
 Pre-registration: preregistration_momentum_ladder.md (DRAFT until committed).
-This file holds only the tested building blocks. It does NOT yet run on the real price
-file: the runner (load prices, build the 8 variants plus SPY, write results, refuse to run
-twice) is added after the pre-registration is frozen, with its own tests.
+This file holds only the tested building blocks. The runner that uses them on the real price
+file is run_momentum_ladder.py; it refuses to run until the pre-registration is frozen.
 
 Plain English first:
   * Momentum score: how much an ETF gained from 273 trading days ago to 21 trading days ago
@@ -192,8 +191,7 @@ def block_bootstrap_interval(diff, block=4, n_resamples=5000, seed=0, level=0.90
 # prices_daily_asof_2026-10-19.csv, reproduces spy_window_stats.py (2679 windows, median +2.8%, p5 -7.1%,
 # p95 +9.7%, worst -30.3%, best +28.6%); new: SPY at or below -10% inside a window 6.6% of the time
 # (ending below -10%: 2.9%).
-# NOT YET BUILT: the runner (load prices, build the 8 variants plus SPY, write results, refuse to run twice).
-# It is written after preregistration_momentum_ladder.md is committed, with its own tests.
+# The runner is run_momentum_ladder.py (built 2026-10-31, own tests in test_run_momentum_ladder.py).
 # =============================================================================
 # ============================= test session starts ==============================
 # platform linux -- Python 3.11.18, pytest-9.2.0, pluggy-1.7.0 -- /tmp/claude-0/-home-claude/c61e95b3-92b3-5c27-b674-5e7b010e18ac/scratchpad/momentum/../env311/bin/python
