@@ -244,13 +244,79 @@ if __name__ == '__main__':
 # Real-machine pytest results
 # =============================================================================
 # This driver script has no dedicated test file of its own (consistent with
-# other chapter drivers) -- the algorithms it calls are covered by
-# ch17/structural_breaks/test_sadf.py (19), test_chow_df.py (9), and
-# test_cusum.py (17), 45/45 real-machine confirmed 2026-07-31 (two-pass:
-# repo root and from inside structural_breaks/). This script's own
-# correctness was verified by running it end-to-end in Claude's sandbox
-# against the real gold, BTC, and Ch19-enriched/Ch03-events data -- not
-# synthetic stand-ins. STILL NEEDS: confirmation on the real mlfinlab
-# machine (Ethan's next action) -- expect several minutes of runtime for
-# Part B's SADF and CSW CUSUM given their O(T^2) cost on gold's ~1,760-bar
-# series.
+# other chapter drivers) -- the algorithms it calls are covered by:
+#   structural_breaks/test_sadf.py                    19 tests
+#   structural_breaks/test_chow_df.py                  9 tests
+#   structural_breaks/test_cusum.py                   17 tests
+#   total                                             45 tests
+#
+# Real machine (mlfinlab env, Python 3.10.20, pytest 9.0.3), two-pass check re-run 2026-10-31:
+#   repo root:  45 passed, 1 warning in 1.25s
+#   inside structural_breaks/   45 passed, 1 warning in 1.06s
+# Earlier confirmations: 2026-07-31.
+# The one warning is expected: a RuntimeWarning (invalid value encountered in double_scalars) from test_degenerate_perfect_fit_gives_near_zero_residual_variance, a deliberately degenerate case. It is not a bug.
+# The driver script and notebook were confirmed on the real machine on 2026-08-01 (see README.md). Expect several minutes of runtime for Part B's SADF and CSW CUSUM, given their O(T^2) cost on gold's ~1,760-bar series.
+#
+# Full output, run from the repo root:
+#
+# (mlfinlab) PS C:\ws\AFML> python -m pytest ch17 -v
+# ============================= test session starts =============================
+# platform win32 -- Python 3.10.20, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\earob\miniconda3\envs\mlfinlab\python.exe
+# cachedir: .pytest_cache
+# rootdir: C:\ws\AFML
+# collecting ... collected 45 items
+#
+# ch17/structural_breaks/test_chow_df.py::TestGetDfc::test_hand_computed_closed_form PASSED [  2%]
+# ch17/structural_breaks/test_chow_df.py::TestGetDfc::test_accepts_dataframe_input PASSED [  4%]
+# ch17/structural_breaks/test_chow_df.py::TestGetDfc::test_nan_when_break_too_close_to_edge PASSED [  6%]
+# ch17/structural_breaks/test_chow_df.py::TestGetDfc::test_explosive_switch_gives_high_dfc_at_true_break PASSED [  8%]
+# ch17/structural_breaks/test_chow_df.py::TestGetDfc::test_pure_random_walk_gives_low_dfc PASSED [ 11%]
+# ch17/structural_breaks/test_chow_df.py::TestGetSdfc::test_locates_known_injected_break PASSED [ 13%]
+# ch17/structural_breaks/test_chow_df.py::TestGetSdfc::test_sdfc_equals_max_of_manual_grid PASSED [ 15%]
+# ch17/structural_breaks/test_chow_df.py::TestGetSdfc::test_raises_on_infeasible_tau0 PASSED [ 17%]
+# ch17/structural_breaks/test_chow_df.py::TestGetSdfc::test_explicit_step_grid PASSED [ 20%]
+# ch17/structural_breaks/test_cusum.py::TestBdeRecursiveResiduals::test_hand_computed_single_residual PASSED [ 22%]
+# ch17/structural_breaks/test_cusum.py::TestBdeRecursiveResiduals::test_raises_when_min_sample_too_small PASSED [ 24%]
+# ch17/structural_breaks/test_cusum.py::TestBdeRecursiveResiduals::test_degenerate_perfect_fit_gives_near_zero_residual_variance PASSED [ 26%]
+# ch17/structural_breaks/test_cusum.py::TestBdeRecursiveResiduals::test_recursive_beta_uses_only_past_data PASSED [ 28%]
+# ch17/structural_breaks/test_cusum.py::TestBdeCusum::test_returns_expected_columns_and_index PASSED [ 31%]
+# ch17/structural_breaks/test_cusum.py::TestBdeCusum::test_S_matches_raw_cumsum_over_sigma_omega PASSED [ 33%]
+# ch17/structural_breaks/test_cusum.py::TestBdeCusum::test_injected_break_produces_visible_jump_in_S PASSED [ 35%]
+# ch17/structural_breaks/test_cusum.py::TestBdeCusum::test_raises_on_too_short_series PASSED [ 37%]
+# ch17/structural_breaks/test_cusum.py::TestCswStat::test_hand_computed PASSED [ 40%]
+# ch17/structural_breaks/test_cusum.py::TestCswStat::test_accepts_dataframe_input PASSED [ 42%]
+# ch17/structural_breaks/test_cusum.py::TestCswStat::test_raises_when_t_not_after_n PASSED [ 44%]
+# ch17/structural_breaks/test_cusum.py::TestCswCriticalValue::test_matches_book_formula PASSED [ 46%]
+# ch17/structural_breaks/test_cusum.py::TestCswSup::test_matches_manual_max_over_n PASSED [ 48%]
+# ch17/structural_breaks/test_cusum.py::TestCswSup::test_explosive_jump_gives_higher_sup_than_random_walk PASSED [ 51%]
+# ch17/structural_breaks/test_cusum.py::TestCswCusum::test_returns_expected_shape PASSED [ 53%]
+# ch17/structural_breaks/test_cusum.py::TestCswCusum::test_last_row_matches_direct_get_csw_sup_call PASSED [ 55%]
+# ch17/structural_breaks/test_cusum.py::TestCswCusum::test_raises_on_too_short_series PASSED [ 57%]
+# ch17/structural_breaks/test_sadf.py::TestLagDF::test_int_lags_includes_lag_zero PASSED [ 60%]
+# ch17/structural_breaks/test_sadf.py::TestLagDF::test_shift_values_hand_traced PASSED [ 62%]
+# ch17/structural_breaks/test_sadf.py::TestLagDF::test_explicit_lag_list PASSED [ 64%]
+# ch17/structural_breaks/test_sadf.py::TestGetYX::test_series_auto_converted_to_dataframe PASSED [ 66%]
+# ch17/structural_breaks/test_sadf.py::TestGetYX::test_dataframe_input_shapes PASSED [ 68%]
+# ch17/structural_breaks/test_sadf.py::TestGetYX::test_constant_nc_adds_no_columns PASSED [ 71%]
+# ch17/structural_breaks/test_sadf.py::TestGetYX::test_constant_ct_adds_two_columns PASSED [ 73%]
+# ch17/structural_breaks/test_sadf.py::TestGetYX::test_constant_ctt_adds_two_columns_vs_ct PASSED [ 75%]
+# ch17/structural_breaks/test_sadf.py::TestGetYX::test_column_zero_overwritten_with_level_not_diff PASSED [ 77%]
+# ch17/structural_breaks/test_sadf.py::TestGetBetas::test_hand_computed_simple_regression PASSED [ 80%]
+# ch17/structural_breaks/test_sadf.py::TestGetBetas::test_two_regressor_hand_computed PASSED [ 82%]
+# ch17/structural_breaks/test_sadf.py::TestGetBsadf::test_literal_book_transcription_crashes_on_none PASSED [ 84%]
+# ch17/structural_breaks/test_sadf.py::TestGetBsadf::test_fixed_version_does_not_crash PASSED [ 86%]
+# ch17/structural_breaks/test_sadf.py::TestGetBsadf::test_explosive_series_gives_higher_bsadf_than_random_walk PASSED [ 88%]
+# ch17/structural_breaks/test_sadf.py::TestGetBsadf::test_matches_standard_adf_when_minSL_forces_single_start_point PASSED [ 91%]
+# ch17/structural_breaks/test_sadf.py::TestGetSadf::test_returns_one_value_per_valid_end_point PASSED [ 93%]
+# ch17/structural_breaks/test_sadf.py::TestGetSadf::test_last_value_matches_direct_get_bsadf_call PASSED [ 95%]
+# ch17/structural_breaks/test_sadf.py::TestGetSadf::test_raises_on_too_short_series PASSED [ 97%]
+# ch17/structural_breaks/test_sadf.py::TestGetSadf::test_explosive_series_sadf_rises_then_the_bubble_is_visible PASSED [100%]
+#
+# ============================== warnings summary ===============================
+# ch17/structural_breaks/test_cusum.py::TestBdeRecursiveResiduals::test_degenerate_perfect_fit_gives_near_zero_residual_variance
+#   C:\ws\AFML\ch17\structural_breaks\cusum.py:95: RuntimeWarning: invalid value encountered in double_scalars
+#     omega.append((y[t] - x_t @ beta) / np.sqrt(f_t))
+#
+# -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+# ======================== 45 passed, 1 warning in 1.25s ========================
+# ---------------------------------------------------------------------------

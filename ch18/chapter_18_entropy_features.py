@@ -253,3 +253,99 @@ print("\nREAL FINDING: HRP is slightly MORE risk-concentrated across principal "
       "(correlations mostly under 0.15\nin absolute value) -- there's "
       "little cluster structure here for HRP's correlation-\nawareness to "
       "exploit.")
+
+# =============================================================================
+# Real-machine pytest results
+# =============================================================================
+# This driver script has no dedicated test file of its own (consistent with
+# other chapter drivers) -- the algorithms it calls are covered by:
+#   entropy_features/test_entropy_estimators.py       17 tests
+#   entropy_features/test_encoding_schemes.py         16 tests
+#   entropy_features/test_adverse_selection.py        12 tests
+#   entropy_features/test_portfolio_concentration.py  21 tests
+#   total                                             66 tests
+#
+# Real machine (mlfinlab env, Python 3.10.20, pytest 9.0.3), two-pass check re-run 2026-10-31:
+#   repo root:  66 passed in 1.03s
+#   inside entropy_features/    66 passed in 0.84s
+# Earlier confirmations: 2026-08-04 and 2026-08-06.
+# The driver script was confirmed end-to-end on the real machine on 2026-08-06 (all pinned numbers, including Part C, reproduced exactly), and the notebook ran clean under the mlfinlab kernel. See README.md.
+#
+# Full output, run from the repo root:
+#
+# (mlfinlab) PS C:\ws\AFML> python -m pytest ch18 -v
+# ============================= test session starts =============================
+# platform win32 -- Python 3.10.20, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\earob\miniconda3\envs\mlfinlab\python.exe
+# cachedir: .pytest_cache
+# rootdir: C:\ws\AFML
+# collecting ... collected 66 items
+#
+# ch18/entropy_features/test_adverse_selection.py::TestOrderFlowImbalance::test_basic_ratio PASSED [  1%]
+# ch18/entropy_features/test_adverse_selection.py::TestOrderFlowImbalance::test_all_buy_is_one PASSED [  3%]
+# ch18/entropy_features/test_adverse_selection.py::TestOrderFlowImbalance::test_all_sell_is_zero PASSED [  4%]
+# ch18/entropy_features/test_adverse_selection.py::TestOrderFlowImbalance::test_zero_total_volume_guarded_to_neutral PASSED [  6%]
+# ch18/entropy_features/test_adverse_selection.py::TestOrderFlowImbalance::test_mismatched_lengths_raise PASSED [  7%]
+# ch18/entropy_features/test_adverse_selection.py::TestAdverseSelectionFeatureValidation::test_odd_roll_window_rejected PASSED [  9%]
+# ch18/entropy_features/test_adverse_selection.py::TestAdverseSelectionFeatureValidation::test_too_small_roll_window_rejected PASSED [ 10%]
+# ch18/entropy_features/test_adverse_selection.py::TestAdverseSelectionFeatureValidation::test_fewer_bars_than_window_rejected PASSED [ 12%]
+# ch18/entropy_features/test_adverse_selection.py::TestAdverseSelectionFeatureCrossChecked::test_symmetric_alternating_flow_all_windows_tied PASSED [ 13%]
+# ch18/entropy_features/test_adverse_selection.py::TestAdverseSelectionFeatureCrossChecked::test_output_length_and_index_alignment PASSED [ 15%]
+# ch18/entropy_features/test_adverse_selection.py::TestAdverseSelectionFeatureCrossChecked::test_cdf_values_bounded_zero_to_one PASSED [ 16%]
+# ch18/entropy_features/test_adverse_selection.py::TestAdverseSelectionFeatureCrossChecked::test_repetitive_flow_reads_lower_cdf_than_random_flow PASSED [ 18%]
+# ch18/entropy_features/test_encoding_schemes.py::TestBinaryEncode::test_hand_traced_with_zeros_dropped PASSED [ 19%]
+# ch18/entropy_features/test_encoding_schemes.py::TestBinaryEncode::test_all_positive PASSED [ 21%]
+# ch18/entropy_features/test_encoding_schemes.py::TestBinaryEncode::test_all_negative PASSED [ 22%]
+# ch18/entropy_features/test_encoding_schemes.py::TestBinaryEncode::test_all_zero_returns_empty_string PASSED [ 24%]
+# ch18/entropy_features/test_encoding_schemes.py::TestBinaryEncode::test_output_length_excludes_zeros PASSED [ 25%]
+# ch18/entropy_features/test_encoding_schemes.py::TestQuantileEncode::test_hand_traced_quartiles PASSED [ 27%]
+# ch18/entropy_features/test_encoding_schemes.py::TestQuantileEncode::test_alphabet_size_matches_n_letters PASSED [ 28%]
+# ch18/entropy_features/test_encoding_schemes.py::TestQuantileEncode::test_roughly_equal_bin_counts_in_sample PASSED [ 30%]
+# ch18/entropy_features/test_encoding_schemes.py::TestQuantileEncode::test_single_letter_degenerates_to_all_zero_code PASSED [ 31%]
+# ch18/entropy_features/test_encoding_schemes.py::TestSigmaEncode::test_hand_traced_with_boundary_clip PASSED [ 33%]
+# ch18/entropy_features/test_encoding_schemes.py::TestSigmaEncode::test_default_sigma_is_std_over_four PASSED [ 34%]
+# ch18/entropy_features/test_encoding_schemes.py::TestSigmaEncode::test_number_of_distinct_codes_matches_formula PASSED [ 36%]
+# ch18/entropy_features/test_encoding_schemes.py::TestSigmaEncode::test_rejects_non_positive_sigma PASSED [ 37%]
+# ch18/entropy_features/test_encoding_schemes.py::TestSigmaEncode::test_constant_series_uses_single_code PASSED [ 39%]
+# ch18/entropy_features/test_encoding_schemes.py::TestEncodingFeedsEstimators::test_binary_output_feeds_plugIn PASSED [ 40%]
+# ch18/entropy_features/test_encoding_schemes.py::TestEncodingFeedsEstimators::test_quantile_output_feeds_konto PASSED [ 42%]
+# ch18/entropy_features/test_entropy_estimators.py::TestPmf1PlugIn::test_pmf1_hand_traced_w1 PASSED [ 43%]
+# ch18/entropy_features/test_entropy_estimators.py::TestPmf1PlugIn::test_plugIn_hand_traced_w1 PASSED [ 45%]
+# ch18/entropy_features/test_entropy_estimators.py::TestPmf1PlugIn::test_plugIn_hand_traced_w2 PASSED [ 46%]
+# ch18/entropy_features/test_entropy_estimators.py::TestPmf1PlugIn::test_plugIn_accepts_non_string_sequence PASSED [ 48%]
+# ch18/entropy_features/test_entropy_estimators.py::TestPmf1PlugIn::test_pmf1_probabilities_sum_to_one PASSED [ 50%]
+# ch18/entropy_features/test_entropy_estimators.py::TestLempelZivLib::test_hand_traced_101010 PASSED [ 51%]
+# ch18/entropy_features/test_entropy_estimators.py::TestLempelZivLib::test_all_same_symbol_grows_by_one_each_time PASSED [ 53%]
+# ch18/entropy_features/test_entropy_estimators.py::TestLempelZivLib::test_output_is_non_redundant PASSED [ 54%]
+# ch18/entropy_features/test_entropy_estimators.py::TestMatchLength::test_hand_traced_perfect_repeat PASSED [ 56%]
+# ch18/entropy_features/test_entropy_estimators.py::TestMatchLength::test_no_match_returns_length_one_empty_string PASSED [ 57%]
+# ch18/entropy_features/test_entropy_estimators.py::TestMatchLength::test_requires_valid_index_bounds PASSED [ 59%]
+# ch18/entropy_features/test_entropy_estimators.py::TestKonto::test_repetitive_message_has_lower_entropy_than_random PASSED [ 60%]
+# ch18/entropy_features/test_entropy_estimators.py::TestKonto::test_redundancy_formula PASSED [ 62%]
+# ch18/entropy_features/test_entropy_estimators.py::TestKonto::test_fixed_window_matches_expected_point_count PASSED [ 63%]
+# ch18/entropy_features/test_entropy_estimators.py::TestKonto::test_expanding_window_requires_even_length_by_construction PASSED [ 65%]
+# ch18/entropy_features/test_entropy_estimators.py::TestPy2To3BugRegressions::test_konto_len_over_two_would_be_float_without_floor_division PASSED [ 66%]
+# ch18/entropy_features/test_entropy_estimators.py::TestPy2To3BugRegressions::test_xrange_would_not_exist_under_python3 PASSED [ 68%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestEigenDecomposition::test_diagonal_matrix_hand_traced PASSED [ 69%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestEigenDecomposition::test_reconstruction_property_nondiagonal PASSED [ 71%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestEigenDecomposition::test_non_square_raises PASSED [ 72%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestEigenDecomposition::test_non_symmetric_raises PASSED [ 74%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestFactorLoadings::test_identity_W_hand_traced PASSED [ 75%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestFactorLoadings::test_omega_not_summing_to_one_raises PASSED [ 77%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestRiskContribution::test_hand_traced_diag_1_4 PASSED [ 78%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestRiskContribution::test_theta_sums_to_one_general_case PASSED [ 80%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestRiskContribution::test_degenerate_zero_denominator_raises PASSED [ 81%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestPortfolioConcentration::test_uniform_theta_is_zero_concentration PASSED [ 83%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestPortfolioConcentration::test_degenerate_theta_hits_upper_bound PASSED [ 84%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestPortfolioConcentration::test_hand_traced_theta_0_2_0_8 PASSED [ 86%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestPortfolioConcentration::test_hand_traced_three_component_theta PASSED [ 87%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestPortfolioConcentration::test_theta_not_summing_to_one_raises PASSED [ 89%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestPortfolioConcentration::test_negative_theta_raises PASSED [ 90%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestPortfolioConcentration::test_zero_theta_component_does_not_nan PASSED [ 92%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestComputePortfolioConcentration::test_hand_traced_end_to_end_diag_1_4 PASSED [ 93%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestComputePortfolioConcentration::test_hand_traced_end_to_end_concentrated PASSED [ 95%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestComputePortfolioConcentration::test_hand_traced_end_to_end_three_assets PASSED [ 96%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestComputePortfolioConcentration::test_eigenvector_sign_invariance PASSED [ 98%]
+# ch18/entropy_features/test_portfolio_concentration.py::TestComputePortfolioConcentration::test_result_is_permutation_invariant PASSED [100%]
+#
+# ============================= 66 passed in 1.03s ==============================
+# ---------------------------------------------------------------------------
