@@ -84,5 +84,32 @@ if __name__ == "__main__":
 #   full file:         last 2026-10-30 close 755.72, -0.63%, $1,000 -> $993.70 since 2026-09-09; -1.26%, $987.39 since 2026-10-26.
 # Mutation check (sandbox): 30 deliberate breakages across both scripts (entry day, return and dollar arithmetic, window length, percentile rule, thresholds, share denominators, blank cells, newest-file pick, the new guards); 29 caught, 1 survivor = `x < -0.10` vs `x <= -0.10`, an EQUIVALENT mutant (no float price ratio equals exactly -10%, checked by search).
 # Defects found by the tests and fixed (all three failed before the fix): (1) spy_since.py compared the last close with a hard-coded 2026-10-28, so the 'file is old' note was wrong on any other day; now it counts days against today (new --today option for tests; limit 4 days = Friday close, Tuesday run after a Monday holiday). (2) both scripts crashed with IndexError when no prices_daily_asof_*.csv was in the folder; now a clear message. (3) spy_window_stats.py crashed with IndexError when there were too few closes for one window; now a clear message. Test-first: 11 of 33 tests failed on the original code, 22 passed (the arithmetic, windows and percentiles were already right).
-# Real-machine confirmation (Windows, mlfinlab): PENDING. Paste the output of: python -m pytest test_spy_since.py test_spy_window_stats.py -v
+# Real-machine confirmation (Windows, mlfinlab): DONE 2026-11-01, Ethan's PC, from C:\ws\AFML\portfolio
+# Command: python -m pytest test_spy_since.py test_spy_window_stats.py -v   (both files together: 33 passed in 0.65s)
+# platform win32 -- Python 3.10.20, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\earob\miniconda3\envs\mlfinlab\python.exe
+# collected 33 items
+# test_spy_since.py::test_load_spy_reads_the_spy_column_wherever_it_is_and_skips_blank_cells PASSED [ 3%]
+# test_spy_since.py::test_return_and_dollars_for_a_ten_percent_gain PASSED [ 6%]
+# test_spy_since.py::test_a_loss_shows_a_minus_sign_and_less_money PASSED [ 9%]
+# test_spy_since.py::test_amount_scales_the_dollars_but_not_the_percentage PASSED [ 12%]
+# test_spy_since.py::test_start_on_a_trading_day_uses_that_days_close PASSED [ 15%]
+# test_spy_since.py::test_start_on_a_weekend_uses_the_previous_fridays_close PASSED [ 18%]
+# test_spy_since.py::test_start_before_the_first_close_stops_with_a_message PASSED [ 21%]
+# test_spy_since.py::test_start_after_the_last_close_gives_zero_return_from_the_last_close PASSED [ 24%]
+# test_spy_since.py::test_blank_spy_days_are_ignored_when_picking_the_entry PASSED [ 27%]
+# test_spy_since.py::test_default_file_is_the_newest_by_name PASSED [ 30%]
+# test_spy_since.py::test_no_price_file_stops_with_a_clear_message PASSED [ 33%]
+# test_spy_since.py::test_note_appears_only_when_the_last_close_is_more_than_four_days_old[2026-10-30-2026-10-30-False] PASSED [ 36%]
+# test_spy_since.py::test_note_appears_only_when_the_last_close_is_more_than_four_days_old[2026-10-30-2026-11-02-False] PASSED [ 39%]
+# test_spy_since.py::test_note_appears_only_when_the_last_close_is_more_than_four_days_old[2026-10-30-2026-11-03-False] PASSED [ 42%]
+# test_spy_since.py::test_note_appears_only_when_the_last_close_is_more_than_four_days_old[2026-10-30-2026-11-04-True] PASSED [ 45%]
+# test_spy_since.py::test_note_appears_only_when_the_last_close_is_more_than_four_days_old[2026-10-20-2026-10-21-False] PASSED [ 48%]
+# test_spy_since.py::test_note_appears_only_when_the_last_close_is_more_than_four_days_old[2026-10-23-2026-11-23-True] PASSED [ 51%]
+# test_spy_since.py::test_note_says_how_many_days_old_and_names_the_fix PASSED [ 54%]
+# (18 of this file's tests PASSED; the other file's 15 also PASSED)
+# Real-data run on Windows (prices_daily_asof_2026-10-30.csv, the committed pre-registered file):
+#   File: prices_daily_asof_2026-10-30.csv
+#   Entry: 2026-09-09 close 760.51
+#   Last: 2026-10-30 close 755.72
+#   Return: -0.63% $1,000 -> $993.70
 # =============================================================================
