@@ -29,8 +29,14 @@ Before the buys (cash check) and after them (status check)
     them: the shortfall (rounded up to the cent) comes off the largest buy and is written into the ledger ("trimmed").
     Short by more than 2%: no buy is sent, the run is "aborted" and a person decides. After the buys are sent each one is
     looked at again; one that was rejected, cancelled or expired makes the run "partial". One still working after the wait
-    is only noted ("not filled yet when checked"). Sale proceeds can be used the same day (Alpaca treats accounts under
-    $2,000 as limited margin accounts, not cash accounts).
+    is only noted ("not filled yet when checked").
+
+Buying power under $2,000 (corrected 2026-11-01)
+    Alpaca support (2026-10-31) said accounts under $2,000 have cash buying power only: no margin, no shorting, 1x.
+    Whether SALE PROCEEDS can buy the same day is NOT confirmed for the paper API. Alpaca's public help page says they
+    can; support's wording was "cash buying power only". The sell path has never run live. The cash check above reads
+    the account's cash field, not its buying power, so if Alpaca rejects a buy after the sells, expect the run to end
+    "partial" with the rejection in the ledger. Nothing is lost; a person decides.
 
 How it places orders
     Market orders by dollar amount (notional), time in force DAY, the only kind Alpaca takes for fractional shares.
@@ -545,6 +551,8 @@ if __name__ == "__main__":
 #   dollars short of the fixed buy amounts. Now: shortfall up to 2% of the buys comes off the largest buy (rounded up to the cent, ledger 'trimmed'),
 #   more than 2% sends no buy ('aborted'); every buy is looked at again and rejected/cancelled/expired makes the run 'partial'. Mutation checks (16): 16 caught.
 # Alpaca treats accounts under $2,000 as limited margin, so sale proceeds are usable the same day (alpaca.markets/support/alpaca-cash-accounts).
+# CORRECTION 2026-11-01: Alpaca support later said accounts under $2,000 have cash buying power only (no margin, no shorting).
+# Same-day use of sale proceeds is unconfirmed on the paper API; see the docstring section 'Buying power under $2,000'.
 #
 # Mutation checks (sandbox, 34, run with bytecode caching off): each guard removed or weakened (plan version, plan age,
 #   account status, blocked account, equity mismatch and its tolerance, open orders, holdings change and tolerance,
