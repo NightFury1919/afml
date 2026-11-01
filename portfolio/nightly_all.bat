@@ -26,3 +26,12 @@ if "%APCA_SPY_KEY_ID%"=="" (
 )
 
 rem Account C (AFML2K, shorting) is not here on purpose: it has no short path yet.
+
+rem ---- account D: AFML_MOM, the momentum experiment (50 percent top-3 funds, rest SPY; no demonstrated edge) ----
+if "%APCA_MOM_KEY_ID%"=="" (
+  echo [%date% %time%] mom: no keys in the environment, skipped >> accounts\momentum\daily_stdout.txt
+) else (
+  set "APCA_API_KEY_ID=%APCA_MOM_KEY_ID%"
+  set "APCA_API_SECRET_KEY=%APCA_MOM_SECRET%"
+  "%PY%" momentum_daily.py --no-update --from-alpaca --config accounts\momentum\run_config.json --plans-dir accounts\momentum\plans --runs-dir accounts\momentum\runs >> accounts\momentum\daily_stdout.txt 2>&1
+)
