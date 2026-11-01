@@ -24,3 +24,11 @@ The frozen file says to treat buying power as cash only. Alpaca support (2026-10
 buying power only: no margin, no shorting, 1x. Alpaca's public help page separately says sale proceeds in such accounts can be
 used the same day. Which of the two holds on the paper API for a sell followed by a buy on the same day has not been tested
 live. This affects how the live account is traded (see `execute_plan.py`), not the pre-registered test, which assumed no leverage.
+
+## 4. Checking the price file's hash on another machine (line endings)
+The SHA-256 in the frozen file (`dff1a011...`) is the hash of the file as it sits on the Windows machine, which has CRLF line
+endings. Git stores the same file with LF endings, so the committed copy hashes differently (`cb259897...` on a Linux clone).
+Converting the committed copy to CRLF gives exactly `dff1a011fee8a8f662d94d166f58c6ddd685a9d5ac819407e3970f1d2160b30c`, so
+the data are identical; only the line endings differ. Anyone re-checking the hash from a fresh clone on Linux or macOS must
+convert to CRLF first (or hash the Windows working copy). The run itself used the Windows copy, so nothing about the results
+changes.
