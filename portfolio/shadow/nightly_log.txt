@@ -44,3 +44,5 @@
 2026-11-05 20:30:35  scored 2026-11-05 -> scores_asof_2026-11-05.csv (from prices_daily_asof_2026-11-05.csv)
 2026-11-06 20:30:25  price update: added 1 day(s), saved prices_daily_asof_2026-11-06.csv
 2026-11-06 20:30:29  scored 2026-11-06 -> scores_asof_2026-11-06.csv (from prices_daily_asof_2026-11-06.csv)
+2026-11-07 20:30:15  price update: nothing new: the snapshot for this last date already exists
+2026-11-07 20:30:15  nothing to score (prices_daily_asof_2026-11-06.csv; every trading day since 2026-10-16 has a log)
