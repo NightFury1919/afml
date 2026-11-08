@@ -53,3 +53,10 @@ portfolio/noise_test_tier_b/world_*/
 portfolio/results/noise_test_tier_b/world_*/
 portfolio/performance/
 portfolio/performance/
+*.pkl
+.ipynb_checkpoints/
+ch08/files.zip
+portfolio/stock_data/
+portfolio/sp_500_historical_components.csv
+portfolio/prices_daily.csv
+portfolio/prices_summary.csv
