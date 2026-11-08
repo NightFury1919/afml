@@ -1,0 +1,65 @@
+{
+  "status": "ok",
+  "run_date": "2026-10-17",
+  "as_of": "2026-10-16",
+  "snapshot": "prices_daily_asof_2026-10-16.csv",
+  "config": {
+    "spy_share": 0.5,
+    "qf_rule": "size",
+    "max_weight": null,
+    "exposure": 1.0,
+    "rebalance_every": 1,
+    "start": null,
+    "equity": 1000.0,
+    "confirmed": []
+  },
+  "config_hash": "997620838ce7",
+  "previous_config_hash": "997620838ce7",
+  "config_changed": false,
+  "open_placeholders": [
+    "max_weight",
+    "spy_share"
+  ],
+  "steps": [
+    {
+      "name": "update_prices",
+      "status": "ok",
+      "detail": "nothing new: the snapshot for this last date already exists"
+    },
+    {
+      "name": "health_check",
+      "status": "ok",
+      "detail": "0 error(s), 0 warning(s)"
+    },
+    {
+      "name": "plan",
+      "status": "skipped",
+      "detail": "plan already exists for 2026-10-16; it was not overwritten"
+    },
+    {
+      "name": "scoreboard",
+      "status": "skipped",
+      "detail": "no start date in the config"
+    }
+  ],
+  "health": [],
+  "warnings": [],
+  "plan": {
+    "equity": 99999.7,
+    "spy_dollars": 49999.85,
+    "qf_dollars": 49999.85,
+    "n_orders": 48,
+    "cash_after": 0.17,
+    "plan_path": "C:\\ws\\AFML\\portfolio\\plans\\plan_v2_2026-10-16.json",
+    "top_weights": {
+      "SPY": 0.5104166666666666,
+      "GDX": 0.010416666666666668,
+      "IWD": 0.010416666666666668,
+      "IWF": 0.010416666666666668,
+      "IWM": 0.010416666666666668
+    }
+  },
+  "scoreboard": null,
+  "orders_sent": 0,
+  "report_path": "C:\\ws\\AFML\\portfolio\\runs\\run_2026-10-16_r3.json"
+}

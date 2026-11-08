@@ -1,0 +1,35 @@
+{
+  "version": 2,
+  "as_of": "2026-11-03",
+  "rebalance_day": false,
+  "next_signal": "2026-12-01",
+  "protocol": {
+    "strategy": "momentum_ladder",
+    "sleeve_n": 3,
+    "sleeve_share": 0.5,
+    "every": 21,
+    "lookback": 273,
+    "skip": 21,
+    "start": "2026-11-02",
+    "mode": "fractional",
+    "min_notional": 1.0
+  },
+  "spy_dollars": 488.975,
+  "qf_dollars": 488.975,
+  "weights": {
+    "EWT": 0.16305451710210134,
+    "EWY": 0.1637397658366992,
+    "SPY": 0.5051350887059666,
+    "XBI": 0.16803168260135998
+  },
+  "equity": 977.95,
+  "holdings": {
+    "EWT": 159.459165,
+    "EWY": 160.129304,
+    "SPY": 493.99686,
+    "XBI": 164.326584
+  },
+  "orders": [],
+  "cash_after": 0.04,
+  "warnings": []
+}

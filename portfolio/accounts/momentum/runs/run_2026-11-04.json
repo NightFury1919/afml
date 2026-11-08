@@ -1,0 +1,50 @@
+{
+  "status": "ok",
+  "run_date": "2026-11-04",
+  "as_of": "2026-11-04",
+  "snapshot": "prices_daily_asof_2026-11-04.csv",
+  "config": {
+    "sleeve_n": 3,
+    "sleeve_share": 0.5,
+    "every": 21,
+    "start": "2026-11-02",
+    "equity": 1000.0,
+    "equity_floor": 500.0,
+    "min_notional": 1.0
+  },
+  "config_problems": [],
+  "steps": [
+    {
+      "name": "health_check",
+      "status": "ok",
+      "detail": "0 error(s), 0 warning(s)"
+    },
+    {
+      "name": "plan",
+      "status": "ok",
+      "detail": "saved plan_v2_2026-11-04.json"
+    }
+  ],
+  "health": [],
+  "warnings": [],
+  "plan": {
+    "equity": 995.08,
+    "rebalance_day": false,
+    "next_signal": "2026-12-01",
+    "n_orders": 0,
+    "cash_after": 0.03,
+    "plan_path": "accounts\\momentum\\plans\\plan_v2_2026-11-04.json",
+    "saved_plan_is_this_run": true,
+    "top_weights": {
+      "SPY": 0.5095159806246734,
+      "XBI": 0.17085583571170154,
+      "EWY": 0.16003238835068537,
+      "EWT": 0.1595661856333159
+    }
+  },
+  "orders_sent": 0,
+  "below_equity_floor": false,
+  "equity_floor": 500.0,
+  "saved_plan_mismatch": [],
+  "report_path": "accounts\\momentum\\runs\\run_2026-11-04.json"
+}

@@ -1,0 +1,35 @@
+{
+  "status": "not_configured",
+  "run_date": "2026-10-31",
+  "as_of": null,
+  "snapshot": null,
+  "config": {
+    "sleeve_n": null,
+    "sleeve_share": null,
+    "every": 21,
+    "start": null,
+    "equity": 1000.0,
+    "equity_floor": 500.0,
+    "min_notional": 1.0
+  },
+  "config_problems": [
+    "sleeve_n is not set",
+    "sleeve_share is not set",
+    "start is not set"
+  ],
+  "steps": [
+    {
+      "name": "plan",
+      "status": "skipped",
+      "detail": "not configured: sleeve_n is not set; sleeve_share is not set; start is not set"
+    }
+  ],
+  "health": [],
+  "warnings": [],
+  "plan": null,
+  "orders_sent": 0,
+  "below_equity_floor": false,
+  "equity_floor": 500.0,
+  "saved_plan_mismatch": [],
+  "report_path": "C:\\ws\\AFML\\portfolio\\accounts\\momentum\\runs\\run_nodata_2026-10-31.json"
+}

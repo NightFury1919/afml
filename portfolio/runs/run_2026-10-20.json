@@ -1,0 +1,82 @@
+{
+  "status": "ok",
+  "run_date": "2026-10-21",
+  "as_of": "2026-10-20",
+  "snapshot": "prices_daily_asof_2026-10-20.csv",
+  "config": {
+    "spy_share": 0.5,
+    "qf_rule": "inverse_vol",
+    "max_weight": 0.1,
+    "exposure": 1.0,
+    "rebalance_every": 1,
+    "start": "2026-10-16",
+    "equity": 1000.0,
+    "confirmed": []
+  },
+  "config_hash": "7bae994be0b3",
+  "previous_config_hash": "d3d85d0219e2",
+  "config_changed": true,
+  "open_placeholders": [
+    "max_weight",
+    "spy_share"
+  ],
+  "steps": [
+    {
+      "name": "update_prices",
+      "status": "skipped",
+      "detail": "not requested"
+    },
+    {
+      "name": "health_check",
+      "status": "ok",
+      "detail": "0 error(s), 0 warning(s)"
+    },
+    {
+      "name": "plan",
+      "status": "ok",
+      "detail": "saved plan_v2_2026-10-20.json"
+    },
+    {
+      "name": "scoreboard",
+      "status": "ok",
+      "detail": "3 days, no costs"
+    }
+  ],
+  "health": [],
+  "warnings": [
+    "account equity $99,999.79 differs from the config equity $1,000.00 by more than 5%; the plan is sized on the account equity",
+    "protocol changed since the previous run (hash d3d85d0219e2 -> 7bae994be0b3); do not read results across the change"
+  ],
+  "plan": {
+    "equity": 99999.79,
+    "spy_dollars": 49999.895,
+    "qf_dollars": 49999.895,
+    "n_orders": 48,
+    "cash_after": 0.0,
+    "plan_path": "C:\\ws\\AFML\\portfolio\\plans\\plan_v2_2026-10-20.json",
+    "saved_plan_is_this_run": true,
+    "top_weights": {
+      "SPY": 0.5030361871268497,
+      "FXE": 0.05,
+      "FXY": 0.05,
+      "UUP": 0.05,
+      "EMB": 0.022251784110135946
+    }
+  },
+  "scoreboard": {
+    "start": "2026-10-16",
+    "end": "2026-10-20",
+    "days": 3,
+    "last_row": {
+      "spy_value": 50379.84754588892,
+      "qf_value": 50077.16761567862,
+      "spy_return": 0.007599066875819016,
+      "qf_return": 0.0015454555590290742,
+      "qf_minus_spy": -0.006053611316789942,
+      "spy_drawdown": 0.0,
+      "qf_drawdown": 0.0
+    }
+  },
+  "orders_sent": 0,
+  "report_path": "C:\\ws\\AFML\\portfolio\\runs\\run_2026-10-20.json"
+}

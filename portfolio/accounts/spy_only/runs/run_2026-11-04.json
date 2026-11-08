@@ -1,0 +1,78 @@
+{
+  "status": "ok",
+  "run_date": "2026-11-04",
+  "as_of": "2026-11-04",
+  "snapshot": "prices_daily_asof_2026-11-04.csv",
+  "config": {
+    "spy_share": 1.0,
+    "qf_rule": "inverse_vol",
+    "max_weight": 0.1,
+    "exposure": 1.0,
+    "rebalance_every": 1,
+    "start": "2026-10-26",
+    "equity": 1000.0,
+    "confirmed": [],
+    "exclude": [],
+    "equity_floor": 900.0
+  },
+  "config_hash": "4b057f5328b6",
+  "previous_config_hash": "4b057f5328b6",
+  "config_changed": false,
+  "open_placeholders": [
+    "max_weight",
+    "spy_share"
+  ],
+  "steps": [
+    {
+      "name": "update_prices",
+      "status": "skipped",
+      "detail": "not requested"
+    },
+    {
+      "name": "health_check",
+      "status": "ok",
+      "detail": "0 error(s), 0 warning(s)"
+    },
+    {
+      "name": "plan",
+      "status": "ok",
+      "detail": "saved plan_v2_2026-11-04.json"
+    },
+    {
+      "name": "scoreboard",
+      "status": "ok",
+      "detail": "8 days, no costs"
+    }
+  ],
+  "health": [],
+  "warnings": [],
+  "plan": {
+    "equity": 999.42,
+    "spy_dollars": 999.42,
+    "qf_dollars": 0.0,
+    "n_orders": 0,
+    "cash_after": -0.0,
+    "plan_path": "accounts\\spy_only\\plans\\plan_v2_2026-11-04.json",
+    "saved_plan_is_this_run": true,
+    "top_weights": {
+      "SPY": 1.0
+    }
+  },
+  "scoreboard": {
+    "start": "2026-10-26",
+    "end": "2026-11-04",
+    "days": 8,
+    "sleeves": "spy_only",
+    "last_row": {
+      "spy_value": 1001.3003549252933,
+      "spy_return": 0.0018814461640683788,
+      "spy_drawdown": 0.007121492687374831
+    }
+  },
+  "orders_sent": 0,
+  "below_equity_floor": false,
+  "equity_floor": 900.0,
+  "saved_plan_mismatch": [],
+  "saved_plan_path": "accounts\\spy_only\\plans\\plan_v2_2026-11-04.json",
+  "report_path": "accounts\\spy_only\\runs\\run_2026-11-04.json"
+}

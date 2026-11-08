@@ -1,0 +1,55 @@
+{
+  "as_of": "2026-11-02",
+  "started": "2026-11-03 12:18:33.387623",
+  "plan_equity": 1000.0,
+  "status": "complete",
+  "holdings_tol": 1.0,
+  "equity_floor": 500.0,
+  "note": "",
+  "warnings": [
+    {
+      "level": "warn",
+      "code": "equity_floor_lowered",
+      "message": "the equity floor is $500.00, below the default $900.00"
+    }
+  ],
+  "entries": [
+    {
+      "symbol": "EWT",
+      "side": "buy",
+      "notional": 166.67,
+      "close_all": false,
+      "order_id": "c02e20d2-60dd-425d-80c2-52c62ab19694",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "EWY",
+      "side": "buy",
+      "notional": 166.67,
+      "close_all": false,
+      "order_id": "21c16905-1d3a-4502-9d0e-05d8e7756394",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "SPY",
+      "side": "buy",
+      "notional": 499.99,
+      "close_all": false,
+      "order_id": "bf839771-7aee-47f1-af4c-08108b35b29e",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "XBI",
+      "side": "buy",
+      "notional": 166.67,
+      "close_all": false,
+      "order_id": "ce82c570-5617-4b24-b370-d5451f7027ab",
+      "status": "filled",
+      "error": null
+    }
+  ],
+  "trimmed": []
+}

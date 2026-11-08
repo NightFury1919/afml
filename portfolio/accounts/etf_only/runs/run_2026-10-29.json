@@ -1,0 +1,87 @@
+{
+  "status": "ok",
+  "run_date": "2026-10-30",
+  "as_of": "2026-10-29",
+  "snapshot": "prices_daily_asof_2026-10-29.csv",
+  "config": {
+    "spy_share": 0.0,
+    "qf_rule": "inverse_vol",
+    "max_weight": 0.1,
+    "exposure": 1.0,
+    "rebalance_every": 21,
+    "start": "2026-10-26",
+    "equity": 1000.0,
+    "confirmed": [],
+    "exclude": [
+      "DBA",
+      "DBC",
+      "SPY",
+      "UUP"
+    ],
+    "equity_floor": 900.0
+  },
+  "config_hash": "13221410af6d",
+  "previous_config_hash": "13221410af6d",
+  "config_changed": false,
+  "open_placeholders": [
+    "max_weight",
+    "spy_share"
+  ],
+  "steps": [
+    {
+      "name": "update_prices",
+      "status": "skipped",
+      "detail": "not requested"
+    },
+    {
+      "name": "health_check",
+      "status": "ok",
+      "detail": "0 error(s), 0 warning(s)"
+    },
+    {
+      "name": "plan",
+      "status": "ok",
+      "detail": "saved plan_v2_2026-10-29.json"
+    },
+    {
+      "name": "scoreboard",
+      "status": "ok",
+      "detail": "4 days, no costs"
+    }
+  ],
+  "health": [],
+  "warnings": [],
+  "plan": {
+    "equity": 998.91,
+    "spy_dollars": 0.0,
+    "qf_dollars": 998.91,
+    "n_orders": 2,
+    "cash_after": -2.46,
+    "plan_path": "accounts\\etf_only\\plans\\plan_v2_2026-10-29.json",
+    "saved_plan_is_this_run": true,
+    "top_weights": {
+      "FXE": 0.1,
+      "FXY": 0.1,
+      "EMB": 0.05249627126822754,
+      "HYG": 0.05249627126822754,
+      "IEF": 0.05249627126822754
+    }
+  },
+  "scoreboard": {
+    "start": "2026-10-26",
+    "end": "2026-10-29",
+    "days": 4,
+    "sleeves": "qf_only",
+    "last_row": {
+      "qf_value": 1002.9763229558522,
+      "qf_return": 0.004070760084344149,
+      "qf_drawdown": 0.0
+    }
+  },
+  "orders_sent": 0,
+  "below_equity_floor": false,
+  "equity_floor": 900.0,
+  "saved_plan_mismatch": [],
+  "saved_plan_path": "accounts\\etf_only\\plans\\plan_v2_2026-10-29.json",
+  "report_path": "accounts\\etf_only\\runs\\run_2026-10-29.json"
+}

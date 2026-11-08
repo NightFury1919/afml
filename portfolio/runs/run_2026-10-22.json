@@ -1,0 +1,81 @@
+{
+  "status": "ok",
+  "run_date": "2026-10-23",
+  "as_of": "2026-10-22",
+  "snapshot": "prices_daily_asof_2026-10-22.csv",
+  "config": {
+    "spy_share": 0.5,
+    "qf_rule": "inverse_vol",
+    "max_weight": 0.1,
+    "exposure": 1.0,
+    "rebalance_every": 1,
+    "start": "2026-10-16",
+    "equity": 1000.0,
+    "confirmed": []
+  },
+  "config_hash": "7bae994be0b3",
+  "previous_config_hash": "7bae994be0b3",
+  "config_changed": false,
+  "open_placeholders": [
+    "max_weight",
+    "spy_share"
+  ],
+  "steps": [
+    {
+      "name": "update_prices",
+      "status": "skipped",
+      "detail": "not requested"
+    },
+    {
+      "name": "health_check",
+      "status": "ok",
+      "detail": "0 error(s), 0 warning(s)"
+    },
+    {
+      "name": "plan",
+      "status": "ok",
+      "detail": "saved plan_v2_2026-10-22.json"
+    },
+    {
+      "name": "scoreboard",
+      "status": "ok",
+      "detail": "5 days, no costs"
+    }
+  ],
+  "health": [],
+  "warnings": [
+    "account equity $99,999.48 differs from the config equity $1,000.00 by more than 5%; the plan is sized on the account equity"
+  ],
+  "plan": {
+    "equity": 99999.48,
+    "spy_dollars": 49999.74,
+    "qf_dollars": 49999.74,
+    "n_orders": 48,
+    "cash_after": 0.0,
+    "plan_path": "C:\\ws\\AFML\\portfolio\\plans\\plan_v2_2026-10-22.json",
+    "saved_plan_is_this_run": true,
+    "top_weights": {
+      "SPY": 0.5030701769844206,
+      "FXE": 0.05,
+      "FXY": 0.05,
+      "UUP": 0.05,
+      "EMB": 0.0220325325562544
+    }
+  },
+  "scoreboard": {
+    "start": "2026-10-16",
+    "end": "2026-10-22",
+    "days": 5,
+    "last_row": {
+      "spy_value": 50046.25282545311,
+      "qf_value": 50129.24156509728,
+      "spy_return": 0.0009302613464212683,
+      "qf_return": 0.0025900447701785456,
+      "qf_minus_spy": 0.0016597834237572773,
+      "spy_drawdown": 0.011809756387556436,
+      "qf_drawdown": 0.0001191042728422298
+    }
+  },
+  "orders_sent": 0,
+  "report_path": "C:\\ws\\AFML\\portfolio\\runs\\run_2026-10-22.json"
+}

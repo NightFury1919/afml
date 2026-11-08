@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "as_of": "2026-10-30",
+  "rebalance_day": false,
+  "next_signal": "2026-11-02",
+  "protocol": {
+    "strategy": "momentum_ladder",
+    "sleeve_n": 3,
+    "sleeve_share": 0.5,
+    "every": 21,
+    "lookback": 273,
+    "skip": 21,
+    "start": "2026-11-02",
+    "mode": "fractional",
+    "min_notional": 1.0
+  },
+  "spy_dollars": 500.0,
+  "qf_dollars": 500.0,
+  "weights": {},
+  "equity": 1000.0,
+  "holdings": {},
+  "orders": [],
+  "cash_after": 1000.0,
+  "warnings": []
+}

@@ -1,0 +1,81 @@
+{
+  "status": "ok",
+  "run_date": "2026-10-17",
+  "as_of": "2026-10-16",
+  "snapshot": "prices_daily_asof_2026-10-16.csv",
+  "config": {
+    "spy_share": 0.5,
+    "qf_rule": "inverse_vol",
+    "max_weight": null,
+    "exposure": 1.0,
+    "rebalance_every": 1,
+    "start": "2026-10-16",
+    "equity": 1000.0,
+    "confirmed": []
+  },
+  "config_hash": "d3d85d0219e2",
+  "previous_config_hash": "997620838ce7",
+  "config_changed": true,
+  "open_placeholders": [
+    "max_weight",
+    "spy_share"
+  ],
+  "steps": [
+    {
+      "name": "update_prices",
+      "status": "ok",
+      "detail": "nothing new: the snapshot for this last date already exists"
+    },
+    {
+      "name": "health_check",
+      "status": "ok",
+      "detail": "0 error(s), 0 warning(s)"
+    },
+    {
+      "name": "plan",
+      "status": "ok",
+      "detail": "saved plan_v2_2026-10-16.json"
+    },
+    {
+      "name": "scoreboard",
+      "status": "ok",
+      "detail": "1 days, no costs"
+    }
+  ],
+  "health": [],
+  "warnings": [
+    "protocol changed since the previous run (hash 997620838ce7 -> d3d85d0219e2); do not read results across the change"
+  ],
+  "plan": {
+    "equity": 1000.0,
+    "spy_dollars": 500.0,
+    "qf_dollars": 500.0,
+    "n_orders": 48,
+    "cash_after": 0.0,
+    "plan_path": "C:\\ws\\AFML\\portfolio\\plans\\plan_v2_2026-10-16.json",
+    "saved_plan_is_this_run": true,
+    "top_weights": {
+      "SPY": 0.5023182900428794,
+      "FXE": 0.07747091233703361,
+      "FXY": 0.07747091233703361,
+      "UUP": 0.07747091233703361,
+      "EMB": 0.017029667371883626
+    }
+  },
+  "scoreboard": {
+    "start": "2026-10-16",
+    "end": "2026-10-16",
+    "days": 1,
+    "last_row": {
+      "spy_value": 500.0,
+      "qf_value": 500.0,
+      "spy_return": 0.0,
+      "qf_return": 0.0,
+      "qf_minus_spy": 0.0,
+      "spy_drawdown": 0.0,
+      "qf_drawdown": 0.0
+    }
+  },
+  "orders_sent": 0,
+  "report_path": "C:\\ws\\AFML\\portfolio\\runs\\run_2026-10-16_r5.json"
+}

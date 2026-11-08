@@ -1,0 +1,46 @@
+2026-10-17 21:15:04  price update: nothing new: the snapshot for this last date already exists
+2026-10-17 21:15:04  nothing to score (prices_daily_asof_2026-10-16.csv; every trading day since 2026-10-16 has a log)
+2026-10-17 21:23:05  price update: nothing new: the snapshot for this last date already exists
+2026-10-17 21:23:05  nothing to score (prices_daily_asof_2026-10-16.csv; every trading day since 2026-10-16 has a log)
+2026-10-17 21:30:09  price update: nothing new: the snapshot for this last date already exists
+2026-10-17 21:30:09  nothing to score (prices_daily_asof_2026-10-16.csv; every trading day since 2026-10-16 has a log)
+2026-10-18 23:20:34  price update: nothing new: the snapshot for this last date already exists
+2026-10-18 23:20:34  nothing to score (prices_daily_asof_2026-10-16.csv; every trading day since 2026-10-16 has a log)
+2026-10-19 21:30:14  price update: added 1 day(s), saved prices_daily_asof_2026-10-19.csv
+2026-10-19 21:30:16  scored 2026-10-19 -> scores_asof_2026-10-19.csv (from prices_daily_asof_2026-10-19.csv)
+2026-10-20 11:37:19  price update: nothing new: the snapshot for this last date already exists
+2026-10-20 11:37:19  nothing to score (prices_daily_asof_2026-10-19.csv; every trading day since 2026-10-16 has a log)
+2026-10-20 21:30:18  price update: added 1 day(s), saved prices_daily_asof_2026-10-20.csv
+2026-10-20 21:30:20  scored 2026-10-20 -> scores_asof_2026-10-20.csv (from prices_daily_asof_2026-10-20.csv)
+2026-10-21 21:30:22  price update: added 1 day(s), saved prices_daily_asof_2026-10-21.csv
+2026-10-21 21:30:26  scored 2026-10-21 -> scores_asof_2026-10-21.csv (from prices_daily_asof_2026-10-21.csv)
+2026-10-22 22:18:13  price update: added 1 day(s), saved prices_daily_asof_2026-10-22.csv
+2026-10-22 22:18:15  scored 2026-10-22 -> scores_asof_2026-10-22.csv (from prices_daily_asof_2026-10-22.csv)
+2026-10-23 22:38:59  price update: added 1 day(s), saved prices_daily_asof_2026-10-23.csv
+2026-10-23 22:39:00  scored 2026-10-23 -> scores_asof_2026-10-23.csv (from prices_daily_asof_2026-10-23.csv)
+2026-10-24 21:30:25  price update: nothing new: the snapshot for this last date already exists
+2026-10-24 21:30:25  nothing to score (prices_daily_asof_2026-10-23.csv; every trading day since 2026-10-16 has a log)
+2026-10-25 21:59:06  price update: nothing new: the snapshot for this last date already exists
+2026-10-25 21:59:06  nothing to score (prices_daily_asof_2026-10-23.csv; every trading day since 2026-10-16 has a log)
+2026-10-26 21:30:15  price update: added 1 day(s), saved prices_daily_asof_2026-10-26.csv
+2026-10-26 21:30:16  scored 2026-10-26 -> scores_asof_2026-10-26.csv (from prices_daily_asof_2026-10-26.csv)
+2026-10-27 22:42:25  price update: added 1 day(s), saved prices_daily_asof_2026-10-27.csv
+2026-10-27 22:42:27  scored 2026-10-27 -> scores_asof_2026-10-27.csv (from prices_daily_asof_2026-10-27.csv)
+2026-10-28 21:30:12  price update: added 1 day(s), saved prices_daily_asof_2026-10-28.csv
+2026-10-28 21:30:13  scored 2026-10-28 -> scores_asof_2026-10-28.csv (from prices_daily_asof_2026-10-28.csv)
+2026-10-29 21:30:13  price update: added 1 day(s), saved prices_daily_asof_2026-10-29.csv
+2026-10-29 21:30:14  scored 2026-10-29 -> scores_asof_2026-10-29.csv (from prices_daily_asof_2026-10-29.csv)
+2026-10-30 21:30:14  price update: added 1 day(s), saved prices_daily_asof_2026-10-30.csv
+2026-10-30 21:30:15  scored 2026-10-30 -> scores_asof_2026-10-30.csv (from prices_daily_asof_2026-10-30.csv)
+2026-10-31 21:30:16  price update: nothing new: the snapshot for this last date already exists
+2026-10-31 21:30:16  nothing to score (prices_daily_asof_2026-10-30.csv; every trading day since 2026-10-16 has a log)
+2026-11-02 22:51:15  price update: added 1 day(s), saved prices_daily_asof_2026-11-02.csv
+2026-11-02 22:51:17  scored 2026-11-02 -> scores_asof_2026-11-02.csv (from prices_daily_asof_2026-11-02.csv)
+2026-11-03 20:30:13  price update: added 1 day(s), saved prices_daily_asof_2026-11-03.csv
+2026-11-03 20:30:15  scored 2026-11-03 -> scores_asof_2026-11-03.csv (from prices_daily_asof_2026-11-03.csv)
+2026-11-04 20:30:40  price update: added 1 day(s), saved prices_daily_asof_2026-11-04.csv
+2026-11-04 20:30:44  scored 2026-11-04 -> scores_asof_2026-11-04.csv (from prices_daily_asof_2026-11-04.csv)
+2026-11-05 20:30:30  price update: added 1 day(s), saved prices_daily_asof_2026-11-05.csv
+2026-11-05 20:30:35  scored 2026-11-05 -> scores_asof_2026-11-05.csv (from prices_daily_asof_2026-11-05.csv)
+2026-11-06 20:30:25  price update: added 1 day(s), saved prices_daily_asof_2026-11-06.csv
+2026-11-06 20:30:29  scored 2026-11-06 -> scores_asof_2026-11-06.csv (from prices_daily_asof_2026-11-06.csv)

@@ -1,0 +1,87 @@
+{
+  "status": "ok",
+  "run_date": "2026-11-05",
+  "as_of": "2026-11-05",
+  "snapshot": "prices_daily_asof_2026-11-05.csv",
+  "config": {
+    "spy_share": 0.0,
+    "qf_rule": "inverse_vol",
+    "max_weight": 0.1,
+    "exposure": 1.0,
+    "rebalance_every": 21,
+    "start": "2026-10-26",
+    "equity": 1000.0,
+    "confirmed": [],
+    "exclude": [
+      "DBA",
+      "DBC",
+      "SPY",
+      "UUP"
+    ],
+    "equity_floor": 900.0
+  },
+  "config_hash": "13221410af6d",
+  "previous_config_hash": "13221410af6d",
+  "config_changed": false,
+  "open_placeholders": [
+    "max_weight",
+    "spy_share"
+  ],
+  "steps": [
+    {
+      "name": "update_prices",
+      "status": "skipped",
+      "detail": "not requested"
+    },
+    {
+      "name": "health_check",
+      "status": "ok",
+      "detail": "0 error(s), 0 warning(s)"
+    },
+    {
+      "name": "plan",
+      "status": "ok",
+      "detail": "saved plan_v2_2026-11-05.json"
+    },
+    {
+      "name": "scoreboard",
+      "status": "ok",
+      "detail": "9 days, no costs"
+    }
+  ],
+  "health": [],
+  "warnings": [],
+  "plan": {
+    "equity": 992.72,
+    "spy_dollars": 0.0,
+    "qf_dollars": 992.72,
+    "n_orders": 5,
+    "cash_after": -3.76,
+    "plan_path": "accounts\\etf_only\\plans\\plan_v2_2026-11-05.json",
+    "saved_plan_is_this_run": true,
+    "top_weights": {
+      "FXE": 0.1,
+      "FXY": 0.1,
+      "EMB": 0.053211640725004276,
+      "HYG": 0.053211640725004276,
+      "IEF": 0.053211640725004276
+    }
+  },
+  "scoreboard": {
+    "start": "2026-10-26",
+    "end": "2026-11-05",
+    "days": 9,
+    "sleeves": "qf_only",
+    "last_row": {
+      "qf_value": 988.5234250312661,
+      "qf_return": -0.004227350077296577,
+      "qf_drawdown": 0.01134426652342313
+    }
+  },
+  "orders_sent": 0,
+  "below_equity_floor": false,
+  "equity_floor": 900.0,
+  "saved_plan_mismatch": [],
+  "saved_plan_path": "accounts\\etf_only\\plans\\plan_v2_2026-11-05.json",
+  "report_path": "accounts\\etf_only\\runs\\run_2026-11-05.json"
+}
