@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import spy_window_stats  # noqa: E402
 
 R = [-0.20, -0.05, 0.00, 0.05, 0.30]

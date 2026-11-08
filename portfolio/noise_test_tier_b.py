@@ -168,8 +168,9 @@ def main(argv=None):
     ap.add_argument("--prices", required=True)
     ap.add_argument("--worlds", type=int, default=WORLDS)
     ap.add_argument("--workers", type=int, default=1)
-    ap.add_argument("--folder", default=str(HERE / "noise_test_tier_b"))
+    ap.add_argument("--folder", default=str(HERE / "results" / "noise_test_tier_b"))
     args = ap.parse_args(argv)
+    Path(args.folder).mkdir(parents=True, exist_ok=True)
     summary_path = Path(args.folder) / "summary.csv"
     if summary_path.exists():
         print(f"REFUSED: {summary_path} already exists; a registered run is done once")

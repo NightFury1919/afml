@@ -144,8 +144,9 @@ def main(argv=None):
     ap.add_argument("--prices", required=True)
     ap.add_argument("--n-worlds", type=int, default=N_WORLDS)
     ap.add_argument("--workers", type=int, default=1)
-    ap.add_argument("--folder", default=str(HERE))
+    ap.add_argument("--folder", default=str(HERE / "results"))
     args = ap.parse_args(argv)
+    Path(args.folder).mkdir(parents=True, exist_ok=True)
     out = results_path(args.folder)
     if out.exists():
         print(f"REFUSED: {out.name} already exists; a registered run is done once")

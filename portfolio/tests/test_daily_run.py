@@ -494,7 +494,7 @@ def test_cli_from_alpaca_without_keys_exits_2_and_does_nothing(monkeypatch, tmp_
 
 
 def test_the_module_never_places_orders_and_imports_no_trading_client_at_load():
-    src = (Path(__file__).resolve().parent / "daily_run.py").read_text(encoding="utf-8")
+    src = (Path(__file__).resolve().parent.parent / "daily_run.py").read_text(encoding="utf-8")
     for forbidden in ("MarketOrderRequest", "LimitOrderRequest", "submit_order", "cancel_order", "close_position"):
         assert forbidden not in src
     import importlib

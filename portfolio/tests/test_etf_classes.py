@@ -1,9 +1,11 @@
+from pathlib import Path
+
 from etf_classes import CLASS_OF, CLASS_NAMES, class_sizes, validate_classes
 
 
 def universe_tickers():
     out = []
-    for line in open("universe.txt", encoding="utf-8").read().splitlines():
+    for line in open(Path(__file__).resolve().parent.parent / "universe.txt", encoding="utf-8").read().splitlines():
         t = line.split("#", 1)[0].strip().upper()
         if t:
             out.append(t)

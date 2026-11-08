@@ -209,8 +209,9 @@ def main():
     here = Path(__file__).resolve().parent
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--prices", default=str(here / DEFAULT_PRICES))
-    ap.add_argument("--folder", default=str(here))
+    ap.add_argument("--folder", default=str(here / "results"))
     args = ap.parse_args()
+    Path(args.folder).mkdir(parents=True, exist_ok=True)
     check_not_run(args.folder)                      # fail before the slow part
 
     prices = load_prices(args.prices)

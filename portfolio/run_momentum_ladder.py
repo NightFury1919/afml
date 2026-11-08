@@ -182,8 +182,8 @@ def write_results(out_dir, results, report):
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--prices", help="default: newest prices_daily_asof_*.csv in this folder")
-    ap.add_argument("--prereg", default="preregistration_momentum_ladder.md")
-    ap.add_argument("--out", default="momentum_results")
+    ap.add_argument("--prereg", default="preregistrations/preregistration_momentum_ladder.md")
+    ap.add_argument("--out", default="results/momentum_ladder")
     a = ap.parse_args(argv)
     path = Path(a.prices) if a.prices else newest_price_file()
     sha = sha256_of(path)

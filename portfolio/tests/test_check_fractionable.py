@@ -92,7 +92,7 @@ def test_summary_counts():
 
 
 def test_the_real_universe_file_parses_to_48_ranked_etfs_plus_the_hedge():
-    here = Path(__file__).resolve().parent
+    here = Path(__file__).resolve().parent.parent
     tickers = load_tickers(here / "universe.txt")
     df = check_assets([asset(t) for t in tickers], tickers)
     s = summarize(df)
@@ -110,7 +110,7 @@ def test_run_check_only_asks_for_assets_once_and_returns_the_table():
 
 
 def test_the_module_never_places_orders_and_imports_no_trading_client_at_load():
-    src = (Path(__file__).resolve().parent / "check_fractionable.py").read_text(encoding="utf-8")
+    src = (Path(__file__).resolve().parent.parent / "check_fractionable.py").read_text(encoding="utf-8")
     for forbidden in ("MarketOrderRequest", "LimitOrderRequest", "submit_order", "cancel_order", "close_position"):
         assert forbidden not in src
     import importlib

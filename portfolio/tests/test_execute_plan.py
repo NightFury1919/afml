@@ -529,7 +529,7 @@ def test_cli_rejects_a_negative_or_too_large_tolerance_before_touching_the_accou
 
 # ----------------------------------------------------------------------------------- source guards
 def test_the_module_can_only_reach_the_paper_api_and_never_uses_risky_order_features():
-    src = (Path(__file__).resolve().parent / "execute_plan.py").read_text(encoding="utf-8")
+    src = (Path(__file__).resolve().parent.parent / "execute_plan.py").read_text(encoding="utf-8")
     assert "paper=True" in src and "paper=False" not in src and "paper=" not in src.replace("paper=True", "")
     for forbidden in ("cancel_order", "cancel_orders", "replace_order", "TimeInForce.GTC", "extended_hours", "LimitOrderRequest"):
         assert forbidden not in src

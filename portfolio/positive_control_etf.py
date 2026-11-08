@@ -242,7 +242,8 @@ def main():
                     help="rank, label and plant within each ETF's asset class (etf_classes.CLASS_OF)")
     args = ap.parse_args()
     if args.out is None:
-        args.out = os.path.join(HERE, results_filename(args.demean, args.within_class))
+        args.out = os.path.join(HERE, "results", results_filename(args.demean, args.within_class))
+    os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     groups = None
     if args.within_class:
         from etf_classes import CLASS_OF
