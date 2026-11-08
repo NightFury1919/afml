@@ -26,7 +26,8 @@ if "%APCA_SPY_KEY_ID%"=="" (
 )
 
 rem Account C (AFML2K, shorting) is not here on purpose: it has no short path yet.
-rem ---- account C: AFML_MOM, the momentum account (inert until sleeve_n, sleeve_share and start are set) ----
+
+rem ---- account D: AFML_MOM, the momentum experiment (50 percent top-3 funds, rest SPY; no demonstrated edge) ----
 if "%APCA_MOM_KEY_ID%"=="" (
   echo [%date% %time%] mom: no keys in the environment, skipped >> accounts\momentum\daily_stdout.txt
 ) else (
