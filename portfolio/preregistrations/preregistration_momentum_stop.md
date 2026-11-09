@@ -66,8 +66,7 @@ same code path and dates) and 100% SPY.
 one leg; plus the rebalance trades). Also reported with zero cost. The main result is the 5 basis point run.
 
 **Number of trials:** one new variant (C50s) on this data and signal. The ladder registration already used 8 variants on this
-data, so this is at least the 9th trial; the exact number is to be settled before freezing, counting any other variant registered
-on this data since 2026-10-31. No other stop distance, lookback, holdings count or parking rule will be run under this
+data, so this is the 9th trial (Ethan confirmed 2026-11-08 that no other variant has been registered on this data since 2026-10-31). No other stop distance, lookback, holdings count or parking rule will be run under this
 registration; any other variant needs its own registration and counts as another trial.
 
 ## Account
@@ -122,15 +121,16 @@ The 35-day windows overlap heavily, so their percentages describe the history, n
 - Adjusted closes include dividends. Past 7-week outcomes are a history, not a forecast.
 
 ## Items to settle before freezing
-1. **Defaults chosen by Claude, awaiting Ethan's approval:** barrier factor 1.5 and sqrt(21) scaling; fixed (not trailing) barrier, reset at
-   each rebalance; sell at the next close at its actual price; proceeds to SHY (0% cash before 2002-07-30); no re-entry before the next
-   rebalance; stop on the sleeve funds only; one variant only.
-2. ~~Confirm `get_daily_vol` span and file~~ Done: `span0 = 100`, `ch03\labeling\triple_barrier.py`. Decide: keep the book function as is (recommended) or use a true one-day volatility; see the quirk note under The stop.
-3. ~~Confirm SHY is in the price file~~ Done: first price 2002-07-30.
-4. Settle the trial number (at least 9th on this data).
+1. ~~Defaults~~ Approved by Ethan 2026-11-08: barrier factor 1.5 and sqrt(21) scaling; fixed barrier, reset at each rebalance; sell at the
+   next close at its actual price; proceeds to SHY (0% cash before 2002-07-30); no re-entry before the next rebalance; stop on the
+   sleeve funds only; one variant only.
+2. ~~Volatility function~~ Approved: the book's `get_daily_vol` (`ch03\labeling\triple_barrier.py`, `span0 = 100`) unchanged, quirk and all.
+3. ~~SHY in the price file~~ Done: first price 2002-07-30.
+4. ~~Trial number~~ Settled: 9th.
 5. Recheck the SHA-256 of `prices_daily_asof_2026-10-30.csv` (the runner also checks it).
-6. Boss's answer on whether he meant trend-following with an exit rule (message drafted 2026-11-08, not confirmed sent).
-7. ~~Code~~ Written and tested on made-up prices (30 pass, 1 skipped); rerun the tests on Windows before freezing.
+6. Boss's answer on whether he meant trend-following with an exit rule (message drafted 2026-11-08, not confirmed sent). Not a blocker
+   for freezing; if his answer changes the question, this registration may no longer be the one he wants.
+7. ~~Code~~ Written and tested on made-up prices (32 pass on Ethan's machine, mlfinlab env).
 
 ## Reporting
 C50s, C50 and SPY, both date ranges, with and without costs, and the stop-specific descriptive statistics are reported whether or
