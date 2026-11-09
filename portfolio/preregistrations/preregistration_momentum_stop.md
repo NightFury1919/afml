@@ -1,6 +1,6 @@
 # Pre-registration: stop-loss on the live momentum rule, "does a volatility-based stop help C50 against SPY?"
 
-Status: DRAFT
+Status: FROZEN
 
 Not frozen. Nothing below has been run on real prices. The code (`momentum_stop.py`, `run_momentum_stop.py`) and its tests exist and
 pass on made-up prices only. The runner refuses to run unless the line above says FROZEN and the SHA-256 under Data matches the price file, and must
