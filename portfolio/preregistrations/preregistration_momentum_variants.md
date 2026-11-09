@@ -1,11 +1,11 @@
 # Pre-registration: trend filter and group cap on the live momentum rule, "do either of these help C50 against SPY?"
 
-Status: DRAFT
+Status: FROZEN
 
 Not frozen. Nothing below has been run on real prices. The code (`momentum_variants.py`, `run_momentum_variants.py`) and its tests
 exist and pass on made-up prices only. The runner refuses to run unless the line above says FROZEN, the SHA-256 under Data matches
 the price file, the Groups file SHA-256 matches the group table, and no results exist yet (it runs once). Freeze means: change
-`Status: DRAFT` to `Status: FROZEN`, commit and push this file and the group table, and only then run. Never chain the run after the
+`Status: FROZEN` to `Status: FROZEN`, commit and push this file and the group table, and only then run. Never chain the run after the
 commit in the same command block. After freezing, the rules, the variants, the group table and the price file are fixed; any
 change needs a new registration and counts as another trial.
 
