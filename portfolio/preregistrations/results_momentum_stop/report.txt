@@ -1,0 +1,37 @@
+Stop-loss check on the momentum rule (C50s vs C50 vs SPY)
+
+== main_cost, range full ==
+C50s  ann   9.81%  vol 18.54%  worst fall -51.77%  worst 35d -30.54%  touch-10%  10.1%  touch-50%   0.0%
+C50   ann  10.06%  vol 18.94%  worst fall -51.53%  worst 35d -30.54%  touch-10%  10.3%  touch-50%   0.0%
+SPY   ann   9.42%  vol 18.93%  worst fall -55.19%  worst 35d -33.51%  touch-10%   8.6%  touch-50%   0.0%
+C50s_minus_SPY: +0.24 pts/yr, 90% interval -2.70 to +3.36 (303 periods)
+C50s_minus_C50: -0.29 pts/yr, 90% interval -0.88 to +0.33 (303 periods)
+
+== main_cost, range since ==
+C50s  ann  14.05%  vol 18.54%  worst fall -26.02%  worst 35d -22.44%  touch-10%   6.7%  touch-50%   0.0%
+C50   ann  13.97%  vol 19.20%  worst fall -31.97%  worst 35d -28.68%  touch-10%   6.9%  touch-50%   0.0%
+SPY   ann  14.87%  vol 17.67%  worst fall -33.72%  worst 35d -30.30%  touch-10%   6.5%  touch-50%   0.0%
+C50s_minus_SPY: -0.68 pts/yr, 90% interval -4.92 to +5.12 (129 periods)
+C50s_minus_C50: +0.05 pts/yr, 90% interval -1.08 to +1.61 (129 periods)
+
+stops (main_cost): 35 stops, 22/304 periods with one, 2 superseded by a rebalance; rebound: {'n_stops': 35, 'n_measured': 35, 'share_higher': 0.6, 'avg_change': 0.024313782231850833}
+turnover stop 113.85 vs base 106.40; cost paid 0.1870 (of which stop legs 0.0156)
+
+== zero_cost, range full ==
+C50s  ann  10.08%  vol 18.54%  worst fall -51.62%  worst 35d -30.53%  touch-10%  10.1%  touch-50%   0.0%
+C50   ann  10.29%  vol 18.94%  worst fall -51.38%  worst 35d -30.53%  touch-10%  10.2%  touch-50%   0.0%
+SPY   ann   9.42%  vol 18.93%  worst fall -55.19%  worst 35d -33.51%  touch-10%   8.6%  touch-50%   0.0%
+C50s_minus_SPY: +0.49 pts/yr, 90% interval -2.44 to +3.59 (303 periods)
+C50s_minus_C50: -0.25 pts/yr, 90% interval -0.85 to +0.36 (303 periods)
+
+== zero_cost, range since ==
+C50s  ann  14.34%  vol 18.54%  worst fall -25.94%  worst 35d -22.33%  touch-10%   6.7%  touch-50%   0.0%
+C50   ann  14.21%  vol 19.20%  worst fall -31.97%  worst 35d -28.66%  touch-10%   6.8%  touch-50%   0.0%
+SPY   ann  14.87%  vol 17.67%  worst fall -33.72%  worst 35d -30.30%  touch-10%   6.5%  touch-50%   0.0%
+C50s_minus_SPY: -0.43 pts/yr, 90% interval -4.66 to +5.38 (129 periods)
+C50s_minus_C50: +0.09 pts/yr, 90% interval -1.04 to +1.66 (129 periods)
+
+stops (zero_cost): 35 stops, 22/304 periods with one, 2 superseded by a rebalance; rebound: {'n_stops': 35, 'n_measured': 35, 'share_higher': 0.6, 'avg_change': 0.024313782231850833}
+turnover stop 113.86 vs base 106.40; cost paid 0.0000 (of which stop legs 0.0000)
+
+verdict: {'risk_eligible': True, 'beats_spy': False, 'stop_adds_value': False, 'recommended_for_live_trial': False}

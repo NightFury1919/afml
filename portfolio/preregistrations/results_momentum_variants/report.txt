@@ -1,0 +1,48 @@
+Trend filter and group cap on the momentum rule (trial 10 = trend, trial 11 = cap)
+
+== main_cost, range full ==
+trend ann  10.46%  vol 17.08%  worst fall -41.36%  worst 35d -26.53%  touch-10%   7.1%  touch-50%   0.0%
+cap   ann   9.77%  vol 17.83%  worst fall -50.02%  worst 35d -26.90%  touch-10%   8.8%  touch-50%   0.0%
+C50   ann  10.06%  vol 18.94%  worst fall -51.53%  worst 35d -30.54%  touch-10%  10.3%  touch-50%   0.0%
+SPY   ann   9.42%  vol 18.93%  worst fall -55.19%  worst 35d -33.51%  touch-10%   8.6%  touch-50%   0.0%
+trend_minus_SPY: +0.66 pts/yr, 90% interval -2.30 to +3.86 (303 periods)
+trend_minus_C50: +0.13 pts/yr, 90% interval -1.13 to +1.61 (303 periods)
+cap_minus_SPY: +0.20 pts/yr, 90% interval -2.49 to +3.06 (303 periods)
+cap_minus_C50: -0.33 pts/yr, 90% interval -1.73 to +1.19 (303 periods)
+
+== main_cost, range since ==
+trend ann  13.66%  vol 17.36%  worst fall -29.59%  worst 35d -26.53%  touch-10%   4.5%  touch-50%   0.0%
+cap   ann  12.96%  vol 17.40%  worst fall -30.03%  worst 35d -26.90%  touch-10%   4.2%  touch-50%   0.0%
+C50   ann  13.97%  vol 19.20%  worst fall -31.97%  worst 35d -28.68%  touch-10%   6.9%  touch-50%   0.0%
+SPY   ann  14.87%  vol 17.67%  worst fall -33.72%  worst 35d -30.30%  touch-10%   6.5%  touch-50%   0.0%
+trend_minus_SPY: -1.15 pts/yr, 90% interval -5.89 to +4.06 (129 periods)
+trend_minus_C50: -0.41 pts/yr, 90% interval -2.32 to +0.53 (129 periods)
+cap_minus_SPY: -1.81 pts/yr, 90% interval -5.54 to +2.93 (129 periods)
+cap_minus_C50: -1.07 pts/yr, 90% interval -3.97 to +1.21 (129 periods)
+
+descriptive (main_cost): {'rebalances': 304, 'trend': {'rebalances_with_a_parked_pick': 73, 'picks_parked': 120, 'turnover': 117.71587129665718}, 'cap': {'rebalances_where_cap_changed_picks': 241, 'turnover': 103.38226963969478}, 'C50': {'turnover': 106.39631385647627}}
+
+== zero_cost, range full ==
+trend ann  10.72%  vol 17.07%  worst fall -41.17%  worst 35d -26.47%  touch-10%   7.1%  touch-50%   0.0%
+cap   ann   9.99%  vol 17.83%  worst fall -49.88%  worst 35d -26.89%  touch-10%   8.8%  touch-50%   0.0%
+C50   ann  10.29%  vol 18.94%  worst fall -51.38%  worst 35d -30.53%  touch-10%  10.2%  touch-50%   0.0%
+SPY   ann   9.42%  vol 18.93%  worst fall -55.19%  worst 35d -33.51%  touch-10%   8.6%  touch-50%   0.0%
+trend_minus_SPY: +0.89 pts/yr, 90% interval -2.06 to +4.09 (303 periods)
+trend_minus_C50: +0.15 pts/yr, 90% interval -1.11 to +1.63 (303 periods)
+cap_minus_SPY: +0.40 pts/yr, 90% interval -2.28 to +3.26 (303 periods)
+cap_minus_C50: -0.34 pts/yr, 90% interval -1.74 to +1.18 (303 periods)
+
+== zero_cost, range since ==
+trend ann  13.93%  vol 17.35%  worst fall -29.56%  worst 35d -26.47%  touch-10%   4.5%  touch-50%   0.0%
+cap   ann  13.21%  vol 17.40%  worst fall -30.02%  worst 35d -26.89%  touch-10%   4.2%  touch-50%   0.0%
+C50   ann  14.21%  vol 19.20%  worst fall -31.97%  worst 35d -28.66%  touch-10%   6.8%  touch-50%   0.0%
+SPY   ann  14.87%  vol 17.67%  worst fall -33.72%  worst 35d -30.30%  touch-10%   6.5%  touch-50%   0.0%
+trend_minus_SPY: -0.91 pts/yr, 90% interval -5.64 to +4.30 (129 periods)
+trend_minus_C50: -0.39 pts/yr, 90% interval -2.28 to +0.54 (129 periods)
+cap_minus_SPY: -1.58 pts/yr, 90% interval -5.32 to +3.16 (129 periods)
+cap_minus_C50: -1.06 pts/yr, 90% interval -3.95 to +1.23 (129 periods)
+
+descriptive (zero_cost): {'rebalances': 304, 'trend': {'rebalances_with_a_parked_pick': 73, 'picks_parked': 120, 'turnover': 117.71587129665718}, 'cap': {'rebalances_where_cap_changed_picks': 241, 'turnover': 103.38226963969478}, 'C50': {'turnover': 106.39631385647627}}
+
+verdict: {'trend': {'risk_eligible': True, 'beats_spy': False, 'adds_value_over_C50': False, 'recommended_for_live_trial': False}, 'cap': {'risk_eligible': True, 'beats_spy': False, 'adds_value_over_C50': False, 'recommended_for_live_trial': False}}
+Two variants were tested; a pass by one of them alone is weaker than the same pass in a single test.

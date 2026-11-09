@@ -176,3 +176,10 @@ def simulate_variant(prices, spy, mode, group_map=None, n=SLEEVE_N, sleeve_share
 # tests/test_run_momentum_variants.py::test_compare_hand_checked_mean_times_twelve PASSED
 # tests/test_run_momentum_variants.py::test_cut_rebases_to_one PASSED
 # ============================== 28 passed in 0.77s ==============================
+
+# ---- RESULT of the frozen run, 2026-11-08 (pre-registration commit 0cc6b36) ----
+# Verdict: neither variant passes. Both risk-eligible, neither beats SPY, neither adds value over C50. Trials 10 (trend) and 11 (cap), 11 on this data.
+# Full history, 5 bps: trend 10.46%/yr, cap 9.77%, C50 10.06%, SPY 9.42%. Worst fall: trend -41.4%, cap -50.0%, C50 -51.5%, SPY -55.2%.
+# trend minus SPY +0.66 pts (90% -2.30 to +3.86); trend minus C50 +0.13 (-1.13 to +1.61). cap minus SPY +0.20 (-2.49 to +3.06); cap minus C50 -0.33 (-1.73 to +1.19).
+# Since 2016: trend 13.66%, cap 12.96%, C50 13.97%, SPY 14.87%. Trend parked a pick in 73 of 304 rebalances; cap changed picks in 241 of 304.
+# Not retuned. Full report: portfolio/preregistrations/results_momentum_variants/report.txt

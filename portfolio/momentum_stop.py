@@ -272,3 +272,10 @@ def periods_with_stop(stops, trade_dates, end_date):
 # tests/test_run_momentum_stop.py::test_compare_hand_checked_mean_times_twelve PASSED
 # tests/test_run_momentum_stop.py::test_cut_rebases_to_one PASSED
 # ============================== 32 passed in 0.74s ==============================
+
+# ---- RESULT of the frozen run, 2026-11-08 (pre-registration commit 8cf1641) ----
+# Verdict: risk-eligible YES, beats SPY NO, stop adds value NO, recommended for live trial NO. 9th trial on this data.
+# Full history, 5 bps: C50s 9.81%/yr, C50 10.06%, SPY 9.42%. C50s minus SPY +0.24 pts (90% -2.70 to +3.36); C50s minus C50 -0.29 pts (-0.88 to +0.33).
+# Since 2016: C50s 14.05%, C50 13.97%, SPY 14.87%. Worst fall -26.0% vs -32.0% (C50), not a significant gap.
+# 35 stops in 22 of 304 periods; 60% of stopped funds were higher 21 days later (avg +2.4%). Stop legs cost 0.0156 of 0.187 total cost.
+# Not retuned. Full report: portfolio/preregistrations/results_momentum_stop/report.txt
