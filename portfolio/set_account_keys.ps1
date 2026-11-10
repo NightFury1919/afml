@@ -3,8 +3,9 @@
 #     .\set_account_keys.ps1 etf        # AFML_Ethan   -> APCA_ETF_*   (also the old APCA_API_* defaults)
 #     .\set_account_keys.ps1 spy        # AFML SPY     -> APCA_SPY_*
 #     .\set_account_keys.ps1 short      # AFML2K       -> APCA_SHORT_*
+#     .\set_account_keys.ps1 stock      # stock momentum paper account -> APCA_STOCK_*
 # It asks for the key id, then the secret (hidden). Nothing is printed or saved to command history.
-param([Parameter(Mandatory)][ValidateSet('etf', 'spy', 'short', 'mom')][string]$Name)
+param([Parameter(Mandatory)][ValidateSet('etf', 'spy', 'short', 'mom', 'stock')][string]$Name)
 
 $prefix = "APCA_$($Name.ToUpper())"
 $id = (Read-Host "Key id for '$Name' (starts with PK)").Trim()

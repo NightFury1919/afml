@@ -87,7 +87,8 @@ def plan_mismatch(saved_path, cfg):
 
 
 # ---------- the run ----------
-def run_momentum_daily(folder, plans_dir, runs_dir, config, today, holdings=None, equity=None, config_found=True):
+def run_momentum_daily(folder, plans_dir, runs_dir, config, today, holdings=None, equity=None, config_found=True,
+                       health_fn=health_check, title="Momentum account", strategy="momentum_ladder"):
     """Run the steps and save the report. Returns the report dict (it also has report_path). Sends no orders."""
     config_equity = float(config["equity"])
     equity_floor = check_equity_floor(config.get("equity_floor", DEFAULTS["equity_floor"]))
@@ -111,7 +112,7 @@ def run_momentum_daily(folder, plans_dir, runs_dir, config, today, holdings=None
         try:
             snapshot = latest_snapshot(folder)
             prices = load_prices(snapshot)
-            health = health_check(prices, today)
+            health = health_fn(prices, today)
         except FileNotFoundError:
             health = [dict(level="error", code="no_data", ticker=None,
                            message="no prices_daily_asof_YYYY-MM-DD.csv snapshot found")]
@@ -134,7 +135,7 @@ def run_momentum_daily(folder, plans_dir, runs_dir, config, today, holdings=None
         status = "ok"
         plan = make_momentum_plan(prices, holdings, equity, n=config["sleeve_n"], sleeve_share=config["sleeve_share"],
                                   start=config["start"], every=config["every"], min_notional=config["min_notional"],
-                                  today=today)
+                                  today=today, strategy=strategy)
         warnings += plan["warnings"]
         try:
             path = write_plan(plan, plans_dir)
@@ -157,7 +158,7 @@ def run_momentum_daily(folder, plans_dir, runs_dir, config, today, holdings=None
     report = dict(status=status, run_date=today.date().isoformat(), as_of=as_of,
                   snapshot=snapshot.name if snapshot else None, config=config, config_problems=problems,
                   steps=steps, health=health, warnings=warnings, plan=plan_summary, orders_sent=0,
-                  below_equity_floor=below_floor, equity_floor=equity_floor, saved_plan_mismatch=mismatch)
+                  below_equity_floor=below_floor, equity_floor=equity_floor, saved_plan_mismatch=mismatch, title=title)
     stem = as_of or f"nodata_{today.date().isoformat()}"
     path = _report_path(runs_dir, stem)
     report["report_path"] = str(path)
@@ -168,7 +169,7 @@ def run_momentum_daily(folder, plans_dir, runs_dir, config, today, holdings=None
 
 
 def render_report(r):
-    lines = [f"# Momentum account: daily run {r['run_date']}  (prices as of {r['as_of']})", "",
+    lines = [f"# {r.get('title', 'Momentum account')}: daily run {r['run_date']}  (prices as of {r['as_of']})", "",
              f"Status: {r['status'].upper()}.  No orders were sent: this run only plans and records.", ""]
     if r["status"] == "not_configured":
         lines += ["**Not configured yet:** " + "; ".join(r["config_problems"]) + ". No plan is made until these are set.", ""]

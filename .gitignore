@@ -60,3 +60,4 @@ portfolio/stock_data/
 portfolio/sp_500_historical_components.csv
 portfolio/prices_daily.csv
 portfolio/prices_summary.csv
+portfolio/stock_live/

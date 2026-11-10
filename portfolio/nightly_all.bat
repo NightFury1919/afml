@@ -7,14 +7,14 @@ set PY=C:\Users\earob\miniconda3\envs\mlfinlab\python.exe
 cd /d C:\ws\AFML\portfolio
 "%PY%" nightly_run.py >> shadow\nightly_stdout.txt 2>&1
 
-rem ---- account A: AFML_Ethan, the ETF-only account ----
-if "%APCA_ETF_KEY_ID%"=="" (
-  echo [%date% %time%] etf: no keys in the environment, skipped >> accounts\etf_only\daily_stdout.txt
-) else (
-  set "APCA_API_KEY_ID=%APCA_ETF_KEY_ID%"
-  set "APCA_API_SECRET_KEY=%APCA_ETF_SECRET%"
-  "%PY%" daily_run.py --no-update --from-alpaca --config accounts\etf_only\run_config.json --plans-dir accounts\etf_only\plans --runs-dir accounts\etf_only\runs >> accounts\etf_only\daily_stdout.txt 2>&1
-)
+rem ---- account A: AFML_Ethan, the ETF-only account: RETIRED 2026-11-09 (risk strategy dropped; folder archived in archive\accounts_retired) ----
+rem if "%APCA_ETF_KEY_ID%"=="" (
+rem   echo [%date% %time%] etf: no keys in the environment, skipped >> accounts\etf_only\daily_stdout.txt
+rem ) else (
+rem   set "APCA_API_KEY_ID=%APCA_ETF_KEY_ID%"
+rem   set "APCA_API_SECRET_KEY=%APCA_ETF_SECRET%"
+rem   "%PY%" daily_run.py --no-update --from-alpaca --config accounts\etf_only\run_config.json --plans-dir accounts\etf_only\plans --runs-dir accounts\etf_only\runs >> accounts\etf_only\daily_stdout.txt 2>&1
+rem )
 
 rem ---- account B: AFML SPY, the SPY-only baseline ----
 if "%APCA_SPY_KEY_ID%"=="" (
@@ -34,4 +34,15 @@ if "%APCA_MOM_KEY_ID%"=="" (
   set "APCA_API_KEY_ID=%APCA_MOM_KEY_ID%"
   set "APCA_API_SECRET_KEY=%APCA_MOM_SECRET%"
   "%PY%" momentum_daily.py --no-update --from-alpaca --config accounts\momentum\run_config.json --plans-dir accounts\momentum\plans --runs-dir accounts\momentum\runs >> accounts\momentum\daily_stdout.txt 2>&1
+)
+
+rem ---- stock momentum account: top 3 current S&P 500 stocks by the momentum rule, 50 percent, rest SPY (no demonstrated edge) ----
+if not exist accounts\stock mkdir accounts\stock
+"%PY%" stock_update.py >> accounts\stock\daily_stdout.txt 2>&1
+if "%APCA_STOCK_KEY_ID%"=="" (
+  echo [%date% %time%] stock: no keys in the environment, skipped >> accounts\stock\daily_stdout.txt
+) else (
+  set "APCA_API_KEY_ID=%APCA_STOCK_KEY_ID%"
+  set "APCA_API_SECRET_KEY=%APCA_STOCK_SECRET%"
+  "%PY%" stock_momentum_daily.py --no-update --from-alpaca --config accounts\stock\run_config.json --plans-dir accounts\stock\plans --runs-dir accounts\stock\runs >> accounts\stock\daily_stdout.txt 2>&1
 )

@@ -8,6 +8,7 @@ Plain English:
     all of its guardrails (equity floor, order ledger, sells before buys). That script does the trading, not this one.
   * The signal code is the tested code in momentum_ladder.py, so the live account follows the same rule as the
     historical test.
+  * The same code ranks stocks when the price panel holds stocks (stock_momentum_daily.py passes strategy="stock_momentum").
 
 Trading note: the plan is made after the close on the signal day and executed the next morning, close to the test's
 "trade at the next close" timing, but at the next open: a small difference the test does not capture.
@@ -61,7 +62,7 @@ def next_signal_date(index, start, every=ml.REBALANCE_EVERY):
 
 
 def make_momentum_plan(prices, holdings, equity, n, sleeve_share, start, every=ml.REBALANCE_EVERY,
-                       min_notional=1.0, today=None, max_stale_days=5):
+                       min_notional=1.0, today=None, max_stale_days=5, strategy="momentum_ladder"):
     """The plan as a plain dict in the layout execute_plan.py reads. Sends nothing."""
     if not equity > 0:
         raise ValueError("equity must be positive")
@@ -85,7 +86,7 @@ def make_momentum_plan(prices, holdings, equity, n, sleeve_share, start, every=m
         warnings.append(f"price data is {age} days old (last date {last.date()})")
     return dict(version=2, as_of=last.date().isoformat(), rebalance_day=signal,
                 next_signal=str(next_signal_date(prices.index, start, every).date()),
-                protocol=dict(strategy="momentum_ladder", sleeve_n=n, sleeve_share=sleeve_share, every=every,
+                protocol=dict(strategy=strategy, sleeve_n=n, sleeve_share=sleeve_share, every=every,
                               lookback=ml.LOOKBACK, skip=ml.SKIP, start=str(pd.Timestamp(start).date()),
                               mode="fractional", min_notional=min_notional),
                 spy_dollars=float(equity * (1.0 - sleeve_share)), qf_dollars=float(equity * sleeve_share),
