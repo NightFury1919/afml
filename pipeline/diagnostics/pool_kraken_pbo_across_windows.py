@@ -56,7 +56,10 @@ NULL_STD_PBO = 0.2051176032389558
 # actually landed, not next to this script in pipeline\diagnostics\.
 # The first version of this pattern used HERE (this file's own
 # directory) and found nothing as a result.
-DEFAULT_PATTERN = 'kraken_target_bars_calibration_window*.csv'
+# *** MOVED (2026-11-10): the window CSVs now live in one results folder, so the
+# default no longer depends on the working directory. Pass a pattern to override. ***
+RESULTS_DIR = os.path.join(HERE, 'results', 'kraken_calibration')
+DEFAULT_PATTERN = os.path.join(RESULTS_DIR, 'kraken_target_bars_calibration_window*.csv')
 
 
 def main():

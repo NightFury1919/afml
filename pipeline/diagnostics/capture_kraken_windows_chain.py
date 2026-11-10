@@ -212,7 +212,8 @@ def main():
         print('\nNext: run the target_bars sweep on each new window, e.g.:')
         for label, (snapshot_dir, *_rest) in results.items():
             print(f'  python pipeline\\diagnostics\\calibrate_kraken_target_bars.py '
-                  f'{snapshot_dir} kraken_target_bars_calibration_{label}.csv')
+                  f'{snapshot_dir} pipeline\\diagnostics\\results\\kraken_calibration\\'
+                  f'kraken_target_bars_calibration_{label}.csv')
 
 
 if __name__ == '__main__':

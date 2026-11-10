@@ -60,11 +60,16 @@ import pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
+# The Kraken/Binance sweep CSVs live in one results folder, so this script finds them
+# from any working directory (moved there from the repo root on 2026-11-10).
+RESULTS_DIR = os.path.join(HERE, 'results', 'kraken_calibration')
+
 # Explicit list, not a fragile glob (a broad glob once swept in an unrelated
-# leftover file). Resolved relative to CWD (the repo root), as before.
-DEFAULT_CSVS = [f'kraken_target_bars_calibration_window{i}.csv' for i in range(1, 9)] + [
-    'kraken_target_bars_calibration_binance.csv',
-    'kraken_target_bars_calibration_pooled.csv',
+# leftover file). Resolved inside RESULTS_DIR.
+DEFAULT_CSVS = [os.path.join(RESULTS_DIR, f'kraken_target_bars_calibration_window{i}.csv')
+                for i in range(1, 9)] + [
+    os.path.join(RESULTS_DIR, 'kraken_target_bars_calibration_binance.csv'),
+    os.path.join(RESULTS_DIR, 'kraken_target_bars_calibration_pooled.csv'),
 ]
 DEFAULT_BUDGET = 0.03
 N_SIGMA_LEGACY = 2.0
@@ -91,7 +96,7 @@ def load_null_draws(csv_names, verbose=True):
         df = df.assign(source=os.path.basename(name))
         frames.append(df[['dsr', 'pbo', 'source']])
         if verbose:
-            print(f'  Loaded {len(df)} real (dsr, pbo) rows from {name}')
+            print(f'  Loaded {len(df)} real (dsr, pbo) rows from {os.path.basename(name)}')
     if not frames:
         raise SystemExit('No real (dsr, pbo) data found -- run the sweeps first.')
     pooled = pd.concat(frames, ignore_index=True)

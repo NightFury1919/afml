@@ -183,7 +183,8 @@ def main():
           f'{total_days / 30:.1f}x a single window\'s value to keep bar '
           'granularity (bars/day) comparable, e.g.:')
     print(f'  python pipeline\\diagnostics\\calibrate_kraken_target_bars.py '
-          f'{args.output} kraken_target_bars_calibration_pooled.csv '
+          f'{args.output} pipeline\\diagnostics\\results\\kraken_calibration\\'
+          f'kraken_target_bars_calibration_pooled.csv '
           f'--target-bars=8000,16000,24000,32000,40000')
 
 

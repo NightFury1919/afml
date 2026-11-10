@@ -118,9 +118,34 @@ def test_legacy_sigma_mode_reproduces_old_rule(tmp_path, monkeypatch):
     assert r['boot_q05_q50_q95'] is None
 
 
+def test_default_sweep_csvs_are_found_from_any_working_directory(tmp_path, monkeypatch):
+    # The Kraken/Binance sweep CSVs moved from the repo root into results/kraken_calibration/
+    # (2026-11-10). The defaults must not depend on the current folder. Real tracked data.
+    monkeypatch.chdir(tmp_path)
+    assert all(os.path.isabs(f) and f.startswith(cal.RESULTS_DIR) for f in cal.DEFAULT_CSVS)
+    assert all(os.path.exists(f) for f in cal.DEFAULT_CSVS)
+    d = cal.load_null_draws(cal.DEFAULT_CSVS, verbose=False)
+    assert len(d) == 50 and d['source'].nunique() == 10           # windows 1-8, binance, pooled x 5 rows
+
+
+def test_pool_script_default_pattern_finds_all_20_windows_from_any_directory(tmp_path, monkeypatch):
+    import glob
+    monkeypatch.chdir(tmp_path)
+    spec_p = importlib.util.spec_from_file_location(
+        'pool_kraken_pbo_across_windows', os.path.join(HERE, 'pool_kraken_pbo_across_windows.py'))
+    pool = importlib.util.module_from_spec(spec_p)
+    spec_p.loader.exec_module(pool)
+    assert os.path.dirname(pool.DEFAULT_PATTERN) == cal.RESULTS_DIR
+    assert len(glob.glob(pool.DEFAULT_PATTERN)) == 20
+
+
 # =============================================================================
 # TDD RESULTS (synthetic + tmp_path data; mlfinlab env, Python 3.10.20, pytest 9.0.3)
 # 11 passed in 6.48s  (run 2026-09-19)
+# 13 passed in 4.33s  (run 2026-11-10, sandbox Python 3.11, numpy 1.23.5, pandas 1.5.3, scipy 1.10.1; re-run on Windows)
+#   2026-11-10: sweep CSVs moved from the repo root to results/kraken_calibration/; two tests added.
+#   Both new tests FAIL on the pre-move scripts (no RESULTS_DIR) and pass after. Output of
+#   pool_kraken_pbo_across_windows.py and calibrate_confidence_threshold.py is byte-identical before and after.
 # =============================================================================
 # test_exposure_scalar_known_values PASSED
 # test_expected_null_exposure_hand_computed PASSED
@@ -133,3 +158,5 @@ def test_legacy_sigma_mode_reproduces_old_rule(tmp_path, monkeypatch):
 # test_load_null_draws_dedupes_skips_and_computes_confidence PASSED
 # test_calibrate_end_to_end_writes_consistent_files PASSED
 # test_legacy_sigma_mode_reproduces_old_rule PASSED
+# test_default_sweep_csvs_are_found_from_any_working_directory PASSED
+# test_pool_script_default_pattern_finds_all_20_windows_from_any_directory PASSED
