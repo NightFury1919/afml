@@ -1,0 +1,58 @@
+{
+  "status": "ok",
+  "run_date": "2026-11-12",
+  "as_of": "2026-11-10",
+  "snapshot": "prices_daily_asof_2026-11-10.csv",
+  "config": {
+    "sleeve_n": 3,
+    "sleeve_share": 0.5,
+    "every": 21,
+    "start": "2026-11-02",
+    "equity": 1000.0,
+    "equity_floor": 500.0,
+    "min_notional": 1.0
+  },
+  "config_problems": [],
+  "steps": [
+    {
+      "name": "health_check",
+      "status": "ok",
+      "detail": "0 error(s), 1 warning(s)"
+    },
+    {
+      "name": "plan",
+      "status": "skipped",
+      "detail": "plan already exists for 2026-11-10; it was not overwritten"
+    }
+  ],
+  "health": [
+    {
+      "level": "warn",
+      "code": "stale_data",
+      "ticker": null,
+      "message": "last price date 2026-11-10 is 2 business days behind"
+    }
+  ],
+  "warnings": [],
+  "plan": {
+    "equity": 987.6,
+    "rebalance_day": false,
+    "next_signal": "2026-12-01",
+    "n_orders": 0,
+    "cash_after": 0.03,
+    "plan_path": "accounts\\momentum\\plans\\plan_v2_2026-11-10.json",
+    "saved_plan_is_this_run": false,
+    "top_weights": {
+      "SPY": 0.5087302997164844,
+      "EWT": 0.16836119380315917,
+      "XBI": 0.16502044349939246,
+      "EWY": 0.15785949473471042
+    }
+  },
+  "orders_sent": 0,
+  "below_equity_floor": false,
+  "equity_floor": 500.0,
+  "saved_plan_mismatch": [],
+  "title": "Momentum account",
+  "report_path": "accounts\\momentum\\runs\\run_2026-11-10_r3.json"
+}
