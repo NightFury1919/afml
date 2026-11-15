@@ -61,3 +61,8 @@ portfolio/sp_500_historical_components.csv
 portfolio/prices_daily.csv
 portfolio/prices_summary.csv
 portfolio/stock_live/
+
+# kept local on purpose (retired account files, sample outputs)
+archive/accounts_retired/
+example_historical_replay.md
+example_live_short_sample.md

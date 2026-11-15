@@ -92,7 +92,7 @@ if (Test-Path "accounts\spy_only\run_config.json") { Get-Content "accounts\spy_o
 Wait-Step $PauseLong
 
 # ---- 3. Nightly job ----
-Show-Caption "2. The nightly job (9:30 PM, Windows Task Scheduler)" `
+Show-Caption "2. The nightly job (8:30 PM, Windows Task Scheduler)" `
              "Updates prices, scores the shadow model, writes the daily plan. It never places orders."
 if (Test-Path "nightly_all.bat") { Get-Content "nightly_all.bat" } else { Write-Host "(nightly_all.bat not found)" }
 Wait-Step $PauseLong
