@@ -219,6 +219,8 @@ def default_update(folder, universe=None):
     notes = []
     if rep["rescaled"]:
         notes.append(f"re-adjusted {', '.join(sorted(rep['rescaled']))}")
+    for t, (d, before, after) in sorted(rep["stepped"].items()):
+        notes.append(f"{t}: dividend booked late, restated before {d.date()} (factor {before:.6f})")
     if rep["stale"]:
         notes.append(f"no new price for {', '.join(rep['stale'])}")
     try:

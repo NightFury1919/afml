@@ -20,6 +20,12 @@ Why the overlap matters
     keeps every return unchanged. If the factor is not constant, or is implausibly large
     (more than 50%), the script stops and tells you which ticker, instead of guessing.
 
+    One exception: Yahoo can restate a dividend a few days late. Then the saved snapshot already
+    holds the ex-dividend day, so the overlap shows ONE step in the ratio, at that day: older days
+    differ by the dividend, newer days match exactly. That single, upward, small step is accepted:
+    days before the step are multiplied by the earlier ratio, days from the step on by the later
+    one. Two or more steps, a step downward, or one larger than 5% are still rejected.
+
 Research use only, like pull_prices.py: yfinance reads Yahoo's unofficial endpoints.
 """
 import argparse
@@ -36,6 +42,29 @@ NEW_YORK = "America/New_York"
 SETTLED_HOUR = 17          # a US daily bar is treated as final from 17:00 New York time
 DEFAULT_TOL = 1e-4         # ratios within 0.01% of 1, and a ratio spread below it, count as equal
 DEFAULT_MAX_RESCALE = 0.5  # a restatement above 50% is treated as bad data
+DEFAULT_MAX_STEP = 0.05    # a late-booked dividend moves the ratio by at most 5% (ETF payouts are far smaller)
+
+
+def find_dividend_step(ratio, tol=DEFAULT_TOL, max_step=DEFAULT_MAX_STEP):
+    """If `ratio` (fresh / old, by date) is flat, then jumps UP once, and is flat again, return
+    (step_date, before, after). Otherwise return None.
+
+    A dividend lowers every price before its ex-date, so the ratio before the step must be smaller.
+    """
+    if len(ratio) < 2:
+        return None
+    jumps = np.flatnonzero(np.abs(ratio.iloc[1:].values / ratio.iloc[:-1].values - 1.0) > tol) + 1
+    if len(jumps) != 1:
+        return None
+    k = int(jumps[0])
+    first, second = ratio.iloc[:k], ratio.iloc[k:]
+    for seg in (first, second):
+        if (seg.max() - seg.min()) / seg.median() > tol:
+            return None
+    before, after = float(first.median()), float(second.median())
+    if not (before < after) or after / before - 1.0 > max_step:
+        return None
+    return ratio.index[k], before, after
 
 
 def drop_incomplete_today(fresh, now=None):
@@ -47,11 +76,13 @@ def drop_incomplete_today(fresh, now=None):
     return fresh[fresh.index < pd.Timestamp(ny.date())]
 
 
-def reconcile_and_append(existing, fresh, tol=DEFAULT_TOL, max_rescale=DEFAULT_MAX_RESCALE):
+def reconcile_and_append(existing, fresh, tol=DEFAULT_TOL, max_rescale=DEFAULT_MAX_RESCALE,
+                         max_step=DEFAULT_MAX_STEP):
     """Return (merged, report). See the module docstring for the rules.
 
     report: rescaled {ticker: factor}, new_dates [Timestamp], stale [ticker], ignored [ticker],
-            unchecked [ticker] (no overlapping prices, so the adjustment could not be compared).
+            unchecked [ticker] (no overlapping prices, so the adjustment could not be compared),
+            stepped {ticker: (step_date, factor_before, factor_after)} for late-booked dividends.
     """
     ignored = sorted(set(fresh.columns) - set(existing.columns))
     fresh = fresh[[c for c in existing.columns if c in fresh.columns]]
@@ -64,7 +95,7 @@ def reconcile_and_append(existing, fresh, tol=DEFAULT_TOL, max_rescale=DEFAULT_M
                          "cannot be checked; pull a longer window")
 
     merged_old = existing.copy()
-    rescaled, unchecked = {}, []
+    rescaled, unchecked, stepped = {}, [], {}
     for t in fresh.columns:
         both = pd.concat([existing.loc[overlap, t], fresh.loc[overlap, t]], axis=1).dropna()
         if both.empty:
@@ -73,8 +104,19 @@ def reconcile_and_append(existing, fresh, tol=DEFAULT_TOL, max_rescale=DEFAULT_M
         ratio = both.iloc[:, 1] / both.iloc[:, 0]
         spread = (ratio.max() - ratio.min()) / ratio.median()
         if spread > tol:
-            raise ValueError(f"{t}: old and fresh prices differ by a changing factor over the "
-                             f"overlap (spread {spread:.2e}); the data disagree, not just re-adjusted")
+            step = find_dividend_step(ratio, tol, max_step)
+            if step is None:
+                raise ValueError(f"{t}: old and fresh prices differ by a changing factor over the "
+                                 f"overlap (spread {spread:.2e}); the data disagree, not just re-adjusted")
+            step_date, before, after = step
+            if abs(before - 1.0) > max_rescale or abs(after - 1.0) > max_rescale:
+                raise ValueError(f"{t}: restatement factor {before:.4f} / {after:.4f} is implausibly large")
+            factors = pd.Series(before, index=existing.index)
+            factors[existing.index >= step_date] = after
+            merged_old[t] = existing[t] * factors
+            rescaled[t] = before
+            stepped[t] = (step_date, before, after)
+            continue
         factor = float(ratio.iloc[-1])
         if abs(factor - 1.0) > max_rescale:
             raise ValueError(f"{t}: restatement factor {factor:.4f} is implausibly large")
@@ -90,7 +132,7 @@ def reconcile_and_append(existing, fresh, tol=DEFAULT_TOL, max_rescale=DEFAULT_M
     stale = sorted(t for t in out.columns if last_valid[t] is not None and last_valid[t] < out.index.max()
                    and (len(new) > 0))
     report = dict(rescaled=rescaled, new_dates=list(new.index), stale=stale,
-                  ignored=ignored, unchecked=sorted(unchecked))
+                  ignored=ignored, unchecked=sorted(unchecked), stepped=stepped)
     return out, report
 
 

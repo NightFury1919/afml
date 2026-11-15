@@ -79,6 +79,61 @@ def test_a_ratio_that_changes_across_the_overlap_is_rejected():
         reconcile_and_append(EXISTING, fresh)
 
 
+def late_dividend_case(factor_before, step_at=2, n=6):
+    """Existing history already holds the ex-dividend day; the fresh pull restates only the days before it."""
+    existing = frame([[10 + i, 20 + i] for i in range(n)])
+    fresh = existing.iloc[-n:].copy()
+    fresh.iloc[:step_at, 0] = fresh.iloc[:step_at, 0] * factor_before
+    new = pd.DataFrame([[n + 10, n + 20]], columns=fresh.columns, dtype=float,
+                       index=pd.bdate_range(existing.index[-1] + pd.Timedelta(days=1), periods=1))
+    fresh = pd.concat([fresh, new])
+    fresh.index.name = "date"
+    return existing, fresh
+
+
+def test_a_late_booked_dividend_is_one_step_in_the_ratio_and_is_accepted():
+    # The real SHY case on 2026-11-11: days before the 11-02 ex-date were 0.996891 of the saved values,
+    # days from 11-02 on matched exactly. Only the days before the step are restated.
+    existing, fresh = late_dividend_case(0.996891, step_at=2)
+    merged, rep = reconcile_and_append(existing, fresh)
+    step_date = existing.index[2]
+    assert rep["stepped"] == {"A": (step_date, pytest.approx(0.996891), pytest.approx(1.0))}
+    assert "B" not in rep["stepped"]
+    assert merged["A"].iloc[:2].tolist() == pytest.approx((existing["A"].iloc[:2] * 0.996891).tolist())
+    assert merged["A"].iloc[2:6].tolist() == existing["A"].iloc[2:6].tolist()      # from the step on, untouched
+    assert merged["B"].iloc[:6].tolist() == existing["B"].iloc[:6].tolist()
+    assert merged["A"].iloc[6] == 16.0                                              # the new day is appended
+    # the return across the step is the real one, not a dividend-sized jump
+    assert np.log(merged["A"].iloc[2] / merged["A"].iloc[1]) == pytest.approx(np.log(12 / 11 / 0.996891))
+
+
+def test_two_steps_in_the_ratio_are_still_rejected():
+    existing, fresh = late_dividend_case(0.99, step_at=2)
+    fresh.iloc[4, 0] *= 1.01                                                          # a second break
+    with pytest.raises(ValueError, match="A"):
+        reconcile_and_append(existing, fresh)
+
+
+def test_a_step_downward_is_still_rejected():
+    # a dividend can only lower the OLD days; the ratio jumping down is not that
+    existing, fresh = late_dividend_case(1.01, step_at=2)
+    with pytest.raises(ValueError, match="A"):
+        reconcile_and_append(existing, fresh)
+
+
+def test_a_step_larger_than_five_percent_is_still_rejected():
+    existing, fresh = late_dividend_case(0.90, step_at=2)
+    with pytest.raises(ValueError, match="A"):
+        reconcile_and_append(existing, fresh)
+
+
+def test_a_step_with_noise_inside_a_segment_is_still_rejected():
+    existing, fresh = late_dividend_case(0.99, step_at=3)
+    fresh.iloc[0, 0] *= 1.002                                                         # the flat part is not flat
+    with pytest.raises(ValueError, match="A"):
+        reconcile_and_append(existing, fresh)
+
+
 def test_an_implausibly_large_restatement_is_rejected():
     fresh = fresh_from(EXISTING, 3, [[15 * 2, 25]], scale={"A": 2.0})
     with pytest.raises(ValueError, match="A"):
@@ -205,3 +260,16 @@ def test_earlier_days_are_never_dropped():
 #   ticker by 0.99, saved a new dated file, and a second run reported nothing new.
 # NOT yet run against real Yahoo data. Do that on your machine: python update_prices.py
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# TDD RESULTS, late-booked dividend step (2026-11-15; sandbox: Linux, Python 3.13, pandas 3.0.5, pytest 9.1.1;
+# NOT the mlfinlab env, so re-run there before relying on it). Yahoo and the network are faked; nothing touched either.
+# $ cd portfolio ; pytest tests/test_update_prices.py tests/test_daily_run.py -q
+# 101 passed
+# New tests: a_late_booked_dividend_is_one_step_in_the_ratio_and_is_accepted (uses the real SHY numbers:
+#   ratio 0.996891 before 2026-11-02, 1.0 from then on), two_steps..., a_step_downward..., a_step_larger_than_five_percent...,
+#   a_step_with_noise_inside_a_segment... (all still rejected).
+# Real-snapshot smoke test: prices_daily_asof_2026-11-06.csv (8,503 days x all tickers) with SHY restated before 2026-10-30
+#   -> reconcile accepted it, stepped = {SHY: (2026-11-02, 0.996891, 1.0)}.
+# Mutation check: flipping the direction test and removing the 5% cap were each caught (3 and 1 failures); changing the
+#   "exactly one jump" test to "at least one" was not caught because the per-segment flatness check rejects those cases anyway.
