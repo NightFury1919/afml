@@ -1,0 +1,35 @@
+{
+  "version": 2,
+  "as_of": "2026-11-13",
+  "rebalance_day": false,
+  "next_signal": "2026-12-08",
+  "protocol": {
+    "strategy": "stock_momentum",
+    "sleeve_n": 3,
+    "sleeve_share": 0.5,
+    "every": 21,
+    "lookback": 273,
+    "skip": 21,
+    "start": "2026-11-09",
+    "mode": "fractional",
+    "min_notional": 1.0
+  },
+  "spy_dollars": 504.34,
+  "qf_dollars": 504.34,
+  "weights": {
+    "DELL": 0.173797417416822,
+    "MRNA": 0.14484268648134196,
+    "MU": 0.18098477713447278,
+    "SPY": 0.500348240274418
+  },
+  "equity": 1008.68,
+  "holdings": {
+    "DELL": 175.305979,
+    "MRNA": 146.099921,
+    "MU": 182.555725,
+    "SPY": 504.691263
+  },
+  "orders": [],
+  "cash_after": 0.03,
+  "warnings": []
+}

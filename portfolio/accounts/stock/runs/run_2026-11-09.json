@@ -1,0 +1,59 @@
+{
+  "status": "ok",
+  "run_date": "2026-11-10",
+  "as_of": "2026-11-09",
+  "snapshot": "prices_daily_asof_2026-11-09.csv",
+  "config": {
+    "sleeve_n": 3,
+    "sleeve_share": 0.5,
+    "every": 21,
+    "start": "2026-11-10",
+    "equity": 1000.0,
+    "equity_floor": 500.0,
+    "min_notional": 1.0
+  },
+  "config_problems": [],
+  "steps": [
+    {
+      "name": "health_check",
+      "status": "ok",
+      "detail": "0 error(s), 2 warning(s)"
+    },
+    {
+      "name": "plan",
+      "status": "ok",
+      "detail": "saved plan_v2_2026-11-09.json"
+    }
+  ],
+  "health": [
+    {
+      "level": "warn",
+      "code": "ticker_stale",
+      "ticker": null,
+      "message": "6 tickers have no price on the last date: AVB, EA, EQR, KVUE, PSKY, WBD"
+    },
+    {
+      "level": "warn",
+      "code": "big_move",
+      "ticker": null,
+      "message": "2 tickers had a one-day move over 25% in the last 10 days (earnings, splits or bad data): INTC, NOW"
+    }
+  ],
+  "warnings": [],
+  "plan": {
+    "equity": 1000.0,
+    "rebalance_day": false,
+    "next_signal": "2026-11-10",
+    "n_orders": 0,
+    "cash_after": 1000.0,
+    "plan_path": "accounts\\stock\\plans\\plan_v2_2026-11-09.json",
+    "saved_plan_is_this_run": true,
+    "top_weights": {}
+  },
+  "orders_sent": 0,
+  "below_equity_floor": false,
+  "equity_floor": 500.0,
+  "saved_plan_mismatch": [],
+  "title": "Stock momentum account",
+  "report_path": "accounts\\stock\\runs\\run_2026-11-09.json"
+}

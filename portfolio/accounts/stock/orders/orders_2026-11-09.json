@@ -1,0 +1,49 @@
+{
+  "as_of": "2026-11-09",
+  "started": "2026-11-10 10:45:38.325446",
+  "plan_equity": 1000.0,
+  "status": "complete",
+  "holdings_tol": 1.0,
+  "equity_floor": 900.0,
+  "note": "",
+  "warnings": [],
+  "entries": [
+    {
+      "symbol": "DELL",
+      "side": "buy",
+      "notional": 166.67,
+      "close_all": false,
+      "order_id": "b6eb89f8-335b-463f-b5da-e430bc330998",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "MRNA",
+      "side": "buy",
+      "notional": 166.67,
+      "close_all": false,
+      "order_id": "5478cb18-cfc8-4716-848f-26e477f343f8",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "MU",
+      "side": "buy",
+      "notional": 166.67,
+      "close_all": false,
+      "order_id": "83f8bf34-66ea-4d7b-a151-df2c52316b6d",
+      "status": "filled",
+      "error": null
+    },
+    {
+      "symbol": "SPY",
+      "side": "buy",
+      "notional": 499.99,
+      "close_all": false,
+      "order_id": "47ce23e0-0ebd-4a61-bb0d-44d8d2a8381b",
+      "status": "filled",
+      "error": null
+    }
+  ],
+  "trimmed": []
+}
