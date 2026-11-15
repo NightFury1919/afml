@@ -92,7 +92,7 @@ target) -- only the target skew/kurtosis fed into it changes.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\calibrate_tao_detection_power.py
     python pipeline\\diagnostics\\calibrate_tao_detection_power.py <sweep_csv> [output_csv]
 

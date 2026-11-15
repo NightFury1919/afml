@@ -36,7 +36,7 @@ unchanged.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\capture_kraken_snapshot.py
     python pipeline\\diagnostics\\capture_kraken_snapshot.py --hours 720
     python pipeline\\diagnostics\\capture_kraken_snapshot.py --pair XRPUSD --hours 720

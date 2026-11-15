@@ -19,7 +19,7 @@ a fixed k, not whether real BTC has moved since the calibration run.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\spot_check_momentum_calibration.py
 """
 import json

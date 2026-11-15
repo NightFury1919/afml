@@ -40,7 +40,7 @@ For each candidate effective T:
 
 Run:
     conda activate mlfinlab
-    cd C:\\ws\\AFML\\pipeline\\diagnostics
+    cd <your AFML folder>\\pipeline\\diagnostics
     python calibrate_min_reliable_T.py
 
 Lives in pipeline/diagnostics/, not pipeline/orchestration/ -- see

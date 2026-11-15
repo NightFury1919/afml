@@ -56,7 +56,7 @@ MATCH/MISMATCH. If it says MISMATCH, do not trust the rolls.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\pool_multiwindow_alignment_null.py
     # options: --n-rolls 1000  --min-shift 50  --seed 20260918  --rebuild-cache
     #          --demean-returns   (pure-timing statistic; see evaluate_draw)

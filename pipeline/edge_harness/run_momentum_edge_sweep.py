@@ -38,7 +38,7 @@ match before running this (expensive, ~50-seed) sweep.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\edge_harness\\run_momentum_edge_sweep.py --smoke-test
     python pipeline\\edge_harness\\run_momentum_edge_sweep.py
 """

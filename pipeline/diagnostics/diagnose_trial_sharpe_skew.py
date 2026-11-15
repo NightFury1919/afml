@@ -37,7 +37,7 @@ taken on trial output that already existed.
 
 Run (once per snapshot):
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\diagnose_trial_sharpe_skew.py <snapshot_dir> [output_csv]
 """
 import os

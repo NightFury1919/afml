@@ -33,7 +33,7 @@ staleness.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\calibrate_xrp_cusum_h.py
 """
 import os

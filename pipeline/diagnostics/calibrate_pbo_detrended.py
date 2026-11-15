@@ -40,7 +40,7 @@ series instead) rather than being folded into this script.
 
 Run:
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\calibrate_pbo_detrended.py <snapshot_dir> <target_bars>
 """
 import os

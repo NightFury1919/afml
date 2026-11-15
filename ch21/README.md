@@ -122,7 +122,7 @@ comparison, which matches exactly.
 
 ```powershell
 conda activate mlfinlab
-cd C:\ws\AFML
+cd <your AFML folder>
 python -m pytest ch21\portfolio_trajectory\ -v
 cd ch21\portfolio_trajectory
 python -m pytest -v

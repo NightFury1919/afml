@@ -11,7 +11,7 @@ try/except guard around FFD_THRES) so nothing gets duplicated or re-run.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\ws\AFML
+    cd <your AFML folder>
     python pipeline\diagnostics\finish_ffd_sweep.py
 """
 import os

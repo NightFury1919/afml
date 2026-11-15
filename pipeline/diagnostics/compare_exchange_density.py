@@ -43,7 +43,7 @@ BINANCE_API_KEY-equivalent setup needed to run this.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\compare_exchange_density.py
 """
 import sys

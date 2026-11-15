@@ -19,7 +19,7 @@ Run ONCE before calibrate_t_effective_levers.py.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     $env:BINANCE_API_KEY = 'your-key-here'
     python pipeline\\diagnostics\\capture_t_effective_snapshot.py
 """

@@ -26,7 +26,7 @@ to freeze a new one; do NOT reuse the deleted 2026-08-20 snapshot, since
 that would silently mix today's staleness finding with three-day-old
 market data):
     conda activate mlfinlab
-    cd C:\ws\AFML
+    cd <your AFML folder>
     python pipeline\diagnostics\calibrate_cusum_h_correction.py <snapshot_dir>
 """
 import os

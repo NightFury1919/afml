@@ -35,7 +35,7 @@ Requires BINANCE_API_KEY (see ingestion.py's module docstring for setup).
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     $env:BINANCE_API_KEY = 'your-key-here'
     python pipeline\\run_pipeline_live.py               # logs CSV row only
     python pipeline\\run_pipeline_live.py --snapshot     # also writes README snapshot

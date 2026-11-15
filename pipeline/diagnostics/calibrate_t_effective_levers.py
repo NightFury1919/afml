@@ -55,7 +55,7 @@ this project's established Windows/loky SVC(probability=True) constraint.
 
 Run (after capture_t_effective_snapshot.py has produced a snapshot dir):
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\calibrate_t_effective_levers.py <snapshot_dir>
 """
 import os

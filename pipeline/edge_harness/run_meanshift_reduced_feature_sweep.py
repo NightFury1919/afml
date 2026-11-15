@@ -51,7 +51,7 @@ even with dilution addressed.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\edge_harness\\run_meanshift_reduced_feature_sweep.py --smoke-test
     python pipeline\\edge_harness\\run_meanshift_reduced_feature_sweep.py --edge-strengths 0.5,0.75,1.0,1.5,2.0 --n-trades-map pipeline\\diagnostics\\meanshift_n_trades_map.json
 """

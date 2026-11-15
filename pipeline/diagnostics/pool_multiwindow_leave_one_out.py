@@ -97,7 +97,7 @@ line 105).
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
 
     # Step 1 (do this first): time ONE real fit+predict+score at real
     # scale to estimate total runtime before committing to the full

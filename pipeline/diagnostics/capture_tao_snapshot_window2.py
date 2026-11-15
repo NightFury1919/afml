@@ -35,7 +35,7 @@ builds it.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\capture_tao_snapshot_window2.py
 """
 import os

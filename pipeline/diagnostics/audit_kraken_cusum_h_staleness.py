@@ -42,7 +42,7 @@ comparison.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     $env:BINANCE_API_KEY = 'your-key-here'
     python pipeline\\diagnostics\\audit_kraken_cusum_h_staleness.py
 """

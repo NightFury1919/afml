@@ -34,7 +34,7 @@ Reference point: BTC's own real event rate at CUSUM_H=313 (measured
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\sanity_check_tao_cusum_h.py
     python pipeline\\diagnostics\\sanity_check_tao_cusum_h.py --h 0.0006
     python pipeline\\diagnostics\\sanity_check_tao_cusum_h.py --snapshot_dir <path>

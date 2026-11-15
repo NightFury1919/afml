@@ -206,7 +206,7 @@ peak at 0.505 cycles/day (magnitude 8.9660).
 ```powershell
 conda activate mlfinlab
 pip install pyarrow==14.0.2
-cd C:\ws\AFML
+cd <your AFML folder>
 python -m pytest ch22\hpc_supplements\ -v
 cd ch22\hpc_supplements
 python -m pytest -v

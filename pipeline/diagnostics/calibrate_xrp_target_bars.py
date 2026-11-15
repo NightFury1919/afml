@@ -31,7 +31,7 @@ carried for Kraken BTC data relative to Binance.US.
 Run (after capture_kraken_snapshot.py --pair XRPUSD --hours 720 has
 produced the snapshot):
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\calibrate_xrp_target_bars.py <snapshot_dir>
 """
 import os

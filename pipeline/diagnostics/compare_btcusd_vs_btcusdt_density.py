@@ -21,7 +21,7 @@ in the pipeline to test this.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\compare_btcusd_vs_btcusdt_density.py
     python pipeline\\diagnostics\\compare_btcusd_vs_btcusdt_density.py --hours 48
 """

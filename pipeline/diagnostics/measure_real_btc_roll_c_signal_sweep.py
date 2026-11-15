@@ -35,7 +35,7 @@ or pipeline module. Read-only against the real chain.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\measure_real_btc_roll_c_signal_sweep.py
     python pipeline\\diagnostics\\measure_real_btc_roll_c_signal_sweep.py --target-bars 1000 2000 3000 4000 5000
 """

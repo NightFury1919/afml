@@ -48,7 +48,7 @@ ch04/
 
 ```bash
 conda activate mlfinlab
-cd C:\ws\AFML
+cd <your AFML folder>
 pytest ch04/sample_weights/test_ch04.py -v
 ```
 

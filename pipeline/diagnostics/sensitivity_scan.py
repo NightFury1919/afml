@@ -22,7 +22,7 @@ than calling it as a black box. features.py itself is never edited.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\ws\AFML
+    cd <your AFML folder>
     python pipeline\diagnostics\sensitivity_scan.py
 """
 import csv

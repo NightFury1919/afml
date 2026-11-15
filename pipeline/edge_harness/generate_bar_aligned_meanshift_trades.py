@@ -75,7 +75,7 @@ synthetic imbalance feature.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python -c "from pipeline.edge_harness.generate_bar_aligned_meanshift_trades import generate_bar_aligned_meanshift_trades; print('import OK')"
 
 Not run standalone -- called by run_meanshift_edge_sweep.py, same as

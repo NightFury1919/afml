@@ -49,7 +49,7 @@ Run ONCE before calibrate_lookback_extension.py.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\capture_lookback_extension_snapshot.py
 """
 import os

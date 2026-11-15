@@ -35,7 +35,7 @@ the only thing varied here.
 Run (after capture_kraken_snapshot.py --hours 720 has produced the
 snapshot):
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\calibrate_kraken_target_bars.py <snapshot_dir>
 """
 import os

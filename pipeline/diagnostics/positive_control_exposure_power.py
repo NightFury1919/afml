@@ -56,7 +56,7 @@ skips cells that already have n_reps rows. Replicates run in a process pool
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\positive_control_exposure_power.py            # ~25-30 min, 4 workers
     python pipeline\\diagnostics\\positive_control_exposure_power.py --quick    # ~3 min sanity pass
     python pipeline\\diagnostics\\positive_control_exposure_power.py --analyze-only --anchors 0.45 0.60

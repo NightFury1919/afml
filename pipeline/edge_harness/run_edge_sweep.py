@@ -45,7 +45,7 @@ own module docstring for the full reasoning.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\edge_harness\\run_edge_sweep.py --smoke-test
         # runs ONE combo (edge_strength=0.2, seed=0) to confirm the
         # wiring works and to get a real per-run timing number before

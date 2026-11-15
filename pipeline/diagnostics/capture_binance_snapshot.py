@@ -35,7 +35,7 @@ a CLI argument, so it never lands in shell history or a captured log.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     set BINANCE_API_KEY=your_read_only_key_here
     python pipeline\\diagnostics\\capture_binance_snapshot.py
     python pipeline\\diagnostics\\capture_binance_snapshot.py --hours 720

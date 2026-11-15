@@ -34,7 +34,7 @@ over a random `KFold` would.
 
 ```powershell
 conda activate mlfinlab          # Python 3.10.20 / sklearn 1.2.2
-cd C:\ws\AFML
+cd <your AFML folder>
 python ch09\chapter_9_hyper_parameter_tuning.py
 python -m pytest ch09\hyper_parameter_tuning\test_hyper_parameter_tuning.py -v
 ```

@@ -44,7 +44,7 @@ the point value, as the calibration.
 
 Run:
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\calibrate_confidence_threshold.py
     python pipeline\\diagnostics\\calibrate_confidence_threshold.py --budget 0.05
     python pipeline\\diagnostics\\calibrate_confidence_threshold.py --sigma 2   # legacy rule

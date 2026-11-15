@@ -29,7 +29,7 @@ window/target_bars, which isn't the point of this particular question.
 
 Run:
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\calibrate_n_trials_floor.py
     python pipeline\\diagnostics\\calibrate_n_trials_floor.py --t-effective 618.83 --bars-per-day 159.5
 """

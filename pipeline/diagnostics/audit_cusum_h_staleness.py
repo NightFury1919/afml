@@ -21,7 +21,7 @@ cusum_filter() directly -- no reimplementation.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\ws\AFML
+    cd <your AFML folder>
     $env:BINANCE_API_KEY = 'your-key-here'
     python pipeline\diagnostics\audit_cusum_h_staleness.py
 """

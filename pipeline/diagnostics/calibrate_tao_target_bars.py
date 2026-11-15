@@ -42,7 +42,7 @@ of.
 Run (reuses the snapshot already captured by capture_kraken_snapshot.py
 --pair TAOUSD --hours 720 -- no need to re-pull):
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\calibrate_tao_target_bars.py <snapshot_dir>
 """
 import os

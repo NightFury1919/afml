@@ -32,7 +32,7 @@ trial-grid shape).
 
 Run:
     conda activate mlfinlab
-    cd C:\ws\AFML\pipeline\diagnostics
+    cd <your AFML folder>\pipeline\diagnostics
     python calibrate_pbo_precision_s14.py
 """
 import os

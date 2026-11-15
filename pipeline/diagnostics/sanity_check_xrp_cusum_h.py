@@ -40,7 +40,7 @@ diff_std measurement, worth a second day's check eventually).
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\sanity_check_xrp_cusum_h.py
     python pipeline\\diagnostics\\sanity_check_xrp_cusum_h.py --h 0.0113
 """

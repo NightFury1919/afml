@@ -34,7 +34,7 @@ nothing reimplemented):
 
 Run:
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\diagnose_window_trend_bias.py <snapshot_dir> <target_bars>
 """
 import os

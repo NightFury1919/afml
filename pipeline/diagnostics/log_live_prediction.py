@@ -31,7 +31,7 @@ Appends one row per run to live_predictions_log.csv (created if absent).
 
 Run:
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\log_live_prediction.py <snapshot_dir> <target_bars>
 """
 import os

@@ -22,7 +22,7 @@ same real run, so the contrast is concrete rather than theoretical.
 
 Run:
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\apply_confidence_exposure.py <snapshot_dir> <target_bars>
 """
 import os

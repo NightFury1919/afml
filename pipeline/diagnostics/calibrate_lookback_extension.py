@@ -29,7 +29,7 @@ counts involved, especially at the 2160h/target_bars=2000 corner.
 Run (after capture_lookback_extension_snapshot.py has produced a
 snapshot dir):
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\calibrate_lookback_extension.py <snapshot_dir>
 """
 import os

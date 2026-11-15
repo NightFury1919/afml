@@ -18,7 +18,7 @@ candidate grid change.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\edge_harness\\recalibrate_meanshift_n_trades_high_es.py
 """
 import json

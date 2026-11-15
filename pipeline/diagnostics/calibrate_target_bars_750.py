@@ -20,7 +20,7 @@ CUSUM_H/target_bars work, for a clean same-day four-point comparison
 
 Run:
     conda activate mlfinlab
-    cd C:\ws\AFML
+    cd <your AFML folder>
     python pipeline\diagnostics\calibrate_target_bars_750.py pipeline\diagnostics\t_effective_snapshot_2026-08-21
 """
 import os

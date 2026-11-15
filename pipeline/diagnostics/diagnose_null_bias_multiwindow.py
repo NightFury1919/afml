@@ -45,7 +45,7 @@ just guessing randomly.
 
 Run:
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\diagnose_null_bias_multiwindow.py
 """
 import importlib.util

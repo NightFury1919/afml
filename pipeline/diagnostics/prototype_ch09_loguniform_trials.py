@@ -35,7 +35,7 @@ why trial count must not silently change alongside whatever else varies.
 Run (static established dataset, NOT live data -- this is a controlled
 apples-to-apples comparison against the Phase 1b baseline):
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\prototype_ch09_loguniform_trials.py [seed]
 """
 import os

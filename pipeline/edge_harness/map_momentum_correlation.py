@@ -19,7 +19,7 @@ CHOSEN from real numbers, not guessed.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\edge_harness\\map_momentum_correlation.py
 """
 import os

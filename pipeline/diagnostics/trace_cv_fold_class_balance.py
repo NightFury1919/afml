@@ -46,7 +46,7 @@ directly, no modification to any committed chapter module.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\trace_cv_fold_class_balance.py
     python pipeline\\diagnostics\\trace_cv_fold_class_balance.py --continuation-prob 0.7 --seed 0
 """

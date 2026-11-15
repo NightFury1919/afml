@@ -49,7 +49,7 @@ uses -- this script only edits the STAGED CSV, never the chapter file).
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\isolate_single_feature_meanshift.py
     python pipeline\\diagnostics\\isolate_single_feature_meanshift.py --feature roll_c --edge-strength 2.0 --seed 0
     python pipeline\\diagnostics\\isolate_single_feature_meanshift.py --feature roll_sigma_u

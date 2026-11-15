@@ -41,7 +41,7 @@ script calibrates.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     $env:BINANCE_API_KEY = 'your-key-here'
     python pipeline\\diagnostics\\calibrate_synthetic_momentum_params.py --n-trades 360000 --target-bars 3000
 

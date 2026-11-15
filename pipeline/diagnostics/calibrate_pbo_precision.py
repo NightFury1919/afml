@@ -52,7 +52,7 @@ finished.
 
 Run:
     conda activate mlfinlab
-    cd C:\ws\AFML\pipeline\diagnostics
+    cd <your AFML folder>\pipeline\diagnostics
     python calibrate_pbo_precision.py
 
 Lives in pipeline/diagnostics/, not pipeline/orchestration/ -- see

@@ -20,7 +20,7 @@ decision, not a same-session patch under time pressure.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\diagnose_kraken_duplicate_bar_dates.py pipeline\\diagnostics\\kraken_snapshot_720h_2026-08-25 --target-bars 5000
 """
 import argparse

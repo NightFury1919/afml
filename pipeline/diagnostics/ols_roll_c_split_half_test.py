@@ -67,7 +67,7 @@ train/test split," not as a publication-grade backtest. ***
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\ols_roll_c_split_half_test.py --smoke-test
     python pipeline\\diagnostics\\ols_roll_c_split_half_test.py --edge-strengths 0.5,0.75,1.0,1.5,2.0,3.0,5.0,8.0 --seeds 0,1,2,3,4 --n-trades-map pipeline\\diagnostics\\meanshift_n_trades_map.json
 """

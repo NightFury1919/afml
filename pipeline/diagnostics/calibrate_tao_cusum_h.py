@@ -31,7 +31,7 @@ the asset pair.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\calibrate_tao_cusum_h.py
 """
 import os

@@ -24,7 +24,7 @@ mirrors live_staging.py's existing reindex-and-fail-loud pattern for 'w'.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\run_pipeline.py
 """
 import os

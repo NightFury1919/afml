@@ -40,7 +40,7 @@ or pipeline module. Read-only against the real chain.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\measure_real_btc_roll_c_signal.py
     python pipeline\\diagnostics\\measure_real_btc_roll_c_signal.py --snapshot-dir pipeline\\diagnostics\\kraken_snapshot_xbtusd_720h_2026-09-08
 """

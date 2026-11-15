@@ -15,7 +15,7 @@ writes only to its own dated snapshot folder under pipeline/diagnostics/.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\ws\AFML
+    cd <your AFML folder>
     $env:BINANCE_API_KEY = 'your-key-here'
     python pipeline\diagnostics\capture_sensitivity_snapshot.py
 """

@@ -18,7 +18,7 @@ precision, same 5 seeds.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\edge_harness\\run_bar_aligned_edge_sweep.py --smoke-test
     python pipeline\\edge_harness\\run_bar_aligned_edge_sweep.py
 """

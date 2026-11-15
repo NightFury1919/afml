@@ -17,7 +17,7 @@ in ch14/backtest_statistics/test_backtest_statistics.py).
 
 Run:
     conda activate mlfinlab
-    cd C:\\ws\\AFML\\pipeline\\orchestration
+    cd <your AFML folder>\\pipeline\\orchestration
     python -m pytest test_stages.py -v
 """
 import os

@@ -108,7 +108,7 @@ scikit-learn 1.8.0 — all newer than mlfinlab's pinned versions.
 
 ```powershell
 conda activate mlfinlab
-cd C:\ws\AFML
+cd <your AFML folder>
 python -m pytest pipeline\orchestration\ -v
 cd pipeline\orchestration
 python -m pytest -v

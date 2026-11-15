@@ -46,7 +46,7 @@ correlation arithmetic on two different samplings of the same series.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\roll_c_overlap_inflation_test.py --smoke-test
     python pipeline\\diagnostics\\roll_c_overlap_inflation_test.py --edge-strengths 0.5,0.75,1.0,1.5,2.0,3.0,5.0,8.0 --seeds 0,1,2,3,4 --n-trades-map pipeline\\diagnostics\\meanshift_n_trades_map.json
 """

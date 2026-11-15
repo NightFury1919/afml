@@ -20,7 +20,7 @@ combine real trade data, reused here rather than reimplemented.
 
 Run:
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\refresh_snapshot_to_now.py <snapshot_dir>
 """
 import os

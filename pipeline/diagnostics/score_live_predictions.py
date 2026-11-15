@@ -22,7 +22,7 @@ resolution, just where the position sits so far.
 
 Run:
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\score_live_predictions.py
 """
 import os

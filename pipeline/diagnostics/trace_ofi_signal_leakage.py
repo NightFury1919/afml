@@ -50,7 +50,7 @@ or pipeline module. Read-only against the real chain.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\trace_ofi_signal_leakage.py
     python pipeline\\diagnostics\\trace_ofi_signal_leakage.py --edge-strength 1.0 --seed 0
 """

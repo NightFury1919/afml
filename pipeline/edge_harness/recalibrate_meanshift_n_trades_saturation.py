@@ -66,7 +66,7 @@ needs NO changes to use the extended map -- just pass a wider
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\edge_harness\\recalibrate_meanshift_n_trades_saturation.py
 
     REM Then run the actual saturation sweep with the existing script:

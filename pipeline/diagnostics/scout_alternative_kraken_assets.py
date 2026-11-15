@@ -38,7 +38,7 @@ already tested tonight.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\scout_alternative_kraken_assets.py
     python pipeline\\diagnostics\\scout_alternative_kraken_assets.py --hours 12
 """

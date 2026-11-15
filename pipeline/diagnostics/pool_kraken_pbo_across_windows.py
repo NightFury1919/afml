@@ -29,7 +29,7 @@ script reports BOTH:
 
 Run once all 8 windows' calibrate_kraken_target_bars.py sweeps exist:
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\pool_kraken_pbo_across_windows.py
 """
 import glob

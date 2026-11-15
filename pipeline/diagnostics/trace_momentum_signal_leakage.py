@@ -50,7 +50,7 @@ same precedent as the sweep itself.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\trace_momentum_signal_leakage.py
     python pipeline\\diagnostics\\trace_momentum_signal_leakage.py --continuation-prob 0.7 --seed 0
 """

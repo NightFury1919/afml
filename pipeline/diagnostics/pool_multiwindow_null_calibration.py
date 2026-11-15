@@ -55,7 +55,7 @@ starting over.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\pool_multiwindow_null_calibration.py
 
     # Resumable: if interrupted, just re-run the same command -- it

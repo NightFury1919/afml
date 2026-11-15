@@ -23,7 +23,7 @@ decision, not made here.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\accumulate_live_trades.py
 """
 import os

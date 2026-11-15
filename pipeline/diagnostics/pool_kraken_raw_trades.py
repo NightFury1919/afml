@@ -29,7 +29,7 @@ the same resolution).
 
 Run:
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\pool_kraken_raw_trades.py
     python pipeline\\diagnostics\\pool_kraken_raw_trades.py --pattern "kraken_snapshot_720h_window*_2026-*"
 """

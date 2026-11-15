@@ -47,7 +47,7 @@ Estimated runtime: same order as the Kraken version, ~25-30 minutes
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\calibrate_xrp_detection_power.py
     python pipeline\\diagnostics\\calibrate_xrp_detection_power.py <sweep_csv> [output_csv]
 

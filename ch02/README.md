@@ -50,7 +50,7 @@ ch02/
 
 ```bash
 conda activate mlfinlab
-cd C:\ws\AFML
+cd <your AFML folder>
 pytest ch02/bars/test_ch02.py -v
 ```
 

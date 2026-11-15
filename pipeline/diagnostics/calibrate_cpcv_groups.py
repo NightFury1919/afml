@@ -36,7 +36,7 @@ the static dataset's size.
 
 Run (after capture_kraken_snapshot.py has produced a snapshot):
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\calibrate_cpcv_groups.py <snapshot_dir> <target_bars> [output_csv]
 """
 import itertools

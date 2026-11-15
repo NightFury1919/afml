@@ -43,7 +43,7 @@ same caution as every other Monte Carlo calibration in this project.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\calibrate_kraken_detection_power.py
     python pipeline\\diagnostics\\calibrate_kraken_detection_power.py <sweep_csv> [output_csv]
     python pipeline\\diagnostics\\calibrate_kraken_detection_power.py <sweep_csv> [output_csv] --num-threads=4

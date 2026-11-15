@@ -27,7 +27,7 @@ trades.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\capture_kraken_snapshot_window2.py
 """
 import os

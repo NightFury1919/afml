@@ -21,7 +21,7 @@ pipeline file.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\ws\AFML
+    cd <your AFML folder>
     python pipeline\diagnostics\calibrate_synthetic_trade_params.py --source static
     # or
     python pipeline\diagnostics\calibrate_synthetic_trade_params.py --source live

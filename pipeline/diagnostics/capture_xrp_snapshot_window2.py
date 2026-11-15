@@ -25,7 +25,7 @@ flags as NOT yet built for XRP; this script builds it.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\capture_xrp_snapshot_window2.py
 """
 import os

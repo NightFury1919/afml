@@ -65,7 +65,7 @@ bars over real days, not a rounded estimate).
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\positive_control_confidence_threshold.py
 """
 import os

@@ -45,7 +45,7 @@ there's no guaranteed completion order to compare against).
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\capture_kraken_windows_chain.py --num-windows 2 --max-concurrent 2
     python pipeline\\diagnostics\\capture_kraken_windows_chain.py --num-windows 6 --max-concurrent 2
     python pipeline\\diagnostics\\capture_kraken_windows_chain.py --num-windows 1 --max-concurrent 1  (old sequential-equivalent, single window)

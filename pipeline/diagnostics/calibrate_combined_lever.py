@@ -26,7 +26,7 @@ Run (same snapshot as today's other CUSUM_H work -- do NOT use a
 different/fresh snapshot, or this loses its clean same-day comparison
 against cusum_h_correction_calibration.csv's existing rows):
     conda activate mlfinlab
-    cd C:\ws\AFML
+    cd <your AFML folder>
     python pipeline\diagnostics\calibrate_combined_lever.py pipeline\diagnostics\t_effective_snapshot_2026-08-21
 """
 import os

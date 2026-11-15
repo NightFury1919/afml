@@ -22,7 +22,7 @@ Requires BINANCE_API_KEY, same as run_pipeline_live.py.
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     $env:BINANCE_API_KEY = 'your-key-here'
     python compare_tw_by_cusum_h.py
 """

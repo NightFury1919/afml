@@ -24,7 +24,7 @@ Binance.US pull's own timestamp-collision issue).
 Usage
 -----
     conda activate mlfinlab
-    cd C:\\ws\\AFML
+    cd <your AFML folder>
     python pipeline\\diagnostics\\verify_kraken_pull.py
     python pipeline\\diagnostics\\verify_kraken_pull.py --hours 6
 """
