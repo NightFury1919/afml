@@ -59,6 +59,14 @@ def test_unknown_config_key_is_rejected(tmp_path):
         md.load_config(p)
 
 
+def test_config_saved_with_a_byte_order_mark_still_loads(tmp_path):
+    # PowerShell 5.1 "Set-Content -Encoding utf8" writes a BOM; plain "utf-8" then fails with JSONDecodeError.
+    p = tmp_path / "run_config.json"
+    p.write_bytes(b"\xef\xbb\xbf" + json.dumps({"sleeve_n": 3, "sleeve_share": 0.5}).encode("utf-8"))
+    c, found = md.load_config(p)
+    assert found is True and c["sleeve_n"] == 3 and c["sleeve_share"] == 0.5 and c["every"] == 21
+
+
 def test_init_config_writes_once_and_never_overwrites(tmp_path):
     p = tmp_path / "run_config.json"
     md.init_config(p)

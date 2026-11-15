@@ -13,7 +13,7 @@ Run all the tests (about 90 seconds): `python -m pytest portfolio -q`
 | `preregistrations/` | The rules written down and committed **before** each test was run. Never edit a frozen one; add a dated amendment. |
 | `results/` | What each pre-registered test produced (CSV, text, JSON). Each registered run refuses to run twice. |
 | `docs/` | Design notes and protocols (`paper_protocol_v2.md` is the current one). |
-| `accounts/` | One folder per paper account (`etf_only`, `spy_only`, `momentum`): its config, plans, orders and run logs. |
+| `accounts/` | One folder per paper account (`momentum`, `stock`, `spy_only`, plus `etf_only`, retired 2026-11-09 and kept as history): its config, plans, orders and run logs. |
 | `shadow/` | The shadow model: saved models and daily score logs. It never trades. |
 | `plans/`, `orders/`, `runs/` | Plans, order ledgers and run reports from the first (single-account) setup. |
 | `prices_daily_asof_<date>.csv` | Dated price snapshots. A new file is written each time; old ones are kept so any result can be reproduced. |
@@ -46,7 +46,7 @@ an edge from noise?) · `real_history_check.py`, `real_history_check_wc.py` (doe
 
 **Run the paper accounts**
 `daily_run.py` (check data, plan, scoreboard, report — **never sends orders**) · `execute_plan.py` (places orders only when a person
-runs it, after checks) · `momentum_plan.py` + `momentum_daily.py` (the momentum account) · `paper_runner_v2.py` (dry-run planner; `paper_runner.py` is v1)
+runs it, after checks) · `momentum_plan.py` + `momentum_daily.py` (the momentum account) · `stock_update.py` + `stock_momentum_daily.py` (the stock momentum account) · `paper_runner_v2.py` (dry-run planner; `paper_runner.py` is v1)
 
 **Report and check**
 `performance_page.py` (honest summary with risk next to return) · `spy_since.py` · `spy_window_stats.py` ·

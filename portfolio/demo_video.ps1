@@ -9,7 +9,7 @@
 # ---------------- EDIT THESE IF NEEDED ----------------
 $PauseShort = 4      # seconds on a caption screen
 $PauseLong  = 8      # seconds on a screen with lots to read
-$DryRunCmd  = "python execute_plan.py --plans-dir accounts\etf_only\plans --orders-dir accounts\etf_only\orders"   # dry run for the ETF-only account (NO --execute)
+$DryRunCmd  = "python execute_plan.py --plans-dir accounts\etf_only\plans --orders-dir accounts\etf_only\orders"   # dry run for the retired ETF-only account A (NO --execute)
 $ShowDryRun = $true                      # set $false to skip the live dry run and just show files
 
 $WaitForEnter = $true                     # $true: every screen waits for you to press Enter; $false: timed pauses
@@ -79,11 +79,11 @@ Write-Host "Recording should be running. Press Enter to begin the walkthrough...
 
 # ---- 1. Title ----
 Show-Caption "QF-Portfolio: AFML-based paper trading project" `
-             "Paper accounts side by side: an ETF-only account and a SPY-only baseline, built on the AFML codebase."
+             "Paper accounts side by side: a SPY-only baseline, the momentum accounts, and the retired ETF-only account A, built on the AFML codebase."
 Wait-Step $PauseShort
 
 # ---- 2. Strategy config ----
-Show-Caption "1. The strategy settings: ETF-only account" `
+Show-Caption "1. The strategy settings: ETF-only account A (retired 2026-11-09)" `
              "48 ETFs weighted by inverse volatility, 10% cap per ETF, no separate SPY sleeve (spy_share 0)."
 if (Test-Path "accounts\etf_only\run_config.json") { Get-Content "accounts\etf_only\run_config.json" } else { Write-Host "(accounts\etf_only\run_config.json not found)" }
 Wait-Step $PauseLong
@@ -102,7 +102,7 @@ Show-FileTail "shadow\nightly_log.txt" 12
 Wait-Step $PauseLong
 
 # ---- 4. Daily plan ----
-Show-Caption "3. The daily run: the ETF-only account" "Health check, then a plan, then a scoreboard. Nothing here sends an order."
+Show-Caption "3. The daily run: the ETF-only account A (retired 2026-11-09)" "Health check, then a plan, then a scoreboard. Nothing here sends an order."
 $report = Get-ChildItem "accounts\etf_only\runs" -Filter "run_*.md" -File -ErrorAction SilentlyContinue | Sort-Object Name | Select-Object -Last 1
 Show-FileHead $report 40
 Wait-Step $PauseLong
