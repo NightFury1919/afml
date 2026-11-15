@@ -253,3 +253,51 @@ def test_health_accepts_exactly_the_minimum_and_flags_one_less():
     p = _panel_with_exactly(350)
     assert not [i for i in smd.stock_health(p, "2026-11-10", min_tickers=350) if i["code"] == "thin_universe"]
     assert [i for i in smd.stock_health(p, "2026-11-10", min_tickers=351) if i["code"] == "thin_universe"]
+
+
+# ---------- log cleanup: warning filter, timing, coverage gaps (diagnostics only; the plan's inputs are untouched) ----------
+def test_quiet_yfinance_hides_its_futurewarning_but_not_other_warnings():
+    import warnings
+    with warnings.catch_warnings(record=True) as seen:
+        warnings.simplefilter("always")
+        su.quiet_yfinance_warnings()
+        warnings.warn_explicit("empty Series dtype", FutureWarning, "history.py", 472, module="yfinance.scrapers.history")
+        warnings.warn_explicit("something else", FutureWarning, "other.py", 1, module="other")
+    assert [str(w.message) for w in seen] == ["something else"]
+
+
+@pytest.mark.parametrize("seconds, text", [(4.2, "4 s"), (59.6, "1 min 00 s"), (125, "2 min 05 s"), (3725, "62 min 05 s")])
+def test_format_elapsed_is_short_and_plain(seconds, text):
+    assert su.format_elapsed(seconds) == text
+
+
+def gap_panel():
+    """Six made-up stocks, 300 days. GONE is never in the panel; STALE stops 5 days early after a big run-up."""
+    idx = pd.bdate_range(end="2026-11-10", periods=300)
+    rng = np.random.default_rng(1)
+    data = {t: 100 * np.exp(np.cumsum(rng.normal(0.0004, 0.01, 300))) for t in ["SPY", "A", "B", "C", "D", "STALE"]}
+    df = pd.DataFrame(data, index=idx)
+    df["STALE"] = 100 * np.exp(np.linspace(0, 1.5, 300))       # steady climb: a clear momentum leader
+    df.loc[idx[-5:], "STALE"] = np.nan                          # then no prices for the last 5 days
+    df.index.name = "date"
+    return df
+
+
+def test_coverage_gaps_lists_missing_and_stale_names_and_flags_a_would_be_leader():
+    panel = gap_panel()
+    gaps = su.coverage_gaps(["SPY", "A", "B", "C", "D", "STALE", "GONE"], panel, n=3)
+    assert gaps["not_downloaded"] == ["GONE"]
+    assert [g["ticker"] for g in gaps["stale"]] == ["STALE"]
+    st = gaps["stale"][0]
+    assert st["last_price_date"] == panel.index[-6].date()
+    assert st["last_score"] > gaps["cutoff"]                    # the steady climber beat the current 3rd best
+    assert gaps["would_rank"] == ["STALE"]
+    lines = su.gap_lines(gaps)
+    assert any("GONE" in l for l in lines) and any("STALE" in l and "top 3" in l for l in lines)
+
+
+def test_coverage_gaps_with_nothing_missing_says_so_and_never_counts_spy():
+    panel = gap_panel().drop(columns="STALE")
+    gaps = su.coverage_gaps(list(panel.columns), panel, n=3)
+    assert gaps["not_downloaded"] == [] and gaps["stale"] == [] and gaps["would_rank"] == []
+    assert su.gap_lines(gaps) == ["Coverage: every ticker in the list has a price on the last date."]

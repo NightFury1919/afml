@@ -18,10 +18,13 @@ Run from C:\\ws\\AFML\\portfolio in the mlfinlab env:
 """
 import argparse
 import sys
+import time
+import warnings
 from pathlib import Path
 
 import pandas as pd
 
+import momentum_ladder as ml
 import stock_data_pull as sdp
 from update_prices import SNAPSHOT_RE, drop_incomplete_today, write_snapshot
 
@@ -30,6 +33,63 @@ HISTORY_DAYS = 480          # calendar days of history to pull (about 330 tradin
 MIN_TICKERS = 350           # fewer tickers than this means the pull failed, not that the index shrank
 BATCH_SIZE = 100
 KEEP = 7                    # newest snapshots to keep
+
+
+def quiet_yfinance_warnings():
+    """Hide yfinance's repeated pandas FutureWarning (one per ticker, about 4,000 lines a week in the nightly log).
+
+    Only warnings raised inside yfinance are hidden; every other warning still prints.
+    """
+    warnings.filterwarnings("ignore", category=FutureWarning, module=r"yfinance(\.|$)")
+
+
+def format_elapsed(seconds):
+    """'4 s' under a minute, else 'M min SS s'."""
+    total = int(round(seconds))
+    return f"{total} s" if total < 60 else f"{total // 60} min {total % 60:02d} s"
+
+
+def coverage_gaps(universe, panel, n=3):
+    """Which listed stocks the ranking cannot see, and whether any of them might have ranked. Read-only diagnostic.
+
+    * not_downloaded: in the membership list but Yahoo returned nothing (delisted, renamed or acquired).
+    * stale: downloaded, but no price on the last date, so the live rule cannot hold them (it needs a price today).
+      Each gets its last date and the score it had on that last day.
+    * cutoff: the n-th best score among stocks that DO have a price today (SPY excluded).
+    * would_rank: stale names whose last-known score beat the cutoff. The scores are on different dates, so this is
+      only a flag to look at, not proof.
+    This never changes the plan: the plan is built from the price file exactly as before.
+    """
+    last = panel.index[-1]
+    not_downloaded = sorted(set(universe) - set(panel.columns))
+    stocks = panel.drop(columns=[BENCHMARK], errors="ignore")
+    today_scores = ml.momentum_score(stocks).iloc[-1].dropna().sort_values(ascending=False)
+    cutoff = float(today_scores.iloc[n - 1]) if len(today_scores) >= n else float("-inf")
+    stale = []
+    for t in sorted(c for c in stocks.columns if pd.isna(stocks[c].iloc[-1])):
+        own = stocks[t].dropna()
+        score = float(ml.momentum_score(own.to_frame()).iloc[-1, 0]) if len(own) else float("nan")
+        stale.append(dict(ticker=t, last_price_date=own.index[-1].date() if len(own) else None, last_score=score))
+    would_rank = [g["ticker"] for g in stale if pd.notna(g["last_score"]) and g["last_score"] > cutoff]
+    return dict(as_of=last.date(), not_downloaded=not_downloaded, stale=stale, cutoff=cutoff, would_rank=would_rank)
+
+
+def gap_lines(gaps):
+    """Plain-English lines for the nightly log."""
+    if not gaps["not_downloaded"] and not gaps["stale"]:
+        return ["Coverage: every ticker in the list has a price on the last date."]
+    out = []
+    if gaps["not_downloaded"]:
+        out.append(f"Coverage: {len(gaps['not_downloaded'])} listed tickers returned no data (likely delisted, renamed or "
+                   f"acquired; cannot be scored): {', '.join(gaps['not_downloaded'])}")
+    if gaps["stale"]:
+        out.append(f"Coverage: {len(gaps['stale'])} tickers have no price on {gaps['as_of']} and cannot be held: "
+                   f"{', '.join(g['ticker'] for g in gaps['stale'])}")
+        for g in gaps["stale"]:
+            if g["ticker"] in gaps["would_rank"]:
+                out.append(f"  {g['ticker']}: last priced {g['last_price_date']}, score then {g['last_score']:+.1%} vs today's "
+                           f"3rd-best {gaps['cutoff']:+.1%}; it might have ranked in the top 3 (scores are on different dates)")
+    return out
 
 
 def universe_from_membership(membership):
@@ -99,9 +159,20 @@ def main(argv=None):
     ap.add_argument("--membership", default=str(here / "stock_data" / "sp_500_historical_components.csv"),
                     help="S&P 500 membership csv; downloaded if missing")
     args = ap.parse_args(argv)
+    quiet_yfinance_warnings()
+    started = time.time()
+    print(f"stock_update started {time.strftime('%Y-%m-%d %H:%M:%S')} (computer's local time)")
     membership = sdp.load_membership(args.membership)
     path, msg = update(args.folder, membership)
     print(("OK: " if path else "NOTHING WRITTEN: ") + msg)
+    if path:
+        try:                                    # diagnostic only: a failure here must never fail the nightly job
+            panel = pd.read_csv(path, index_col=0, parse_dates=True)
+            for line in gap_lines(coverage_gaps(universe_from_membership(membership), panel)):
+                print(line)
+        except Exception as e:                  # noqa: BLE001
+            print(f"Coverage check skipped: {e}")
+    print(f"stock_update finished {time.strftime('%H:%M:%S')}, took {format_elapsed(time.time() - started)}")
     return 0 if path or "already exists" in msg else 1
 
 
@@ -134,5 +205,12 @@ if __name__ == "__main__":
 #   test_health_accepts_exactly_the_minimum_and_flags_one_less PASSED [100%]
 #   ============================== 21 passed in 3.10s ==============================
 #   Regression: test_momentum_plan + test_momentum_daily + test_stock_momentum = 69 passed
+# Added 2026-11-15 (log cleanup; diagnostics only, the plan's inputs are unchanged):
+#   test_quiet_yfinance_hides_its_futurewarning_but_not_other_warnings PASSED
+#   test_format_elapsed_is_short_and_plain (4 cases) PASSED
+#   test_coverage_gaps_lists_missing_and_stale_names_and_flags_a_would_be_leader PASSED
+#   test_coverage_gaps_with_nothing_missing_says_so_and_never_counts_spy PASSED
+#   ============================== 28 passed in 3.11s ==============================
+#   Mutation check: flipping the would_rank comparison made the would-be-leader test fail.
 # Rerun on Windows (mlfinlab env) before relying on it.
 # ---------------------------------------------------------------------------
