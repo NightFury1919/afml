@@ -3,7 +3,7 @@ pipeline/diagnostics/capture_kraken_snapshot_window2.py
 
 Captures a SECOND, non-overlapping 720h Kraken window -- specifically
 the 720h immediately BEFORE the window already captured by
-capture_kraken_snapshot.py --hours 720 (kraken_snapshot_720h_2026-08-25/,
+capture_kraken_snapshot.py --hours 720 (kraken_snapshot_xbtusd_720h_2026-09-08/,
 covering roughly the most recent 30 days as of 2026-08-25).
 
 Motivation: today's real Kraken target_bars sweep found every one of 5
@@ -43,7 +43,7 @@ from ingestion_kraken import pull_recent_trades_kraken   # noqa: E402
 
 PAIR = 'XBTUSD'
 LOOKBACK_HOURS = 720
-WINDOW1_SNAPSHOT_DIR = os.path.join(HERE, 'kraken_snapshot_720h_2026-08-25')
+WINDOW1_SNAPSHOT_DIR = os.path.join(HERE, 'kraken_snapshot_xbtusd_720h_2026-09-08')
 
 SNAPSHOT_DIR = os.path.join(
     HERE, f'kraken_snapshot_720h_window2_{date.today().isoformat()}'

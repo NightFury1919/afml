@@ -26,7 +26,7 @@ Run:
 import os
 import sys
 import time
-from datetime import date
+from datetime import datetime
 
 import pandas as pd
 
@@ -56,6 +56,23 @@ def main():
     old_trades = pd.read_parquet(raw_trades_path)
     old_max_ts = old_trades['Timestamp'].max()
     old_max_time = pd.to_datetime(old_max_ts, unit='us')
+
+    # LOAD-BEARING (2026-09-13): the output-directory collision check used
+    # to happen only at the very end, AFTER the expensive network pull,
+    # dedup, and contiguity check had already run -- so a same-day rerun
+    # (exactly what repeated Option 4 prediction-logging needs) would
+    # throw away real, already-pulled, already-verified trade data with
+    # no way to recover it. Fixed by (1) checking the output path up
+    # front, before any network call, and (2) using a minute-resolution
+    # timestamp instead of a bare date, so multiple refreshes on the same
+    # calendar day don't collide with each other in the first place.
+    out_dir = (f'{snapshot_dir.rstrip(chr(92)).rstrip("/")}_refreshed_'
+               f'{datetime.now().strftime("%Y-%m-%d_%H%M")}')
+    if os.path.exists(out_dir):
+        raise SystemExit(f'{out_dir} already exists -- refusing to overwrite. '
+                          '(This check now runs before any network pull, so '
+                          'nothing was fetched or lost.)')
+
     now = time.time()
     gap_hours = (now - old_max_ts / 1_000_000) / 3600.0 + GAP_BUFFER_HOURS
 
@@ -106,9 +123,6 @@ def main():
         )
     print('  PASS: genuinely continuous, no real gap between old and new data.')
 
-    out_dir = f'{snapshot_dir.rstrip(chr(92)).rstrip("/")}_refreshed_{date.today().isoformat()}'
-    if os.path.exists(out_dir):
-        raise SystemExit(f'{out_dir} already exists -- refusing to overwrite.')
     os.makedirs(out_dir)
     out_path = os.path.join(out_dir, 'raw_trades.parquet')
     combined.to_parquet(out_path)

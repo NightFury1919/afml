@@ -24,7 +24,7 @@ extends that methodology, not invents a new one.
 
 METHOD (identical to the original script's, applied cross-venue instead
 of cross-time): runs a FRESH Binance.US 720h live pull and the ALREADY-
-CAPTURED Kraken 720h snapshot (kraken_snapshot_720h_2026-08-25 -- no
+CAPTURED Kraken 720h snapshot (kraken_snapshot_xbtusd_720h_2026-09-08 -- no
 need to re-pull ~1.68M trades again) through the SAME real
 rebuild.build_bars_and_labels() chain, measures each venue's bar-to-bar
 CLOSE price diff distribution (the exact series CUSUM_H is applied
@@ -63,7 +63,7 @@ from ch02.bars import filters as ch02_filters      # noqa: E402
 
 LOOKBACK_HOURS = 720
 TARGET_BARS = 1000  # current production default -- see module docstring
-KRAKEN_SNAPSHOT_DIR = os.path.join(HERE, 'kraken_snapshot_720h_2026-08-25')
+KRAKEN_SNAPSHOT_DIR = os.path.join(HERE, 'kraken_snapshot_xbtusd_720h_2026-09-08')
 
 
 def bar_close_diff_stats(raw_trades, label):

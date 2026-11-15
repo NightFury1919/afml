@@ -46,10 +46,15 @@ Usage
     cd C:\\ws\\AFML
     python pipeline\\diagnostics\\calibrate_kraken_detection_power.py
     python pipeline\\diagnostics\\calibrate_kraken_detection_power.py <sweep_csv> [output_csv]
+    python pipeline\\diagnostics\\calibrate_kraken_detection_power.py <sweep_csv> [output_csv] --num-threads=4
 
 ADDED 2026-08-25: optional <sweep_csv>/[output_csv] args for running
 against a SECOND window's sweep results (replication check) without
 overwriting the first window's kraken_detection_power_calibration.csv.
+
+ADDED 2026-09-10: --num-threads=N / --mp-batches=N flags, parallelizing
+via Ch20's real mp_job_list engine -- see the DEFAULT_NUM_THREADS
+constant's own comment for the full rationale/reproducibility note.
 """
 import os
 import sys
@@ -61,11 +66,45 @@ from scipy import stats
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 sys.path.insert(0, os.path.join(ROOT, 'ch14', 'backtest_statistics'))
+sys.path.insert(0, ROOT)
 
 from backtest_statistics import deflated_sharpe_ratio  # noqa: E402, real ch14 module
+from utils.multiprocess import mp_job_list              # noqa: E402, real Ch20 engine
 
 N_TRIALS = 20
 N_REPS = 20_000
+
+# *** ADDED (2026-09-10): parallelize via Ch20's real mp_job_list, not a
+# new engine ***
+# This script's own docstring estimated ~25-30 minutes per run (n_reps=
+# 20,000 x 5 T-points x 6 true_sharpe values x 2 regimes = 600,000 total
+# sequential reps). Each rep is a fully independent draw -- an
+# embarrassingly parallel workload -- and this project has Ch20's real
+# multiprocessing engine (utils/multiprocess.py's mp_job_list, the same
+# one barrier_touch.py's run_barrier_touch_engine already uses) sitting
+# unused. No new engine written here: n_reps is split into chunks via
+# mp_job_list, each chunk runs the EXACT SAME per-rep loop body as the
+# original single-threaded functions (kept below, unmodified, and used
+# directly whenever num_threads<=1 -- matching this project's own
+# num_threads==1-for-debugging convention, see multiprocess.py's own
+# comment on process_jobs_redux).
+# Windows spawn note: worker functions (_sim_gaussian_chunk/
+# _sim_fat_tailed_chunk below) are real module-level functions, not
+# closures/lambdas, for the same picklability reason barrier_touch.py's
+# own module docstring already documents for this codebase.
+# REPRODUCIBILITY NOTE: a parallel run's exact dsrs values will NOT
+# bit-for-bit match a prior single-threaded run at the same seed (each
+# chunk gets its own seed offset, so the random draws are partitioned
+# across chunks differently than one long single-threaded stream would
+# be) -- they are statistically equivalent at n_reps=20,000, not
+# byte-identical. If exact reproduction of a specific past run's numbers
+# is ever needed, use num_threads=1.
+# n_jobs/num_threads default: this workload never touches SVC/sklearn at
+# all (pure numpy Monte Carlo), so the project's SVC-specific n_jobs=1
+# Windows/loky caution does not apply here -- default matches the
+# established n_jobs=4 sweet spot already used for this project's
+# spawn-safe (non-SVC) parallel work.
+DEFAULT_NUM_THREADS = 4
 
 KRAKEN_SWEEP_CSV = os.path.join(HERE, 'kraken_target_bars_calibration.csv')
 
@@ -115,6 +154,48 @@ def simulate_power_gaussian(T, true_sharpe, N=N_TRIALS, n_reps=N_REPS, seed=42):
         dsrs[i] = deflated_sharpe_ratio(sr_hat, var_sr_trials, N, T, skew=0., kurtosis=3.)
         correct_selection[i] = (best_idx == 0)
     return dsrs, correct_selection
+
+
+def _sim_gaussian_chunk(molecule, T, true_sharpe, N, base_seed):
+    """mp_job_list worker: runs simulate_power_gaussian's exact per-rep
+    loop body, just for len(molecule) reps instead of n_reps. molecule
+    is a chunk of rep-index atoms (see simulate_power_gaussian_mp);
+    molecule[0] gives each chunk a distinct, deterministic seed offset."""
+    n_reps_chunk = len(molecule)
+    rng = np.random.default_rng(base_seed + int(molecule[0]))
+    dsrs = np.empty(n_reps_chunk)
+    correct_selection = np.empty(n_reps_chunk, dtype=bool)
+    T_int = int(round(T))
+    for i in range(n_reps_chunk):
+        pnl = rng.standard_normal(size=(T_int, N))
+        pnl[:, 0] += true_sharpe
+        sharpes = pnl.mean(axis=0) / pnl.std(axis=0, ddof=1)
+        best_idx = sharpes.argmax()
+        sr_hat = sharpes[best_idx]
+        var_sr_trials = sharpes.var(ddof=1)
+        dsrs[i] = deflated_sharpe_ratio(sr_hat, var_sr_trials, N, T, skew=0., kurtosis=3.)
+        correct_selection[i] = (best_idx == 0)
+    return dsrs, correct_selection
+
+
+def _redux_concat(out, out_):
+    return (np.concatenate([out[0], out_[0]]), np.concatenate([out[1], out_[1]]))
+
+
+def simulate_power_gaussian_mp(T, true_sharpe, N=N_TRIALS, n_reps=N_REPS,
+                                seed=42, num_threads=DEFAULT_NUM_THREADS,
+                                mp_batches=1):
+    """Parallel wrapper over simulate_power_gaussian -- see this module's
+    ADDED (2026-09-10) note for why/how. num_threads<=1 falls straight
+    through to the original, unmodified, real single-threaded function."""
+    if num_threads <= 1:
+        return simulate_power_gaussian(T, true_sharpe, N=N, n_reps=n_reps, seed=seed)
+    return mp_job_list(
+        _sim_gaussian_chunk, ('molecule', list(range(n_reps))),
+        num_threads=num_threads, mp_batches=mp_batches,
+        redux=_redux_concat, redux_in_place=False,
+        T=T, true_sharpe=true_sharpe, N=N, base_seed=seed,
+    )
 
 
 def calibrate_jump_mixture(p, s, tilt=0.0, n=200_000, seed=0):
@@ -243,9 +324,87 @@ def simulate_power_fat_tailed(T, true_sharpe, mix, N=N_TRIALS, n_reps=N_REPS, se
     return dsrs, correct_selection
 
 
+def _sim_fat_tailed_chunk(molecule, T, true_sharpe, mix, N, base_seed):
+    """mp_job_list worker: exact per-rep loop body of
+    simulate_power_fat_tailed, for len(molecule) reps. Same seed-offset
+    convention as _sim_gaussian_chunk."""
+    n_reps_chunk = len(molecule)
+    rng = np.random.default_rng(base_seed + int(molecule[0]))
+    dsrs = np.empty(n_reps_chunk)
+    correct_selection = np.empty(n_reps_chunk, dtype=bool)
+    T_int = int(round(T))
+    p, s, tilt = mix['p'], mix['s'], mix['tilt']
+    p_pos, p_neg = p * (1 - tilt), p * (1 + tilt)
+    mean0, std0 = mix['mean0'], mix['std0']
+    shift_noise = -mean0
+    shift_edge = true_sharpe * std0 - mean0
+
+    for i in range(n_reps_chunk):
+        base = rng.standard_normal(size=(T_int, N))
+        draws = rng.random(size=(T_int, N))
+        pos_jumps = draws < p_pos
+        neg_jumps = (draws >= p_pos) & (draws < p_pos + p_neg)
+        base[pos_jumps] += s
+        base[neg_jumps] -= s
+        base[:, 1:] += shift_noise
+        base[:, 0] += shift_edge
+
+        sharpes = base.mean(axis=0) / base.std(axis=0, ddof=1)
+        best_idx = sharpes.argmax()
+        sr_hat = sharpes[best_idx]
+        var_sr_trials = sharpes.var(ddof=1)
+
+        best_col = base[:, best_idx]
+        if T_int > 2:
+            realized_skew = float(stats.skew(best_col))
+            realized_kurtosis = float(stats.kurtosis(best_col, fisher=False))
+        else:
+            realized_skew, realized_kurtosis = 0., 3.
+
+        dsrs[i] = deflated_sharpe_ratio(
+            sr_hat, var_sr_trials, N, T, skew=realized_skew, kurtosis=realized_kurtosis,
+        )
+        correct_selection[i] = (best_idx == 0)
+    return dsrs, correct_selection
+
+
+def simulate_power_fat_tailed_mp(T, true_sharpe, mix, N=N_TRIALS, n_reps=N_REPS,
+                                  seed=42, num_threads=DEFAULT_NUM_THREADS,
+                                  mp_batches=1):
+    """Parallel wrapper over simulate_power_fat_tailed -- same design as
+    simulate_power_gaussian_mp above."""
+    if num_threads <= 1:
+        return simulate_power_fat_tailed(T, true_sharpe, mix, N=N, n_reps=n_reps, seed=seed)
+    return mp_job_list(
+        _sim_fat_tailed_chunk, ('molecule', list(range(n_reps))),
+        num_threads=num_threads, mp_batches=mp_batches,
+        redux=_redux_concat, redux_in_place=False,
+        T=T, true_sharpe=true_sharpe, mix=mix, N=N, base_seed=seed,
+    )
+
+
+def _parse_args(argv):
+    """Positional: [csv_path] [output_csv], unchanged from before. Optional
+    flags anywhere: --num-threads=N (default DEFAULT_NUM_THREADS; use
+    --num-threads=1 to force the original single-threaded path for
+    debugging), --mp-batches=N (default 1, mp_job_list's own batching
+    knob for when num_threads*mp_batches chunks should exceed num_threads
+    -- see multiprocess.py)."""
+    nt_args = [a for a in argv if a.startswith('--num-threads=')]
+    mb_args = [a for a in argv if a.startswith('--mp-batches=')]
+    positional = [a for a in argv if not a.startswith('--num-threads=')
+                  and not a.startswith('--mp-batches=')]
+    num_threads = int(nt_args[0].split('=', 1)[1]) if nt_args else DEFAULT_NUM_THREADS
+    mp_batches = int(mb_args[0].split('=', 1)[1]) if mb_args else 1
+    csv_path = positional[0] if len(positional) > 0 else None
+    output_csv = positional[1] if len(positional) > 1 else None
+    return csv_path, output_csv, num_threads, mp_batches
+
+
 def main():
-    csv_path = sys.argv[1] if len(sys.argv) > 1 else None
-    output_csv = sys.argv[2] if len(sys.argv) > 2 else None
+    csv_path, output_csv, num_threads, mp_batches = _parse_args(sys.argv[1:])
+    print(f'Parallelism: num_threads={num_threads}, mp_batches={mp_batches} '
+          f'(pass --num-threads=1 to force the original single-threaded path)')
 
     sweep_df = load_kraken_sweep_stats(csv_path)
     t_grid = sorted(sweep_df['T_effective'].round(2).tolist())
@@ -265,7 +424,9 @@ def main():
     rows1 = []
     for true_sharpe in TRUE_SHARPE_GRID:
         for T in t_grid:
-            dsrs, correct = simulate_power_gaussian(T, true_sharpe)
+            dsrs, correct = simulate_power_gaussian_mp(
+                T, true_sharpe, num_threads=num_threads, mp_batches=mp_batches,
+            )
             rows1.append({
                 'true_sharpe': true_sharpe, 'T': T,
                 'P[DSR>0.5]': (dsrs > 0.5).mean(),
@@ -292,7 +453,9 @@ def main():
     rows2 = []
     for true_sharpe in TRUE_SHARPE_GRID:
         for T in t_grid:
-            dsrs, correct = simulate_power_fat_tailed(T, true_sharpe, mix)
+            dsrs, correct = simulate_power_fat_tailed_mp(
+                T, true_sharpe, mix, num_threads=num_threads, mp_batches=mp_batches,
+            )
             rows2.append({
                 'true_sharpe': true_sharpe, 'T': T,
                 'P[DSR>0.5]': (dsrs > 0.5).mean(),
