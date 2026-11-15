@@ -90,12 +90,16 @@ tests notice.
 
 Three Alpaca **paper** accounts run side by side for comparison only:
 
-- **Account A:** a 44-ETF portfolio. Weights come from an inverse-volatility rule inside asset classes, with a 10% cap
-  per position and a monthly rebalance (21 trading days).
+- **Account A (retired 2026-11-09):** a 44-ETF portfolio. Weights came from an inverse-volatility rule inside asset
+  classes, with a 10% cap per position and a monthly rebalance (21 trading days). Its files stay in `accounts/etf_only`
+  as history, and its reset Alpaca account now runs the stock momentum account below.
 - **Account B:** SPY only, the baseline.
 - **Momentum account** (`accounts/momentum`): an experiment with half the account in the top 3 ranked funds and the
   rest in SPY. It has no demonstrated edge. In the ETF history tests, none of 8 momentum variants beat SPY (about 9.4% a year versus 9.6% to
   10.4%).
+- **Stock momentum account** (`accounts/stock`, started 2026-11-09): the same rule applied to S&P 500 stocks (top 3 by
+  score, equal weight, half the account, the rest in SPY). It is a paper account kept as a read-only history recorder;
+  its rules are not changed after the fact.
 
 The pipeline is split so a mistake cannot place an order by accident. `daily_run.py` checks the price data, makes the
 plan, updates the scoreboard and writes a report, and it **never sends orders**. `execute_plan.py` places orders only
@@ -141,7 +145,7 @@ project does not claim it does. The aim is a lower-risk portfolio that still gro
 conda activate mlfinlab
 cd portfolio
 python daily_run.py --help                # health check, plan, scoreboard, report (no orders)
-python performance_page.py --folder . --config accounts\etf_only\run_config.json --out performance --replay-start 2016-01-04
+python performance_page.py --folder . --config accounts\etf_only\run_config.json --out performance --replay-start 2016-01-04   # replays the retired Account A rules
 ```
 
 Alpaca keys are read from the environment variables `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY` and are never stored in

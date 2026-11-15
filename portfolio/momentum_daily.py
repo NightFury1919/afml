@@ -36,7 +36,8 @@ def load_config(path):
     cfg = dict(DEFAULTS)
     if not path.exists():
         return cfg, False
-    given = json.loads(path.read_text(encoding="utf-8"))
+    # utf-8-sig: a config saved with a byte-order mark (PowerShell 5.1 "Set-Content -Encoding utf8" adds one) still loads.
+    given = json.loads(path.read_text(encoding="utf-8-sig"))
     unknown = sorted(set(given) - set(DEFAULTS))
     if unknown:
         raise ValueError(f"unknown key(s) in {path.name}: {', '.join(unknown)}")
