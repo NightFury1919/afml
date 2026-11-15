@@ -32,7 +32,7 @@ def main():
 
     files = sorted(glob.glob("prices_daily_asof_*.csv"))
     if not a.prices and not files:
-        raise SystemExit("No prices_daily_asof_*.csv in this folder. Run from C:\\ws\\AFML\\portfolio or pass --prices FILE.")
+        raise SystemExit("No prices_daily_asof_*.csv in this folder. Run from the portfolio folder or pass --prices FILE.")
     path = a.prices or files[-1]
     px = [p for d, p in load_spy(path) if d >= a.since]
     n = a.weeks * 5

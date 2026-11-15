@@ -35,7 +35,7 @@ def main():
 
     files = sorted(glob.glob("prices_daily_asof_*.csv"))
     if not a.prices and not files:
-        raise SystemExit("No prices_daily_asof_*.csv in this folder. Run from C:\\ws\\AFML\\portfolio or pass --prices FILE.")
+        raise SystemExit("No prices_daily_asof_*.csv in this folder. Run from the portfolio folder or pass --prices FILE.")
     path = a.prices or files[-1]
     spy = load_spy(path)
     before = [(d, p) for d, p in spy if d <= a.start]

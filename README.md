@@ -19,11 +19,25 @@ unit tests where the right answer is known in advance.
 
 ## Set up
 
-- Python 3.10 in a **dedicated conda environment** (developed on Python 3.10.20, pandas 1.5.3, numpy 1.23.5). Do not
+On Windows with conda installed (Miniconda or Anaconda), from the folder you cloned into:
+
+```
+conda env create -f environment.yml
+conda activate mlfinlab
+python check_setup.py
+```
+
+`check_setup.py` prints one PASS / WARN / FAIL line per thing that matters (Python version, package versions, the
+folders, a few small tests) and changes nothing. Fix any FAIL line before running anything else.
+
+- The environment is Python 3.10 (developed on 3.10.20, pandas 1.5.3, numpy 1.23.5) and is called `mlfinlab`. Do not
   use a newer base environment: files saved with one numpy version may not load in another.
-- Install what a chapter needs from its own `requirements.txt`, for example `pip install -r ch03/requirements.txt`.
+- Each chapter also has its own `requirements.txt` if you only want that chapter's packages.
 - Scripts find their own folders automatically. Notebooks cannot, so each notebook's first code cell has one line,
   `AFML_ROOT = r'C:\ws\AFML'`. Edit that line to wherever you cloned the repository.
+- The nightly launchers in `portfolio/` (`nightly_all.bat`, `nightly_run.bat`) work from wherever they are and find the
+  `mlfinlab` environment themselves. If your conda is installed somewhere unusual, set the `AFML_PYTHON` environment
+  variable to the full path of that environment's `python.exe`.
 
 ## Chapter map
 

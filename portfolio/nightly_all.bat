@@ -3,8 +3,14 @@ rem nightly_all.bat -- one nightly run for all accounts. Places NO orders and ru
 rem   1. update prices and score the shadow model (account-independent)
 rem   2. for each account: health check, plan, scoreboard, report, using THAT account's keys, config and folders
 rem The old single-account line (daily_run.py with the default keys) was retired on 2026-10-23, see nightly_all_old.bat.
-set PY=C:\Users\earob\miniconda3\envs\mlfinlab\python.exe
-cd /d C:\ws\AFML\portfolio
+rem Portable: work from the folder this file lives in, and find the mlfinlab python (see find_python.bat; set AFML_PYTHON to override).
+cd /d "%~dp0"
+if not exist shadow mkdir shadow
+call "%~dp0find_python.bat"
+if not defined PY (
+  echo [%date% %time%] FAILED: mlfinlab python not found. Set AFML_PYTHON to its full path. >> shadow\nightly_stdout.txt
+  exit /b 1
+)
 "%PY%" nightly_run.py >> shadow\nightly_stdout.txt 2>&1
 
 rem ---- account A: AFML_Ethan, the ETF-only account: RETIRED 2026-11-09 (risk strategy dropped; folder archived in archive\accounts_retired) ----

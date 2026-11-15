@@ -1,5 +1,5 @@
 # demo_video.ps1  --  silent screen-recording walkthrough for the QF-Portfolio project
-# Run from C:\ws\AFML\portfolio in a PowerShell terminal with the mlfinlab conda env active.
+# Run from the portfolio folder in a PowerShell terminal with the mlfinlab conda env active.
 #   1) Save this file in portfolio\
 #   2) conda activate mlfinlab
 #   3) Start your screen recorder, then run:  .\demo_video.ps1

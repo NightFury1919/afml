@@ -1,0 +1,39 @@
+# environment.yml -- one-step setup for the whole AFML repo (chapters, pipeline and portfolio).
+#
+#   conda env create -f environment.yml
+#   conda activate mlfinlab
+#   python check_setup.py
+#
+# The environment is called "mlfinlab" on purpose: the nightly launchers (portfolio\find_python.bat)
+# look for it by that name. Never run the project from the conda "base" environment.
+#
+# The pins below are the versions every test result in this repo was produced with.
+# The unpinned packages at the bottom are not version-sensitive for the tests. After the first clean
+# install on a working machine, run `pip freeze` and pin those too if you want exact reproducibility.
+name: mlfinlab
+channels:
+  - defaults
+dependencies:
+  - python=3.10
+  - mkl=2022.1.0
+  - pip
+  - pip:
+      - numpy==1.23.5
+      - pandas==1.5.3
+      - scikit-learn==1.2.2
+      - scipy==1.15.2
+      - pytest==9.0.3
+      - pyarrow==14.0.2
+      - requests>=2.28.0
+      - matplotlib>=3.5
+      - seaborn>=0.11
+      - statsmodels>=0.14
+      - joblib
+      # live-data and paper-trading side (portfolio/)
+      - yfinance
+      - alpaca-py
+      # notebooks
+      - jupyter
+      - ipykernel
+      - nbclient
+      - nbformat>=5.9

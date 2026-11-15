@@ -53,6 +53,10 @@ C:\ws\AFML\
   `AFML_ROOT = r'C:\ws\AFML'` variable at the top of the setup cell,
   with a loud, clearly-labeled comment telling a stranger to edit that
   one line for their machine.
+- **Launchers (`.bat`)**: `portfolio\nightly_all.bat` and `nightly_run.bat` start from their own folder (`%~dp0`) and
+  find the `mlfinlab` python through `portfolio\find_python.bat` (override with the `AFML_PYTHON` environment
+  variable). They never fall back to a bare `python`, since that could be the base env. Run `python check_setup.py`
+  on any new machine. (Decided 2026-11-15.)
 - Older chapters (ch02-ch04) predate this convention and have NOT yet
   been migrated -- don't assume they already follow it unless told so.
 
