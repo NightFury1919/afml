@@ -119,6 +119,7 @@ if ($DryRun) {
 # A task that runs while nobody is logged on needs the account password. It is passed straight
 # to Task Scheduler and is not written to any file or log.
 Write-Host ""
+Write-Host "Use the account PASSWORD, not a Windows Hello PIN. For a Microsoft account it is the Microsoft account password."
 $secure = Read-Host "Windows password for $user" -AsSecureString
 $plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
     [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure))
@@ -126,18 +127,30 @@ if ([string]::IsNullOrEmpty($plain)) {
     throw "A password is required for a task that runs while nobody is logged on. This Windows account may have no password set."
 }
 
-Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
-    -Settings $settings -User $user -Password $plain -Force | Out-Null
+# -ErrorAction Stop matters: Register-ScheduledTask reports a bad password as a non-terminating
+# error, and without it this script would carry on and wrongly say the task was created.
+try {
+    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
+        -Settings $settings -User $user -Password $plain -Force -ErrorAction Stop | Out-Null
+} catch {
+    $plain = $null
+    $msg = $_.Exception.Message
+    if ($msg -like "*user name or password is incorrect*") {
+        throw "Windows rejected the password for $user. Use the account password, not a Windows Hello PIN (for a Microsoft account, the Microsoft account password). No task was created."
+    }
+    throw "Could not create the task: $msg  (If this says access is denied, reopen PowerShell as administrator.)"
+}
 $plain = $null
 
-$task = Get-ScheduledTask -TaskName $TaskName
-$info = Get-ScheduledTaskInfo -TaskName $TaskName
+# Confirm it really exists before claiming success.
+$task = Get-ScheduledTask -TaskName $TaskName -ErrorAction Stop
+$info = Get-ScheduledTaskInfo -TaskName $TaskName -ErrorAction Stop
 Write-Host ""
 Write-Host "Created task '$TaskName'. State: $($task.State). Next run: $($info.NextRunTime)"
 
 if ($RunNow) {
     Write-Host "Starting it once now..."
-    Start-ScheduledTask -TaskName $TaskName
+    Start-ScheduledTask -TaskName $TaskName -ErrorAction Stop
     # Give the launcher time to finish, then report. A prices-only run takes well under a minute.
     $deadline = (Get-Date).AddMinutes(3)
     do {
