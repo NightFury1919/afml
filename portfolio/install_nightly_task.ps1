@@ -1,15 +1,19 @@
 # install_nightly_task.ps1
 #
 # WHY THIS EXISTS
-# The nightly job (price update + shadow scoring) has to run every evening on its own, even
-# when nobody is logged in. On Windows that is a Task Scheduler task. Clicking it together by
-# hand is easy to get subtly wrong (a missed start that never catches up, a laptop that will
-# not wake, a task that only runs while someone is logged on). This script creates the task
-# with the right settings in one command, so a second machine ends up set up the same way.
+# The nightly job (price update + shadow scoring) has to run every evening on its own. On
+# Windows that is a Task Scheduler task. Clicking it together by hand is easy to get subtly
+# wrong (a missed start that never catches up, a machine that will not wake, the wrong logon
+# setting). This script creates the task with the right settings in one command, so a second
+# machine ends up set up the same way.
 #
 # WHAT IT DOES
 #   * Creates (or replaces) one Task Scheduler task that runs a launcher in this folder daily.
-#   * Runs whether or not the user is logged on, so it asks for the Windows account password.
+#   * By default (-LogonMode OnlyWhenLoggedOn) it runs only while you are signed in. A LOCKED
+#     screen is fine (Win+L); signing out or restarting stops it until you sign in again. It
+#     needs no password. Use this on a machine where nothing may run while nobody is signed in.
+#   * With -LogonMode WhetherOrNot it runs even when nobody is signed in, and asks for the
+#     Windows account password instead.
 #   * Runs a missed start as soon as the machine is back, wakes the machine to run, and
 #     retries 3 times, 5 minutes apart, if the launcher fails.
 #   * Does NOT touch Alpaca keys, accounts, or git. It never runs anything itself unless you
@@ -17,7 +21,8 @@
 #
 # HOW TO USE (PowerShell 5.1 is fine; do this from the portfolio folder)
 #   .\install_nightly_task.ps1 -DryRun          show what would be created, create nothing
-#   .\install_nightly_task.ps1                  create the task (asks for your Windows password)
+#   .\install_nightly_task.ps1                  create the task (runs while you are signed in)
+#   .\install_nightly_task.ps1 -LogonMode WhetherOrNot   run even when signed out (asks for password)
 #   .\install_nightly_task.ps1 -RunNow          create it, start it once, show the result
 #   .\install_nightly_task.ps1 -Remove          delete the task again
 #
@@ -38,6 +43,8 @@ param(
     [ValidateSet("nightly_run.bat", "nightly_all.bat")]
     [string]$Launcher = "nightly_run.bat",
     [string]$At = "20:30",          # machine local time, 24-hour clock
+    [ValidateSet("OnlyWhenLoggedOn", "WhetherOrNot")]
+    [string]$LogonMode = "OnlyWhenLoggedOn",
     [switch]$DryRun,
     [switch]$RunNow,
     [switch]$Remove
@@ -105,7 +112,11 @@ Write-Host "Task name:      $TaskName"
 Write-Host "Runs:           $launcherPath"
 Write-Host "Start in:       $portfolio"
 Write-Host "Every day at:   $At (machine local time)"
-Write-Host "Runs as:        $user, whether or not logged on"
+if ($LogonMode -eq "OnlyWhenLoggedOn") {
+    Write-Host "Runs as:        $user, only while signed in (a locked screen is fine)"
+} else {
+    Write-Host "Runs as:        $user, whether or not logged on"
+}
 Write-Host "Missed start:   runs as soon as the machine is back"
 Write-Host "Wake to run:    yes"
 Write-Host "On failure:     retry 3 times, 5 minutes apart"
@@ -116,37 +127,54 @@ if ($DryRun) {
     exit 0
 }
 
-# A task that runs while nobody is logged on needs the account password. It is passed straight
-# to Task Scheduler and is not written to any file or log.
-Write-Host ""
-Write-Host "Use the account PASSWORD, not a Windows Hello PIN. For a Microsoft account it is the Microsoft account password."
-$secure = Read-Host "Windows password for $user" -AsSecureString
-$plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-    [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure))
-if ([string]::IsNullOrEmpty($plain)) {
-    throw "A password is required for a task that runs while nobody is logged on. This Windows account may have no password set."
-}
-
-# -ErrorAction Stop matters: Register-ScheduledTask reports a bad password as a non-terminating
-# error, and without it this script would carry on and wrongly say the task was created.
-try {
-    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
-        -Settings $settings -User $user -Password $plain -Force -ErrorAction Stop | Out-Null
-} catch {
-    $plain = $null
-    $msg = $_.Exception.Message
-    if ($msg -like "*user name or password is incorrect*") {
-        throw "Windows rejected the password for $user. Use the account password, not a Windows Hello PIN (for a Microsoft account, the Microsoft account password). No task was created."
+if ($LogonMode -eq "OnlyWhenLoggedOn") {
+    # Interactive logon: the task runs in the signed-in user's session, so no password is
+    # needed or stored. It keeps running behind a locked screen. -ErrorAction Stop so a failed
+    # registration is never reported as success.
+    $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
+    try {
+        Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
+            -Settings $settings -Principal $principal -Force -ErrorAction Stop | Out-Null
+    } catch {
+        throw "Could not create the task: $($_.Exception.Message)  (If this says access is denied, a policy on this machine may block creating tasks.)"
     }
-    throw "Could not create the task: $msg  (If this says access is denied, reopen PowerShell as administrator.)"
+} else {
+    # A task that runs while nobody is logged on needs the account password. It is passed
+    # straight to Task Scheduler and is not written to any file or log.
+    Write-Host ""
+    Write-Host "Use the account PASSWORD, not a Windows Hello PIN. For a Microsoft account it is the Microsoft account password."
+    $secure = Read-Host "Windows password for $user" -AsSecureString
+    $plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+        [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure))
+    if ([string]::IsNullOrEmpty($plain)) {
+        throw "A password is required for a task that runs while nobody is logged on. This Windows account may have no password set."
+    }
+
+    # -ErrorAction Stop matters: Register-ScheduledTask reports a bad password as a
+    # non-terminating error, and without it this script would carry on and wrongly say the
+    # task was created.
+    try {
+        Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
+            -Settings $settings -User $user -Password $plain -Force -ErrorAction Stop | Out-Null
+    } catch {
+        $plain = $null
+        $msg = $_.Exception.Message
+        if ($msg -like "*user name or password is incorrect*") {
+            throw "Windows rejected the password for $user. Use the account password, not a Windows Hello PIN (for a Microsoft account, the Microsoft account password). No task was created."
+        }
+        throw "Could not create the task: $msg  (If this says access is denied, reopen PowerShell as administrator.)"
+    }
+    $plain = $null
 }
-$plain = $null
 
 # Confirm it really exists before claiming success.
 $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction Stop
 $info = Get-ScheduledTaskInfo -TaskName $TaskName -ErrorAction Stop
 Write-Host ""
 Write-Host "Created task '$TaskName'. State: $($task.State). Next run: $($info.NextRunTime)"
+if ($LogonMode -eq "OnlyWhenLoggedOn") {
+    Write-Host "Stay signed in and lock the screen with Win+L. Signing out or restarting stops the job until you sign in again."
+}
 
 if ($RunNow) {
     Write-Host "Starting it once now..."
