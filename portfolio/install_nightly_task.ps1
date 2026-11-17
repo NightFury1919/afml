@@ -151,13 +151,17 @@ Write-Host "Created task '$TaskName'. State: $($task.State). Next run: $($info.N
 if ($RunNow) {
     Write-Host "Starting it once now..."
     Start-ScheduledTask -TaskName $TaskName -ErrorAction Stop
-    # Give the launcher time to finish, then report. A prices-only run takes well under a minute.
-    $deadline = (Get-Date).AddMinutes(3)
+    # Give the launcher time to finish, then report. A normal night takes seconds, but a night
+    # when the shadow model refits (and scores) took about 3.5 minutes in testing, so wait longer.
+    $deadline = (Get-Date).AddMinutes(10)
     do {
         Start-Sleep -Seconds 5
         $state = (Get-ScheduledTask -TaskName $TaskName).State
     } while ($state -eq "Running" -and (Get-Date) -lt $deadline)
     $info = Get-ScheduledTaskInfo -TaskName $TaskName
+    if ($state -eq "Running") {
+        Write-Host "Still running after 10 minutes. Result 267009 means 'still running', not an error. Check again with Get-ScheduledTaskInfo."
+    }
     Write-Host "State: $state. Last Run Result: $($info.LastTaskResult)  (0 means success)"
     Write-Host "Now read the end of shadow\nightly_stdout.txt for a dated line with no FAILED."
 }
