@@ -27,7 +27,9 @@ import bars   # our local bars package (bars/__init__.py exposes all bar functio
 #             = False if the BUYER was aggressive (market buy order hit a resting ask)
 # IsBestMatch = whether this was executed at the best available price (always True here)
 
-base = os.path.dirname(os.path.abspath(__file__))   # absolute path to this script's folder
+# The shared datasets live in <repo>/input_data (one level above this ch02 folder), so build
+# the repo root from this script's own location instead of assuming the data sits next to it.
+base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))   # repo root
 data_path = os.path.join(base, 'input_data', 'BTCTUSD-trades-2026-03.csv')
 
 print("Loading data...")

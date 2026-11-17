@@ -24,7 +24,9 @@ import multi_product as mp   # our local package: etf_trick, pca_weights, roll f
 # Each .txt file contains daily OHLCV data for one contract:
 #   Date, Open, High, Low, Close, Volume, OpenInt (open interest)
 
-base = os.path.dirname(os.path.abspath(__file__))   # folder containing this script
+# The futures files live in the shared <repo>/input_data folder, one level above this ch02
+# folder, so build the repo root from this script's own location.
+base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))   # repo root
 
 def load_contract(filename):
     # Load one futures contract from a CSV/TXT file.
