@@ -29,9 +29,10 @@ dependencies:
       - seaborn>=0.11
       - statsmodels>=0.14
       - joblib
-      # live-data and paper-trading side (portfolio/)
-      - yfinance
-      - alpaca-py
+      # live-data and paper-trading side (portfolio/). Pinned to the versions the nightly jobs
+      # run on, so a rebuild cannot silently change price handling.
+      - yfinance==1.7.0
+      - alpaca-py==0.44.0
       # notebooks
       - jupyter
       - ipykernel
